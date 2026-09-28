@@ -1,4 +1,6 @@
 import type {
+  AccessMode,
+  ApprovalRequest,
   EffectiveSetting,
   ProjectCreateInput,
   ProjectSummary,
@@ -10,6 +12,8 @@ import type {
   TaskCreateInput,
   TaskQuestion,
   TaskRecord,
+  ToolCallRecord,
+  ToolDefinition,
 } from '@gamecrafter/contracts';
 
 export const ControlRoomService = Symbol('ControlRoomService');
@@ -38,6 +42,24 @@ export interface ControlRoomService {
     questionId: string,
     answer: unknown,
   ): Promise<TaskRecord>;
+  listTools(projectId?: string): Promise<ToolDefinition[]>;
+  callTool(
+    projectId: string,
+    toolId: string,
+    input: unknown,
+    options?: {
+      taskId?: string;
+      agentId?: string;
+      accessCeiling?: AccessMode;
+    },
+  ): Promise<ToolCallRecord>;
+  listApprovals(projectId: string, pendingOnly?: boolean): Promise<ApprovalRequest[]>;
+  approve(
+    projectId: string,
+    approvalId: string,
+    approve: boolean,
+    reason?: string,
+  ): Promise<ApprovalRequest>;
 }
 
 export interface ControlRoomClient {
@@ -45,5 +67,8 @@ export interface ControlRoomClient {
   onSettingsChanged(event: RpcNotificationParams<'settings/changed'>): void;
   onTaskChanged(event: { projectId: string; task: TaskRecord }): void;
   onTaskQuestion(event: { projectId: string; question: TaskQuestion }): void;
+  onApprovalRequested(event: RpcNotificationParams<'broker/approvalRequested'>): void;
+  onApprovalResolved(event: RpcNotificationParams<'broker/approvalResolved'>): void;
+  onToolCalled(event: RpcNotificationParams<'tool/called'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

@@ -1,4 +1,4 @@
-import type { TaskError, TaskRecord, TaskResult } from '@gamecrafter/contracts';
+import type { AccessMode, TaskError, TaskRecord, TaskResult } from '@gamecrafter/contracts';
 
 export interface TaskHandlerContext {
   task: TaskRecord;
@@ -8,6 +8,7 @@ export interface TaskHandlerContext {
   progress(message: string, percent?: number): void;
   checkpoint(data: unknown): Promise<void>;
   ask(prompt: string, options?: string[]): Promise<unknown>;
+  tool(toolId: string, input: unknown): Promise<unknown>;
   reportUsage(usage: { costUsd?: number; tokens?: number }): Promise<void>;
 }
 
@@ -24,6 +25,7 @@ export interface WorkerRunPayload {
 export type WorkerCommand =
   | WorkerRunPayload
   | { type: 'answer'; questionId: string; answer: unknown }
+  | { type: 'tool-result'; requestId: string; output?: unknown; error?: TaskError }
   | { type: 'checkpoint-ack'; requestId: string }
   | { type: 'cancel' }
   | { type: 'checkpoint-and-stop' };
@@ -31,6 +33,13 @@ export type WorkerCommand =
 export type WorkerMessage =
   | { type: 'heartbeat' }
   | { type: 'answer-received'; questionId: string }
+  | {
+      type: 'tool-call';
+      requestId: string;
+      toolId: string;
+      input: unknown;
+      accessCeiling?: AccessMode;
+    }
   | {
       type: 'progress';
       message: string;

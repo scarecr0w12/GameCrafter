@@ -44,6 +44,17 @@ export async function noopAsk(context: TaskHandlerContext): Promise<TaskResult> 
   };
 }
 
+export async function noopTool(context: TaskHandlerContext): Promise<TaskResult> {
+  const input = asRecord(context.input);
+  const toolId = String(input.toolId ?? '');
+  const output = await context.tool(toolId, input.toolInput);
+  return {
+    summary: JSON.stringify(output) ?? String(output),
+    artifacts: [],
+    evidence: [{ kind: 'tool', ref: toolId }],
+  };
+}
+
 export async function noopCheckpointed(context: TaskHandlerContext): Promise<TaskResult> {
   const input = asRecord(context.input);
   const checkpoint = asRecord(context.initialCheckpoint);

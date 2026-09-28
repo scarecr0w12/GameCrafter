@@ -7,6 +7,10 @@ import type { WorkerCommand, WorkerMessage, WorkerRunPayload } from './types';
 const localRequire = createRequire(__filename);
 const checkpointAcks = new Map<string, () => void>();
 const pendingAnswers = new Map<string, (answer: unknown) => void>();
+const pendingToolCalls = new Map<
+  string,
+  { resolve(output: unknown): void; reject(error: Error): void; removeAbort(): void }
+>();
 let controller: AbortController | undefined;
 let heartbeat: NodeJS.Timeout | undefined;
 let activeRun = false;
@@ -25,6 +29,19 @@ process.on('message', (message: WorkerCommand) => {
       pendingAnswers.delete(message.questionId);
       resolve(message.answer);
       void send({ type: 'answer-received', questionId: message.questionId });
+    }
+  } else if (message.type === 'tool-result') {
+    const pending = pendingToolCalls.get(message.requestId);
+    if (pending) {
+      pendingToolCalls.delete(message.requestId);
+      pending.removeAbort();
+      if (message.error) {
+        const error = new Error(message.error.message);
+        if (message.error.code !== undefined) Object.assign(error, { code: message.error.code });
+        pending.reject(error);
+      } else {
+        pending.resolve(message.output);
+      }
     }
   } else if (message.type === 'cancel') {
     controller?.abort('cancel');
@@ -63,6 +80,7 @@ async function run(payload: WorkerRunPayload): Promise<void> {
         await acknowledged;
       },
       ask: async (prompt, options) => ask(payload, prompt, options, activeController.signal),
+      tool: async (toolId, input) => callTool(payload, toolId, input, activeController.signal),
       reportUsage: async (usage) => {
         await send({ type: 'progress', message: 'usage reported', usage });
       },
@@ -126,6 +144,44 @@ async function ask(
   });
   askIndex += 1;
   return answer;
+}
+
+async function callTool(
+  payload: WorkerRunPayload,
+  toolId: string,
+  input: unknown,
+  signal: AbortSignal,
+): Promise<unknown> {
+  if (signal.aborted) throw abortError();
+  const requestId = uuidv7();
+  let removeAbort: () => void = () => {};
+  const result = new Promise<unknown>((resolve, reject) => {
+    const abort = () => {
+      pendingToolCalls.delete(requestId);
+      removeAbort();
+      reject(abortError());
+    };
+    removeAbort = () => signal.removeEventListener('abort', abort);
+    signal.addEventListener('abort', abort, { once: true });
+    pendingToolCalls.set(requestId, { resolve, reject, removeAbort });
+  });
+  try {
+    await send({
+      type: 'tool-call',
+      requestId,
+      toolId,
+      input,
+      ...(payload.task.assignee?.accessCeiling
+        ? { accessCeiling: payload.task.assignee.accessCeiling }
+        : {}),
+    });
+  } catch (error) {
+    const pending = pendingToolCalls.get(requestId);
+    pendingToolCalls.delete(requestId);
+    pending?.removeAbort();
+    throw error;
+  }
+  return result;
 }
 
 let askIndex = 0;

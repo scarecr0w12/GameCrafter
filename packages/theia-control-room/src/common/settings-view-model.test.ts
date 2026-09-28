@@ -36,6 +36,10 @@ describe('settings view model helpers', () => {
     expect(controlKindFor({ type: 'string', enum: ['a', 'b'] })).toBe('enum');
     expect(controlKindFor({ type: 'number' })).toBe('number');
     expect(controlKindFor({ type: 'string' })).toBe('string');
+    expect(
+      controlKindFor({ type: 'array', items: { type: 'string', enum: ['none', 'paid'] } }),
+    ).toBe('enum-array');
+    expect(controlKindFor({ type: 'array', items: { type: 'string' } })).toBe('string-array');
     expect(controlKindFor({ type: 'array' })).toBe('unsupported');
   });
 

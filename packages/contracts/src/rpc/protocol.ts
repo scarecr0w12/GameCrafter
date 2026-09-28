@@ -17,6 +17,12 @@ import {
   TaskRecordSchema,
   TaskStateSchema,
 } from '../tasks';
+import {
+  AccessModeSchema,
+  ApprovalRequestSchema,
+  ToolCallRecordSchema,
+  ToolDefinitionSchema,
+} from '../tools';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -213,6 +219,70 @@ export const RpcMethods = {
     params: Type.Object({ checkpoint: Type.Boolean() }, { additionalProperties: false }),
     result: Type.Object({ ok: Type.Literal(true) }, { additionalProperties: false }),
   },
+  'tool/list': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { tools: Type.Array(ToolDefinitionSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'tool/call': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        toolId: Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' }),
+        input: Type.Unknown(),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+        agentId: Type.Optional(Type.String()),
+        accessCeiling: Type.Optional(AccessModeSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: ToolCallRecordSchema,
+  },
+  'tool/calls': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+        toolId: Type.Optional(Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, default: 200 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { calls: Type.Array(ToolCallRecordSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'broker/approvals': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        pendingOnly: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { approvals: Type.Array(ApprovalRequestSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'broker/approve': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        approvalId: Type.String({ format: 'uuid' }),
+        approve: Type.Boolean(),
+        reason: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: ApprovalRequestSchema,
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -268,6 +338,33 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'broker/approvalRequested': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        approval: ApprovalRequestSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'broker/approvalResolved': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        approval: ApprovalRequestSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'tool/called': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        call: ToolCallRecordSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
 } as const satisfies Record<string, { params: TSchema }>;
 
 export type RpcMethodName = keyof typeof RpcMethods;
@@ -296,6 +393,12 @@ export const RpcErrorCode = {
   UnknownTaskKind: -32024,
   QuestionNotFound: -32025,
   TaskNotWaiting: -32026,
+  ToolNotFound: -32030,
+  ToolDenied: -32031,
+  ToolInputInvalid: -32032,
+  ApprovalNotFound: -32033,
+  PathOutsideProject: -32034,
+  ApprovalAlreadyResolved: -32035,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

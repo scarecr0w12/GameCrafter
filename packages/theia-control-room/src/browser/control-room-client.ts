@@ -13,6 +13,13 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   >();
   private readonly taskChangedEmitter = new Emitter<RpcNotificationParams<'task/changed'>>();
   private readonly taskQuestionEmitter = new Emitter<RpcNotificationParams<'task/question'>>();
+  private readonly approvalRequestedEmitter = new Emitter<
+    RpcNotificationParams<'broker/approvalRequested'>
+  >();
+  private readonly approvalResolvedEmitter = new Emitter<
+    RpcNotificationParams<'broker/approvalResolved'>
+  >();
+  private readonly toolCalledEmitter = new Emitter<RpcNotificationParams<'tool/called'>>();
   private readonly serviceStatusEmitter = new Emitter<{
     connected: boolean;
     message?: string;
@@ -22,6 +29,9 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly settingsChanged = this.settingsChangedEmitter.event;
   readonly taskChanged = this.taskChangedEmitter.event;
   readonly taskQuestion = this.taskQuestionEmitter.event;
+  readonly approvalRequested = this.approvalRequestedEmitter.event;
+  readonly approvalResolved = this.approvalResolvedEmitter.event;
+  readonly toolCalled = this.toolCalledEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
@@ -38,6 +48,18 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onTaskQuestion(event: RpcNotificationParams<'task/question'>): void {
     this.taskQuestionEmitter.fire(event);
+  }
+
+  onApprovalRequested(event: RpcNotificationParams<'broker/approvalRequested'>): void {
+    this.approvalRequestedEmitter.fire(event);
+  }
+
+  onApprovalResolved(event: RpcNotificationParams<'broker/approvalResolved'>): void {
+    this.approvalResolvedEmitter.fire(event);
+  }
+
+  onToolCalled(event: RpcNotificationParams<'tool/called'>): void {
+    this.toolCalledEmitter.fire(event);
   }
 
   onServiceStatus(status: { connected: boolean; message?: string }): void {

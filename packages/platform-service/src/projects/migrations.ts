@@ -76,4 +76,45 @@ export const projectMigrations: Migration[] = [
       CREATE INDEX task_questions_answered_at_idx ON task_questions(answered_at);
     `,
   },
+  {
+    id: 3,
+    name: 'create tool broker tables',
+    up: `
+      CREATE TABLE tool_calls (
+        call_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        task_id TEXT,
+        agent_id TEXT,
+        tool_id TEXT NOT NULL,
+        input TEXT NOT NULL,
+        access_mode TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        decision_reason TEXT NOT NULL,
+        status TEXT NOT NULL,
+        output TEXT NOT NULL,
+        error TEXT,
+        evidence TEXT NOT NULL,
+        cost_usd REAL NOT NULL,
+        started_at TEXT NOT NULL,
+        finished_at TEXT
+      );
+      CREATE INDEX tool_calls_task_id_idx ON tool_calls(task_id);
+      CREATE INDEX tool_calls_tool_id_idx ON tool_calls(tool_id);
+      CREATE INDEX tool_calls_status_idx ON tool_calls(status);
+      CREATE TABLE approvals (
+        approval_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        call_id TEXT NOT NULL,
+        tool_id TEXT NOT NULL,
+        side_effects TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        input TEXT NOT NULL,
+        requested_at TEXT NOT NULL,
+        resolved_at TEXT,
+        approved INTEGER,
+        reason TEXT
+      );
+      CREATE INDEX approvals_project_pending_idx ON approvals(project_id, resolved_at);
+    `,
+  },
 ];

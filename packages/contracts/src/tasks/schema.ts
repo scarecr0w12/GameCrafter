@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Static, Type } from '@sinclair/typebox';
+import { AccessModeSchema } from '../tools/schema';
 
 export const TaskStateSchema = Type.Union([
   Type.Literal('pending'),
@@ -41,6 +42,7 @@ export const TaskAssigneeSchema = Type.Object(
   {
     role: Type.Optional(Type.String()),
     agentId: Type.Optional(Type.String()),
+    accessCeiling: Type.Optional(AccessModeSchema),
   },
   { additionalProperties: false },
 );

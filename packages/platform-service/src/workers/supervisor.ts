@@ -7,6 +7,7 @@ import type { TaskError, TaskRecord } from '@gamecrafter/contracts';
 import { SettingsService } from '../settings/settings-service';
 import type { TaskSupervisorPort } from '../tasks/task-service';
 import type { ProjectTaskRuntime, TaskService } from '../tasks/task-service';
+import type { ToolBroker } from '../tools/tool-broker';
 import type { HandlerRegistry } from './handler-registry';
 import type { WorkerCommand, WorkerMessage } from './types';
 
@@ -20,6 +21,7 @@ interface RunningWorker {
   stopRequested: boolean;
   finalMessage: boolean;
   answerAcks: Map<string, (received: boolean) => void>;
+  toolCalls: Map<string, AbortController>;
   cancelTimer?: NodeJS.Timeout;
 }
 
@@ -27,6 +29,7 @@ export interface WorkerSupervisorOptions {
   tasks: TaskService;
   settings: SettingsService;
   handlers: HandlerRegistry;
+  tools?: ToolBroker;
   now?: () => Date;
   leaseTtlMs?: number;
   tickIntervalMs?: number;
@@ -96,6 +99,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
     const worker = this.workers.get(taskId);
     if (!worker || worker.stopRequested) return;
     worker.stopRequested = true;
+    for (const controller of worker.toolCalls.values()) controller.abort('task_cancelled');
     this.send(worker.child, { type: 'cancel' });
     worker.cancelTimer = setTimeout(() => worker.child.kill('SIGKILL'), 2_000);
     worker.cancelTimer.unref();
@@ -261,6 +265,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       stopRequested: false,
       finalMessage: false,
       answerAcks: new Map(),
+      toolCalls: new Map(),
     };
     this.workers.set(task.taskId, worker);
     child.on('message', (message: WorkerMessage) => {
@@ -334,6 +339,15 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       return;
     }
 
+    if (message.type === 'tool-call') {
+      const task = runtime.store.get(worker.taskId);
+      if (!task || task.state !== 'running') return;
+      const controller = new AbortController();
+      worker.toolCalls.set(message.requestId, controller);
+      void this.runWorkerToolCall(runtime, worker, task, message, controller);
+      return;
+    }
+
     if (message.type === 'progress') {
       const task = runtime.store.get(worker.taskId);
       if (!task || task.state !== 'running') return;
@@ -381,6 +395,57 @@ export class WorkerSupervisor implements TaskSupervisorPort {
     }
   }
 
+  private async runWorkerToolCall(
+    runtime: ProjectTaskRuntime,
+    worker: RunningWorker,
+    task: TaskRecord,
+    message: Extract<WorkerMessage, { type: 'tool-call' }>,
+    controller: AbortController,
+  ): Promise<void> {
+    try {
+      if (!this.options.tools) throw new Error('Tool broker is unavailable');
+      const call = await this.options.tools.call(
+        {
+          projectId: runtime.projectId,
+          taskId: task.taskId,
+          agentId: task.assignee?.agentId,
+          toolId: message.toolId,
+          input: message.input,
+          accessCeiling: message.accessCeiling,
+        },
+        { accessCeiling: task.assignee?.accessCeiling, signal: controller.signal },
+      );
+      if (call.status !== 'completed') {
+        const error = new Error(
+          call.error?.message ?? `Tool call ended with status ${call.status}`,
+        );
+        if (call.error?.code) Object.assign(error, { code: call.error.code });
+        throw error;
+      }
+      this.send(worker.child, {
+        type: 'tool-result',
+        requestId: message.requestId,
+        output: call.output,
+      });
+    } catch (error) {
+      this.send(worker.child, {
+        type: 'tool-result',
+        requestId: message.requestId,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          ...(error instanceof Error &&
+          'code' in error &&
+          (typeof error.code === 'string' || typeof error.code === 'number')
+            ? { code: String(error.code) }
+            : {}),
+          retryable: false,
+        },
+      });
+    } finally {
+      worker.toolCalls.delete(message.requestId);
+    }
+  }
+
   private async onWorkerError(
     runtime: ProjectTaskRuntime,
     worker: RunningWorker,
@@ -399,6 +464,8 @@ export class WorkerSupervisor implements TaskSupervisorPort {
   ): Promise<void> {
     if (worker.cancelTimer) clearTimeout(worker.cancelTimer);
     if (this.workers.get(worker.taskId) === worker) this.workers.delete(worker.taskId);
+    for (const controller of worker.toolCalls.values()) controller.abort('worker_exit');
+    worker.toolCalls.clear();
     for (const resolveAcknowledgement of worker.answerAcks.values()) {
       resolveAcknowledgement(false);
     }
@@ -451,6 +518,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
         const worker = this.workers.get(task.taskId);
         if (worker) {
           worker.stopRequested = true;
+          for (const controller of worker.toolCalls.values()) controller.abort('lease_expired');
           this.send(worker.child, { type: 'cancel' });
           worker.cancelTimer = setTimeout(() => worker.child.kill('SIGKILL'), 2_000);
           worker.cancelTimer.unref();
@@ -490,6 +558,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
   private async shutdown(checkpoint: boolean): Promise<void> {
     for (const worker of this.workers.values()) {
       worker.stopRequested = true;
+      for (const controller of worker.toolCalls.values()) controller.abort('service_stop');
       this.send(worker.child, { type: checkpoint ? 'checkpoint-and-stop' : 'cancel' });
     }
     const workers = [...this.workers.values()];

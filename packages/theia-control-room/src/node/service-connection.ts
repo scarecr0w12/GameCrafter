@@ -28,6 +28,15 @@ export class PlatformServiceConnection {
   private readonly taskQuestionListeners = new Set<
     (event: RpcNotificationParams<'task/question'>) => void
   >();
+  private readonly approvalRequestedListeners = new Set<
+    (event: RpcNotificationParams<'broker/approvalRequested'>) => void
+  >();
+  private readonly approvalResolvedListeners = new Set<
+    (event: RpcNotificationParams<'broker/approvalResolved'>) => void
+  >();
+  private readonly toolCalledListeners = new Set<
+    (event: RpcNotificationParams<'tool/called'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -66,6 +75,25 @@ export class PlatformServiceConnection {
     return () => this.taskQuestionListeners.delete(listener);
   }
 
+  onApprovalRequested(
+    listener: (event: RpcNotificationParams<'broker/approvalRequested'>) => void,
+  ): () => void {
+    this.approvalRequestedListeners.add(listener);
+    return () => this.approvalRequestedListeners.delete(listener);
+  }
+
+  onApprovalResolved(
+    listener: (event: RpcNotificationParams<'broker/approvalResolved'>) => void,
+  ): () => void {
+    this.approvalResolvedListeners.add(listener);
+    return () => this.approvalResolvedListeners.delete(listener);
+  }
+
+  onToolCalled(listener: (event: RpcNotificationParams<'tool/called'>) => void): () => void {
+    this.toolCalledListeners.add(listener);
+    return () => this.toolCalledListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -99,6 +127,15 @@ export class PlatformServiceConnection {
         });
         client.onNotification('task/question', (event) => {
           for (const listener of this.taskQuestionListeners) listener(event);
+        });
+        client.onNotification('broker/approvalRequested', (event) => {
+          for (const listener of this.approvalRequestedListeners) listener(event);
+        });
+        client.onNotification('broker/approvalResolved', (event) => {
+          for (const listener of this.approvalResolvedListeners) listener(event);
+        });
+        client.onNotification('tool/called', (event) => {
+          for (const listener of this.toolCalledListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

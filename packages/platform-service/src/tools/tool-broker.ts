@@ -1,0 +1,614 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import {
+  RpcError,
+  RpcErrorCode,
+  minAccessMode,
+  redact,
+  uuidv7,
+  type AccessMode,
+  type ApprovalRequest,
+  type ToolCallError,
+  type ToolCallRecord,
+  type ToolDefinition,
+} from '@gamecrafter/contracts';
+import type { ProfileStore } from '../profile/profile-store';
+import type { ProjectDatabases } from '../projects/project-databases';
+import type { SettingsService } from '../settings/settings-service';
+import type { TaskService } from '../tasks/task-service';
+import { ToolStore } from './tool-store';
+import {
+  ToolRegistry,
+  type RegisteredTool,
+  type ToolContext,
+  type ToolExecutionResult,
+} from './tool-registry';
+
+export interface ToolBrokerEvents {
+  approvalRequested(projectId: string, approval: ApprovalRequest): void;
+  approvalResolved(projectId: string, approval: ApprovalRequest): void;
+  toolCalled(projectId: string, call: ToolCallRecord): void;
+}
+
+export interface ToolBrokerOptions {
+  registry: ToolRegistry;
+  settings: SettingsService;
+  projectDatabases: ProjectDatabases;
+  projects: ProfileStore;
+  tasks: TaskService;
+  events: ToolBrokerEvents;
+  now?: () => Date;
+  approvalTimeoutOverrideMs?: number;
+}
+
+export interface ToolCallRequest {
+  projectId: string;
+  toolId: string;
+  input: unknown;
+  taskId?: string;
+  agentId?: string;
+  accessCeiling?: AccessMode;
+}
+
+export interface ToolCallContext {
+  sessionId?: string;
+  accessCeiling?: AccessMode;
+  signal?: AbortSignal;
+}
+
+type ApprovalWaitResult =
+  | { kind: 'resolved'; approval: ApprovalRequest }
+  | { kind: 'timed-out' }
+  | { kind: 'stopped'; reason: string };
+
+interface ApprovalWaiter {
+  resolve(result: ApprovalWaitResult): void;
+  timer: NodeJS.Timeout;
+  removeAbort(): void;
+}
+
+export class ToolBroker {
+  private readonly stores = new Map<string, ToolStore>();
+  private readonly waiters = new Map<string, ApprovalWaiter>();
+  private readonly controllers = new Map<string, AbortController>();
+  private readonly activeCalls = new Set<Promise<ToolCallRecord>>();
+  private readonly now: () => Date;
+
+  constructor(private readonly options: ToolBrokerOptions) {
+    this.now = options.now ?? (() => new Date());
+  }
+
+  listTools(projectId?: string): ToolDefinition[] {
+    if (projectId) this.requireProject(projectId);
+    return this.options.registry.list();
+  }
+
+  async call(request: ToolCallRequest, context: ToolCallContext = {}): Promise<ToolCallRecord> {
+    const operation = this.executeCall(request, context);
+    this.activeCalls.add(operation);
+    try {
+      return await operation;
+    } finally {
+      this.activeCalls.delete(operation);
+    }
+  }
+
+  listCalls(
+    projectId: string,
+    filter: { taskId?: string; toolId?: string; limit?: number } = {},
+  ): ToolCallRecord[] {
+    return this.store(projectId).calls(filter);
+  }
+
+  listApprovals(projectId: string, pendingOnly = false): ApprovalRequest[] {
+    return this.store(projectId).approvals(pendingOnly);
+  }
+
+  approve(
+    projectId: string,
+    approvalId: string,
+    approve: boolean,
+    reason?: string,
+  ): ApprovalRequest {
+    const store = this.store(projectId);
+    const existing = store.getApproval(approvalId);
+    if (!existing) {
+      throw new RpcError(`Approval not found: ${approvalId}`, RpcErrorCode.ApprovalNotFound);
+    }
+    const approval = store.resolveApproval(
+      approvalId,
+      this.now().toISOString(),
+      approve,
+      reason ?? null,
+    );
+    this.options.events.approvalResolved(projectId, approval);
+    const waiter = this.waiters.get(approvalId);
+    if (waiter) {
+      clearTimeout(waiter.timer);
+      waiter.removeAbort();
+      this.waiters.delete(approvalId);
+      waiter.resolve({ kind: 'resolved', approval });
+    }
+    return approval;
+  }
+
+  async recoverOnStart(): Promise<void> {
+    for (const project of this.options.projects.list()) {
+      if (
+        !existsSync(project.path) ||
+        !existsSync(path.join(project.path, 'gamecrafter.project.json'))
+      ) {
+        continue;
+      }
+      const store = this.store(project.projectId);
+      const timeoutMs = this.approvalTimeoutMs(project.projectId);
+      const now = this.now();
+      for (const call of store.pendingCalls()) {
+        const approval = store.getApprovalForCall(call.callId);
+        if (approval && approval.resolvedAt === null) {
+          const ageMs = now.getTime() - Date.parse(approval.requestedAt);
+          if (ageMs >= timeoutMs) {
+            const timedOut = store.resolveApproval(
+              approval.approvalId,
+              now.toISOString(),
+              null,
+              'Approval timed out',
+            );
+            this.options.events.approvalResolved(project.projectId, timedOut);
+          }
+        }
+        this.finishRecord(store, {
+          ...call,
+          decisionReason: 'service_restart',
+          status: 'failed',
+          error: { message: 'Tool call interrupted by service restart', code: 'service_restart' },
+          finishedAt: now.toISOString(),
+        });
+      }
+    }
+  }
+
+  async stopAll(): Promise<void> {
+    for (const controller of this.controllers.values()) controller.abort('service_stop');
+    for (const [approvalId, waiter] of this.waiters) {
+      clearTimeout(waiter.timer);
+      waiter.removeAbort();
+      this.waiters.delete(approvalId);
+      waiter.resolve({ kind: 'stopped', reason: 'service_stop' });
+    }
+    await Promise.allSettled([...this.activeCalls]);
+  }
+
+  private async executeCall(
+    request: ToolCallRequest,
+    context: ToolCallContext,
+  ): Promise<ToolCallRecord> {
+    const project = this.requireProject(request.projectId);
+    const task = request.taskId
+      ? this.options.tasks.get(request.projectId, request.taskId)
+      : undefined;
+    const tool = this.options.registry.get(request.toolId);
+    const store = this.store(request.projectId);
+    const callId = uuidv7();
+    const accessMode = this.effectiveMode(
+      request.projectId,
+      context,
+      request,
+      task?.assignee?.accessCeiling,
+    );
+    const startedAt = this.now().toISOString();
+    if (!tool) {
+      this.finishRecord(store, {
+        callId,
+        projectId: request.projectId,
+        taskId: request.taskId ?? null,
+        agentId: request.agentId ?? task?.assignee?.agentId ?? null,
+        toolId: request.toolId,
+        input: redact(request.input),
+        accessMode,
+        decision: 'denied',
+        decisionReason: 'tool_not_found',
+        status: 'failed',
+        output: null,
+        error: {
+          message: `Tool not found: ${request.toolId}`,
+          code: String(RpcErrorCode.ToolNotFound),
+        },
+        evidence: [],
+        costUsd: 0,
+        startedAt,
+        finishedAt: this.now().toISOString(),
+      });
+      throw new RpcError(`Tool not found: ${request.toolId}`, RpcErrorCode.ToolNotFound);
+    }
+
+    const inputErrors = this.options.registry.validateInput(tool, request.input);
+    let record: ToolCallRecord = {
+      callId,
+      projectId: request.projectId,
+      taskId: request.taskId ?? null,
+      agentId: request.agentId ?? task?.assignee?.agentId ?? null,
+      toolId: request.toolId,
+      input: redact(request.input),
+      accessMode,
+      decision: 'allowed',
+      decisionReason: 'full_access',
+      status: 'pending',
+      output: null,
+      error: null,
+      evidence: [],
+      costUsd: 0,
+      startedAt,
+      finishedAt: null,
+    };
+
+    if (inputErrors.length > 0) {
+      record = this.finishRecord(store, {
+        ...record,
+        decision: 'denied',
+        decisionReason: 'input_validation_failed',
+        status: 'failed',
+        error: {
+          message: 'Tool input does not match its schema',
+          code: String(RpcErrorCode.ToolInputInvalid),
+        },
+      });
+      throw new RpcError(
+        `Invalid input for tool ${request.toolId}`,
+        RpcErrorCode.ToolInputInvalid,
+        inputErrors,
+      );
+    }
+
+    const policy = this.decisionFor(request.projectId, tool.definition, accessMode);
+    record = {
+      ...record,
+      decision: policy.decision,
+      decisionReason: policy.reason,
+    };
+    if (policy.decision === 'denied') {
+      this.finishRecord(store, {
+        ...record,
+        status: 'denied',
+        error: { message: policy.reason, code: String(RpcErrorCode.ToolDenied) },
+      });
+      throw new RpcError(policy.reason, RpcErrorCode.ToolDenied);
+    }
+
+    if (policy.decision === 'approval-required') {
+      store.insertCall(record);
+      const approval = this.createApproval(request, tool.definition, record);
+      store.insertApproval(approval);
+      this.options.events.approvalRequested(request.projectId, approval);
+      const approvalResult = await this.waitForApproval(
+        approval,
+        this.approvalTimeoutMs(request.projectId, context.sessionId),
+        store,
+        context.signal,
+      );
+      if (approvalResult.kind === 'timed-out') {
+        return this.finishRecord(store, {
+          ...record,
+          decision: 'timed-out',
+          decisionReason: 'approval_timed_out',
+          status: 'timed-out',
+          error: { message: 'Approval timed out', code: 'approval_timeout' },
+        });
+      }
+      if (approvalResult.kind === 'stopped') {
+        if (approvalResult.reason === 'service_stop') {
+          return {
+            ...record,
+            decisionReason: 'service_stop',
+            status: 'failed',
+            error: { message: 'Tool call interrupted by service stop', code: 'service_stop' },
+            finishedAt: this.now().toISOString(),
+          };
+        }
+        const pendingApproval = store.getApprovalForCall(record.callId);
+        if (pendingApproval?.resolvedAt === null) {
+          const resolved = store.resolveApproval(
+            pendingApproval.approvalId,
+            this.now().toISOString(),
+            null,
+            approvalResult.reason,
+          );
+          this.options.events.approvalResolved(request.projectId, resolved);
+        }
+        return this.finishRecord(store, {
+          ...record,
+          decisionReason: approvalResult.reason,
+          status: 'failed',
+          error: { message: 'Tool call was cancelled', code: approvalResult.reason },
+        });
+      }
+      if (approvalResult.approval.approved !== true) {
+        const reason = approvalResult.approval.reason ?? 'Tool call rejected by user';
+        this.finishRecord(store, {
+          ...record,
+          decision: 'rejected',
+          decisionReason: reason,
+          status: 'rejected',
+          error: { message: reason, code: String(RpcErrorCode.ToolDenied) },
+        });
+        throw new RpcError(reason, RpcErrorCode.ToolDenied);
+      }
+      record = {
+        ...record,
+        decision: 'approved',
+        decisionReason: approvalResult.approval.reason ?? 'approved_by_user',
+      };
+    } else {
+      store.insertCall(record);
+    }
+
+    return this.runTool(store, project.path, tool, record, request.input, context.signal);
+  }
+
+  private async runTool(
+    store: ToolStore,
+    projectPath: string,
+    tool: RegisteredTool,
+    record: ToolCallRecord,
+    input: unknown,
+    callerSignal?: AbortSignal,
+  ): Promise<ToolCallRecord> {
+    const controller = new AbortController();
+    const abortFromCaller = () => controller.abort(callerSignal?.reason ?? 'cancelled');
+    callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+    if (callerSignal?.aborted) abortFromCaller();
+    this.controllers.set(record.callId, controller);
+    const timeoutMs = this.executionTimeoutMs(tool.definition, input);
+    const timer = setTimeout(() => controller.abort('tool_timeout'), timeoutMs);
+    try {
+      const context: ToolContext = {
+        projectId: record.projectId,
+        projectPath,
+        taskId: record.taskId,
+        agentId: record.agentId,
+        accessMode: record.accessMode,
+        callId: record.callId,
+        signal: controller.signal,
+      };
+      const result: ToolExecutionResult = await tool.handler(context, input);
+      const outputErrors = this.options.registry.validateOutput(tool, result.output);
+      if (outputErrors.length > 0) {
+        return this.finishRecord(store, {
+          ...record,
+          status: 'failed',
+          error: { message: 'Tool output does not match its schema', code: 'invalid_output' },
+          finishedAt: this.now().toISOString(),
+        });
+      }
+      return this.finishRecord(store, {
+        ...record,
+        status: 'completed',
+        output: result.output,
+        evidence: result.evidence ?? [],
+        costUsd: Math.max(0, result.costUsd ?? 0),
+        finishedAt: this.now().toISOString(),
+      });
+    } catch (error) {
+      const abortReason = String(controller.signal.reason ?? '');
+      if (abortReason === 'service_stop') {
+        return {
+          ...record,
+          decisionReason: 'service_stop',
+          status: 'failed',
+          error: { message: 'Tool call interrupted by service stop', code: 'service_stop' },
+          finishedAt: this.now().toISOString(),
+        };
+      }
+      const timedOut = abortReason === 'tool_timeout' || isTimeoutError(error);
+      const callError = asToolError(error);
+      const finalRecord = this.finishRecord(store, {
+        ...record,
+        status: timedOut ? 'timed-out' : 'failed',
+        decisionReason: timedOut ? 'tool_timeout' : record.decisionReason,
+        error: timedOut ? { message: 'Tool execution timed out', code: 'tool_timeout' } : callError,
+        finishedAt: this.now().toISOString(),
+      });
+      if (error instanceof RpcError) throw error;
+      return finalRecord;
+    } finally {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener('abort', abortFromCaller);
+      this.controllers.delete(record.callId);
+    }
+  }
+
+  private finishRecord(store: ToolStore, record: ToolCallRecord): ToolCallRecord {
+    const storedRecord: ToolCallRecord = {
+      ...record,
+      input: redact(record.input),
+      output: redact(record.output),
+      error: record.error === null ? null : redact(record.error),
+      evidence: redact(record.evidence),
+      finishedAt: record.finishedAt ?? this.now().toISOString(),
+    };
+    store.finalizeCall(storedRecord);
+    this.options.events.toolCalled(record.projectId, storedRecord);
+    return { ...storedRecord, input: record.input, output: record.output };
+  }
+
+  private effectiveMode(
+    projectId: string,
+    context: ToolCallContext,
+    request: ToolCallRequest,
+    taskCeiling?: AccessMode,
+  ): AccessMode {
+    const setting = this.options.settings.resolve('access.mode', {
+      projectId,
+      sessionId: context.sessionId,
+    }).value as AccessMode;
+    return [setting, context.accessCeiling, request.accessCeiling, taskCeiling]
+      .filter((value): value is AccessMode => value !== undefined)
+      .reduce((mode, ceiling) => minAccessMode(mode, ceiling), setting);
+  }
+
+  private decisionFor(
+    projectId: string,
+    definition: ToolDefinition,
+    accessMode: AccessMode,
+  ): { decision: ToolCallRecord['decision']; reason: string } {
+    if (accessMode === 'full') return { decision: 'allowed', reason: 'full_access' };
+    if (accessMode === 'restricted') {
+      const allowedSideEffects = this.options.settings.resolve(
+        'access.restricted.allowedSideEffects',
+        {
+          projectId,
+        },
+      ).value as string[];
+      const allowedTools = this.options.settings.resolve('access.restricted.allowedTools', {
+        projectId,
+      }).value as string[];
+      if (allowedSideEffects.includes(definition.sideEffects)) {
+        return { decision: 'allowed', reason: 'side_effect_allowed' };
+      }
+      if (allowedTools.some((glob) => matchesToolGlob(glob, definition.toolId))) {
+        return { decision: 'allowed', reason: 'tool_allowlisted' };
+      }
+      return {
+        decision: 'denied',
+        reason: `Tool ${definition.toolId} with side effect ${definition.sideEffects} is not allowed in restricted mode.`,
+      };
+    }
+    if (definition.sideEffects === 'none')
+      return { decision: 'allowed', reason: 'no_side_effects' };
+    return { decision: 'approval-required', reason: 'approval_required' };
+  }
+
+  private createApproval(
+    request: ToolCallRequest,
+    definition: ToolDefinition,
+    record: ToolCallRecord,
+  ): ApprovalRequest {
+    return {
+      approvalId: uuidv7(),
+      projectId: request.projectId,
+      callId: record.callId,
+      toolId: definition.toolId,
+      sideEffects: definition.sideEffects,
+      summary: `${definition.title} (${definition.sideEffects})`,
+      input: redact(request.input),
+      requestedAt: this.now().toISOString(),
+      resolvedAt: null,
+      approved: null,
+      reason: null,
+    };
+  }
+
+  private waitForApproval(
+    approval: ApprovalRequest,
+    timeoutMs: number,
+    store: ToolStore,
+    signal?: AbortSignal,
+  ): Promise<ApprovalWaitResult> {
+    if (signal?.aborted) {
+      return Promise.resolve({ kind: 'stopped', reason: String(signal.reason ?? 'cancelled') });
+    }
+    return new Promise((resolve) => {
+      let removeAbort: () => void = () => {};
+      const finish = (result: ApprovalWaitResult) => {
+        const waiter = this.waiters.get(approval.approvalId);
+        if (waiter) {
+          clearTimeout(waiter.timer);
+          waiter.removeAbort();
+          this.waiters.delete(approval.approvalId);
+        }
+        resolve(result);
+      };
+      const timer = setTimeout(() => {
+        const resolved = store.resolveApproval(
+          approval.approvalId,
+          this.now().toISOString(),
+          null,
+          'Approval timed out',
+        );
+        this.options.events.approvalResolved(approval.projectId, resolved);
+        finish({ kind: 'timed-out' });
+      }, timeoutMs);
+      const abort = () =>
+        finish({ kind: 'stopped', reason: String(signal?.reason ?? 'cancelled') });
+      removeAbort = () => signal?.removeEventListener('abort', abort);
+      this.waiters.set(approval.approvalId, { resolve, timer, removeAbort });
+      signal?.addEventListener('abort', abort, { once: true });
+      if (signal?.aborted) abort();
+    });
+  }
+
+  private approvalTimeoutMs(projectId: string, sessionId?: string): number {
+    if (this.options.approvalTimeoutOverrideMs !== undefined) {
+      return this.options.approvalTimeoutOverrideMs;
+    }
+    const minutes = Number(
+      this.options.settings.resolve('access.askAlways.approvalTimeoutMinutes', {
+        projectId,
+        sessionId,
+      }).value,
+    );
+    return minutes * 60_000;
+  }
+
+  private executionTimeoutMs(definition: ToolDefinition, input: unknown): number {
+    if (definition.toolId === 'process/run') {
+      const timeout = Number(asRecord(input).timeoutMs ?? 60_000);
+      return Number.isFinite(timeout) && timeout > 0 ? timeout : 60_000;
+    }
+    return 5 * 60_000;
+  }
+
+  private store(projectId: string): ToolStore {
+    const existing = this.stores.get(projectId);
+    if (existing) return existing;
+    const store = new ToolStore(this.options.projectDatabases.get(projectId));
+    this.stores.set(projectId, store);
+    return store;
+  }
+
+  private requireProject(projectId: string) {
+    const project = this.options.projects.getById(projectId);
+    if (!project)
+      throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
+    return project;
+  }
+}
+
+function matchesToolGlob(glob: string, toolId: string): boolean {
+  let expression = '^';
+  for (let index = 0; index < glob.length; index += 1) {
+    const character = glob[index]!;
+    if (character === '*' && glob[index + 1] === '*') {
+      expression += '.*';
+      index += 1;
+    } else if (character === '*') {
+      expression += '[^/]*';
+    } else {
+      expression += character.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+    }
+  }
+  expression += '$';
+  return new RegExp(expression).test(toolId);
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error.code === 'ETIMEDOUT' || error.code === 'ERR_CHILD_PROCESS_TIMEOUT')
+  );
+}
+
+function asToolError(error: unknown): ToolCallError {
+  return {
+    message: error instanceof Error ? error.message : String(error),
+    ...(error instanceof RpcError ? { code: String(error.code) } : {}),
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}

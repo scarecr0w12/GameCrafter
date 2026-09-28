@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import path from 'node:path';
-import type { SettingDefinition, SettingGroup } from '@gamecrafter/contracts';
+import type { SettingDefinition, SettingGroup, SideEffect } from '@gamecrafter/contracts';
 
 export interface BuiltinSettings {
   groups: SettingGroup[];
@@ -114,6 +114,40 @@ export function createBuiltinSettings(): BuiltinSettings {
       'access',
       { type: 'string', enum: ['full', 'restricted', 'ask-always'] },
       'ask-always',
+      ['platform', 'project', 'session'],
+    ),
+    setting(
+      'access.restricted.allowedSideEffects',
+      'Allowed restricted-mode side effects',
+      'Side-effect categories permitted without an explicit tool allowlist.',
+      'access',
+      {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: ['none', 'workspace-write', 'external-write', 'paid', 'destructive'],
+        },
+        uniqueItems: true,
+      },
+      ['none', 'workspace-write'] as SideEffect[],
+      ['platform', 'project'],
+    ),
+    setting(
+      'access.restricted.allowedTools',
+      'Allowed restricted-mode tools',
+      'Tool ID globs permitted while access is restricted.',
+      'access',
+      { type: 'array', items: { type: 'string' }, uniqueItems: true },
+      [],
+      ['platform', 'project'],
+    ),
+    setting(
+      'access.askAlways.approvalTimeoutMinutes',
+      'Approval timeout (minutes)',
+      'How long approval requests remain pending.',
+      'access',
+      { type: 'integer', minimum: 1 },
+      30,
       ['platform', 'project', 'session'],
     ),
     setting(

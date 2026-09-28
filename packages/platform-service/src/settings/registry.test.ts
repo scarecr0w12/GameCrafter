@@ -10,7 +10,7 @@ describe('SettingsRegistry', () => {
 
     const description = registry.describe();
     expect(description.groups).toHaveLength(10);
-    expect(description.definitions).toHaveLength(12);
+    expect(description.definitions).toHaveLength(15);
     expect(description.groups[0]?.id).toBe('general');
     expect(description.groups[9]?.id).toBe('logs');
   });

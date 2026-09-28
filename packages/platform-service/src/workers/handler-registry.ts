@@ -42,6 +42,7 @@ export function registerBuiltinHandlers(
     'noop.fail': 'noopFail',
     'noop.ask': 'noopAsk',
     'noop.checkpointed': 'noopCheckpointed',
+    'noop.tool': 'noopTool',
   })) {
     registry.register(kind, { module, export: handlerExport });
   }

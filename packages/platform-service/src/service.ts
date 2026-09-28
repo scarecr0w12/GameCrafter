@@ -23,6 +23,9 @@ import { TaskService } from './tasks/task-service';
 import { HandlerRegistry, registerBuiltinHandlers } from './workers/handler-registry';
 import { WorkerSupervisor } from './workers/supervisor';
 import { log } from './logger';
+import { ToolBroker } from './tools/tool-broker';
+import { registerBuiltinTools } from './tools/builtin-tools';
+import { ToolRegistry } from './tools/tool-registry';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -30,6 +33,7 @@ export interface PlatformServiceOptions {
   onClientEvent?: (event: 'connected' | 'closed') => void;
   onStopRequested?: (checkpoint: boolean) => Promise<void> | void;
   onWorkerStarted?: (taskId: string, pid: number) => void;
+  approvalTimeoutOverrideMs?: number;
 }
 
 export class PlatformService {
@@ -42,6 +46,7 @@ export class PlatformService {
     private readonly database: Database,
     private readonly projectDatabases: ProjectDatabases,
     private readonly workerSupervisor: WorkerSupervisor,
+    private readonly toolBroker: ToolBroker,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -78,10 +83,28 @@ export class PlatformService {
           server.broadcast('task/question', { projectId, question }),
       },
     );
+    const toolRegistry = new ToolRegistry();
+    registerBuiltinTools(toolRegistry);
+    const toolBroker = new ToolBroker({
+      registry: toolRegistry,
+      settings: settingsService,
+      projectDatabases,
+      projects: profile,
+      tasks: taskService,
+      events: {
+        approvalRequested: (projectId, approval) =>
+          server.broadcast('broker/approvalRequested', { projectId, approval }),
+        approvalResolved: (projectId, approval) =>
+          server.broadcast('broker/approvalResolved', { projectId, approval }),
+        toolCalled: (projectId, call) => server.broadcast('tool/called', { projectId, call }),
+      },
+      approvalTimeoutOverrideMs: options.approvalTimeoutOverrideMs,
+    });
     const workerSupervisor = new WorkerSupervisor({
       tasks: taskService,
       settings: settingsService,
       handlers: handlerRegistry,
+      tools: toolBroker,
       onWorkerStarted: options.onWorkerStarted,
     });
     taskService.setSupervisor(workerSupervisor);
@@ -156,10 +179,21 @@ export class PlatformService {
       'task/questions': ({ pendingOnly }) => ({
         questions: taskService.questions(pendingOnly ?? false),
       }),
+      'tool/list': ({ projectId }) => ({ tools: toolBroker.listTools(projectId) }),
+      'tool/call': (request, context) => toolBroker.call(request, { sessionId: context.sessionId }),
+      'tool/calls': ({ projectId, taskId, toolId, limit }) => ({
+        calls: toolBroker.listCalls(projectId, { taskId, toolId, limit: limit ?? 200 }),
+      }),
+      'broker/approvals': ({ projectId, pendingOnly }) => ({
+        approvals: toolBroker.listApprovals(projectId, pendingOnly ?? false),
+      }),
+      'broker/approve': ({ projectId, approvalId, approve, reason }) =>
+        toolBroker.approve(projectId, approvalId, approve, reason),
       'service/stop': ({ checkpoint }) => {
-        setImmediate(() => {
+        setTimeout(() => {
           void (async () => {
             await workerSupervisor.stopAll({ checkpoint });
+            await toolBroker.stopAll();
             await platformService.stop(checkpoint);
             await options.onStopRequested?.(checkpoint);
           })().catch((error: unknown) => {
@@ -167,7 +201,7 @@ export class PlatformService {
               error: error instanceof Error ? error.message : String(error),
             });
           });
-        });
+        }, 50);
         return { ok: true };
       },
     };
@@ -186,13 +220,15 @@ export class PlatformService {
       database,
       projectDatabases,
       workerSupervisor,
+      toolBroker,
       paths,
       startedAt,
     );
 
     try {
-      await server.listen();
+      await toolBroker.recoverOnStart();
       workerSupervisor.recoverOnStart();
+      await server.listen();
     } catch (error) {
       await server.close();
       projectDatabases.close();
@@ -207,6 +243,7 @@ export class PlatformService {
     if (this.stopped) return;
     this.stopped = true;
     await this.workerSupervisor.stopAll({ checkpoint });
+    await this.toolBroker.stopAll();
     await this.server.close();
     this.projectDatabases.close();
     this.database.close();

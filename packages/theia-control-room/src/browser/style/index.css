@@ -87,6 +87,14 @@
   width: 100%;
 }
 
+.gamecrafter-setting-array-options {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
 .gamecrafter-setting-source {
   color: var(--theia-descriptionForeground);
   font-size: 0.85em;

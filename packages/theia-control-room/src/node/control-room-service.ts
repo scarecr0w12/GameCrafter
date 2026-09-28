@@ -2,12 +2,16 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import {
+  type AccessMode,
+  type ApprovalRequest,
   type EffectiveSetting,
   type ProjectCreateInput,
   type ProjectSummary,
   type ServiceInfo,
   type TaskCreateInput,
   type TaskRecord,
+  type ToolCallRecord,
+  type ToolDefinition,
   type SettingDefinition,
   type SettingGroup,
   type SettingsScope,
@@ -23,6 +27,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeSettingsChangedListener?: () => void;
   private removeTaskChangedListener?: () => void;
   private removeTaskQuestionListener?: () => void;
+  private removeApprovalRequestedListener?: () => void;
+  private removeApprovalResolvedListener?: () => void;
+  private removeToolCalledListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -35,6 +42,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeSettingsChangedListener?.();
     this.removeTaskChangedListener?.();
     this.removeTaskQuestionListener?.();
+    this.removeApprovalRequestedListener?.();
+    this.removeApprovalResolvedListener?.();
+    this.removeToolCalledListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -48,6 +58,15 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     });
     this.removeTaskQuestionListener = this.platformConnection.onTaskQuestion((event) => {
       this.client?.onTaskQuestion(event);
+    });
+    this.removeApprovalRequestedListener = this.platformConnection.onApprovalRequested((event) => {
+      this.client?.onApprovalRequested(event);
+    });
+    this.removeApprovalResolvedListener = this.platformConnection.onApprovalResolved((event) => {
+      this.client?.onApprovalResolved(event);
+    });
+    this.removeToolCalledListener = this.platformConnection.onToolCalled((event) => {
+      this.client?.onToolCalled(event);
     });
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -137,6 +156,36 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   ): Promise<TaskRecord> {
     const client = await this.getPlatformClient();
     return client.call('task/answer', { projectId, taskId, questionId, answer });
+  }
+
+  async listTools(projectId?: string): Promise<ToolDefinition[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('tool/list', { projectId })).tools;
+  }
+
+  async callTool(
+    projectId: string,
+    toolId: string,
+    input: unknown,
+    options: { taskId?: string; agentId?: string; accessCeiling?: AccessMode } = {},
+  ): Promise<ToolCallRecord> {
+    const client = await this.getPlatformClient();
+    return client.call('tool/call', { projectId, toolId, input, ...options });
+  }
+
+  async listApprovals(projectId: string, pendingOnly = false): Promise<ApprovalRequest[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('broker/approvals', { projectId, pendingOnly })).approvals;
+  }
+
+  async approve(
+    projectId: string,
+    approvalId: string,
+    approved: boolean,
+    reason?: string,
+  ): Promise<ApprovalRequest> {
+    const client = await this.getPlatformClient();
+    return client.call('broker/approve', { projectId, approvalId, approve: approved, reason });
   }
 
   async stopServiceOnWindowClose(): Promise<void> {

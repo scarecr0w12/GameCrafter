@@ -254,6 +254,55 @@ export class GameCrafterSettingsWidget extends ReactWidget {
         </select>
       );
     }
+    if (kind === 'enum-array') {
+      const items =
+        typeof schema.items === 'object' && schema.items !== null && !Array.isArray(schema.items)
+          ? (schema.items as Record<string, unknown>)
+          : undefined;
+      const choices = items && Array.isArray(items.enum) ? items.enum : [];
+      const selected = Array.isArray(value) ? value.map(String) : [];
+      return (
+        <fieldset className="gamecrafter-setting-array-options" aria-label={definition.title}>
+          <legend>{definition.title}</legend>
+          {choices.map((choice) => {
+            const option = String(choice);
+            return (
+              <label key={option}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option)}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    const next = new Set(selected);
+                    if (event.currentTarget.checked) next.add(option);
+                    else next.delete(option);
+                    void this.saveSetting(definition, scope, [...next]);
+                  }}
+                />
+                {option}
+              </label>
+            );
+          })}
+        </fieldset>
+      );
+    }
+    if (kind === 'string-array') {
+      const entries = Array.isArray(value) ? value.map(String) : [];
+      return (
+        <input
+          {...common}
+          type="text"
+          value={entries.join(', ')}
+          onChange={(event) => {
+            const values = event.currentTarget.value
+              .split(',')
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+            void this.saveSetting(definition, scope, [...new Set(values)]);
+          }}
+        />
+      );
+    }
     if (kind === 'number') {
       return (
         <input
