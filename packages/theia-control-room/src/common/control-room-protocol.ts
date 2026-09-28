@@ -9,11 +9,17 @@ import type {
   ModelPricing,
   ProjectCreateInput,
   ProjectSummary,
+  ProjectSkillEntry,
   ProviderAccount,
+  RoleRecord,
   ProviderKind,
   RouteDecision,
   RouteOutcome,
   RpcNotificationParams,
+  SkillActivation,
+  SkillCatalogEntry,
+  SkillEnablement,
+  SkillRecord,
   ServiceInfo,
   SettingDefinition,
   SettingGroup,
@@ -144,6 +150,40 @@ export interface ControlRoomService {
       meanLatencyMs: number | null;
     }>;
   }>;
+  listSkills(projectId?: string): Promise<ProjectSkillEntry[]>;
+  installSkills(source: string, name?: string, force?: boolean): Promise<SkillRecord[]>;
+  uninstallSkill(name: string): Promise<void>;
+  enableSkill(input: {
+    projectId: string;
+    name: string;
+    enabled: boolean;
+    roles?: string[] | null;
+    workTypes?: string[] | null;
+    pin?: boolean;
+  }): Promise<SkillEnablement>;
+  previewSkillCatalog(input: {
+    projectId: string;
+    agentRole?: string;
+    workType?: string;
+    taskText?: string;
+    accessMode?: AccessMode;
+  }): Promise<{ entries: SkillCatalogEntry[]; truncated: boolean }>;
+  searchSkills(input: {
+    projectId: string;
+    query: string;
+    agentRole?: string;
+    workType?: string;
+  }): Promise<{ entries: SkillCatalogEntry[] }>;
+  validateSkill(path: string): Promise<{
+    ok: boolean;
+    errors: string[];
+    warnings: string[];
+    record: SkillRecord | null;
+  }>;
+  listSkillActivations(projectId: string, taskId?: string): Promise<SkillActivation[]>;
+  listRoles(projectId?: string): Promise<RoleRecord[]>;
+  getRole(name: string, projectId?: string): Promise<RoleRecord>;
+  trustProject(projectId: string, trusted: boolean): Promise<ProjectSummary>;
 }
 
 export interface ControlRoomClient {

@@ -117,4 +117,30 @@ export const projectMigrations: Migration[] = [
       CREATE INDEX approvals_project_pending_idx ON approvals(project_id, resolved_at);
     `,
   },
+  {
+    id: 4,
+    name: 'create skill enablement and activation tables',
+    up: `
+      CREATE TABLE skill_enablement (
+        name TEXT PRIMARY KEY,
+        enabled INTEGER NOT NULL,
+        pinned_version TEXT,
+        pinned_hash TEXT,
+        roles TEXT,
+        work_types TEXT
+      );
+      CREATE TABLE skill_activations (
+        activation_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        version TEXT,
+        hash TEXT NOT NULL,
+        task_id TEXT,
+        agent_id TEXT,
+        model_id TEXT,
+        activated_at TEXT NOT NULL
+      );
+      CREATE INDEX skill_activations_name_task_idx ON skill_activations(name, task_id);
+      CREATE INDEX skill_activations_task_idx ON skill_activations(task_id);
+    `,
+  },
 ];

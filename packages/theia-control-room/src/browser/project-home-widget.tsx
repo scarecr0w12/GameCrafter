@@ -12,6 +12,7 @@ import { ControlRoomClientEvents } from './control-room-client';
 import { CREATE_PROJECT_COMMAND_ID } from './create-project-command';
 import { SETTINGS_OPEN_COMMAND_ID } from './settings-view-contribution';
 import { MODELS_OPEN_COMMAND_ID } from './models-view-contribution';
+import { SKILLS_OPEN_COMMAND_ID } from './skills-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ReactWidget {
@@ -80,6 +81,13 @@ export class ProjectHomeWidget extends ReactWidget {
             onClick={() => void this.commandService.executeCommand(MODELS_OPEN_COMMAND_ID)}
           >
             Models
+          </button>
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(SKILLS_OPEN_COMMAND_ID)}
+          >
+            Skills &amp; Roles
           </button>
         </div>
         {this.projects.length === 0 ? (

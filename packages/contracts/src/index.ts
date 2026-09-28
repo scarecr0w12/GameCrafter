@@ -3,6 +3,7 @@ export * from './models';
 export * from './project/manifest';
 export * from './redaction';
 export * from './rpc/protocol';
+export * from './skills';
 export * from './settings/schema';
 export * from './tasks';
 export * from './tools';

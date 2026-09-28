@@ -28,6 +28,12 @@ import { CompletionService } from './models/completion-service';
 import { ModelRegistry } from './models/model-registry';
 import { ModelRouter } from './models/router';
 import { createBuiltinModelProviders } from './models/providers';
+import { RoleRegistry } from './roles/role-registry';
+import { SkillCatalog } from './skills/skill-catalog';
+import { SkillInstaller } from './skills/skill-installer';
+import { SkillRegistry } from './skills/skill-registry';
+import { SkillService } from './skills/skill-service';
+import { registerSkillTools } from './skills/skill-tools';
 import { ToolBroker } from './tools/tool-broker';
 import { registerBuiltinTools } from './tools/builtin-tools';
 import { ToolRegistry } from './tools/tool-registry';
@@ -97,8 +103,33 @@ export class PlatformService {
           server.broadcast('task/question', { projectId, question }),
       },
     );
+    const skillInstaller = new SkillInstaller(database, paths.profileDir, settingsService);
+    const skillRegistry = new SkillRegistry({
+      profile,
+      projectDatabases,
+      installer: skillInstaller,
+      settings: settingsService,
+    });
+    const roleRegistry = new RoleRegistry({ profile, profileDir: paths.profileDir });
+    const skillCatalog = new SkillCatalog({
+      registry: skillRegistry,
+      workspace,
+      projectDatabases,
+      settings: settingsService,
+    });
+    const skillService = new SkillService(
+      skillInstaller,
+      skillRegistry,
+      skillCatalog,
+      roleRegistry,
+      taskService,
+      settingsService,
+    );
     const toolRegistry = new ToolRegistry();
-    registerBuiltinTools(toolRegistry);
+    registerBuiltinTools(toolRegistry, {
+      readOnlyRoots: (projectId) => skillService.readableSkillRoots(projectId),
+    });
+    registerSkillTools(toolRegistry, skillService);
     const toolBroker = new ToolBroker({
       registry: toolRegistry,
       settings: settingsService,
@@ -149,6 +180,7 @@ export class PlatformService {
         return project;
       },
       'project/get': ({ projectId }) => workspace.get(projectId),
+      'project/trust': ({ projectId, trusted }) => workspace.trust(projectId, trusted),
       'settings/describe': () => settingsService.describe(),
       'settings/get': (params, context) =>
         settingsService.resolve(params.key, {
@@ -251,6 +283,42 @@ export class PlatformService {
           notify: context.notify,
         }),
       'model/embed': ({ modelId, inputs }) => completionService.embed(modelId, inputs),
+      'skills/install': async ({ source, name, force }) => ({
+        installed: await skillService.install(source, name, force ?? false),
+      }),
+      'skills/uninstall': ({ name }) => {
+        skillService.uninstall(name);
+        return { removed: true };
+      },
+      'skills/list': ({ projectId }) => ({
+        skills: projectId ? skillService.list(projectId) : skillService.listPlatform(),
+      }),
+      'skills/enable': ({ projectId, name, enabled, roles, workTypes, pin }) =>
+        skillService.enable(projectId, { name, enabled, roles, workTypes, pin }),
+      'skills/catalog': (request, context) => skillService.catalog(request, context.sessionId),
+      'skills/activate': (request, context) =>
+        skillService.activate(
+          request.projectId,
+          request.name,
+          request.taskId,
+          request.agentId,
+          context.sessionId,
+        ),
+      'skills/search': (request, context) => ({
+        entries: skillService.search(
+          request.projectId,
+          request.query,
+          request.agentRole,
+          request.workType,
+          context.sessionId,
+        ),
+      }),
+      'skills/validate': ({ path: skillPath }) => skillService.validate(skillPath),
+      'skills/activations': ({ projectId, taskId }) => ({
+        activations: skillService.activations(projectId, taskId),
+      }),
+      'roles/list': ({ projectId }) => ({ roles: skillService.listRoles(projectId) }),
+      'roles/get': ({ name, projectId }) => skillService.getRole(name, projectId),
       'service/stop': ({ checkpoint }) => {
         setTimeout(() => {
           void (async () => {

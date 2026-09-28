@@ -50,9 +50,9 @@ afterEach(async () => {
 });
 
 describe('Tool broker integration', () => {
-  it('lists the six builtin tools with their execution metadata', async () => {
+  it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(6);
+    expect(result.tools).toHaveLength(8);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
       'fs/delete',
       'fs/list',
@@ -60,6 +60,8 @@ describe('Tool broker integration', () => {
       'fs/write-file',
       'process/run',
       'project/manifest',
+      'skills/activate',
+      'skills/search',
     ]);
     expect(result.tools.find((tool) => tool.toolId === 'process/run')).toMatchObject({
       executionMode: 'headless-process',

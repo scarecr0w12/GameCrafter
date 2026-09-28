@@ -201,3 +201,99 @@
 .gamecrafter-models-error {
   color: var(--theia-errorForeground);
 }
+
+.gamecrafter-skills {
+  color: var(--theia-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  overflow: auto;
+  padding: 18px;
+}
+
+.gamecrafter-skills-header,
+.gamecrafter-skills-install-form,
+.gamecrafter-skills-catalog-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gamecrafter-skills-section {
+  border-top: 1px solid var(--theia-widget-border);
+  padding-top: 10px;
+}
+
+.gamecrafter-skills-section h2 {
+  font-size: 1.1em;
+}
+
+.gamecrafter-skills-section label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gamecrafter-skills-inline-checkbox {
+  align-items: center;
+  flex-direction: row !important;
+}
+
+.gamecrafter-skills-table-scroll {
+  overflow: auto;
+}
+
+.gamecrafter-skills-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  text-align: left;
+}
+
+.gamecrafter-skills-table th,
+.gamecrafter-skills-table td {
+  border-bottom: 1px solid var(--theia-widget-border);
+  padding: 8px;
+  vertical-align: top;
+}
+
+.gamecrafter-skills-table input:not([type='checkbox']) {
+  min-width: 9rem;
+  width: 100%;
+}
+
+.gamecrafter-skills-scope {
+  border: 1px solid var(--theia-widget-border);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+
+.gamecrafter-skills-untrusted {
+  align-items: center;
+  border: 1px solid var(--theia-editorWarning-foreground);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.gamecrafter-skills-catalog-list {
+  padding-left: 24px;
+}
+
+.gamecrafter-skills-catalog-list li {
+  margin: 10px 0;
+}
+
+.gamecrafter-skills-catalog-list p {
+  margin: 4px 0;
+}
+
+.gamecrafter-skills-task-text {
+  flex: 1;
+}
+
+.gamecrafter-skills-error {
+  color: var(--theia-errorForeground);
+}

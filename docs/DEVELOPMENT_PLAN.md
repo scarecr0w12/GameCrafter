@@ -123,7 +123,7 @@ flowchart TD
 - **Depends on:** WP7.
 - **Scope:** Agent Skills loader with `gamecrafter-*` metadata validation; install sources matching the `skills` CLI; Project enablement and eligibility; three-tier catalog with `activate_skill` and `search_skills` broker tools; `ROLE.md` role packages with access ceilings.
 - **Done when:** a community skill installs unchanged, the eligible set is computed deterministically, and activations are recorded per task.
-- **Status:** Not started.
+- **Status:** Implemented (unit/integration-tested): Agent Skills loader and validator, install sources (local path, `owner/repo`, Git/tree URLs, `.tgz` archives, direct `SKILL.md`; skills.sh packs deferred to the optional proxy plugin) with size caps, platform install + per-Project enablement/eligibility overrides + Project-local and compatibility-scan discovery with shadowing events, Project trust flag, deterministic catalog with success/lexical/recency ranking, `skills/activate` wrapper and activation records, `skills/search`, tier-3 read access to skill directories, eleven builtin `ROLE.md` roles with platform/Project overrides, and the Skills & Roles view. Dynamic per-task enum on the activation tool and compaction protection await the agent runtime (WP11/WP18).
 
 ### WP10 — MCP connection manager
 

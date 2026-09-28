@@ -74,6 +74,7 @@ export const ProjectSummarySchema = Type.Object(
     genres: Type.Array(Type.String()),
     modules: Type.Array(Type.String()),
     path: Type.String(),
+    trusted: Type.Boolean(),
     createdAt: Type.String({ format: 'date-time' }),
     lastOpenedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
   },

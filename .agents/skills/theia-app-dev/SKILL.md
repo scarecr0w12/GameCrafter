@@ -2,7 +2,7 @@
 name: theia-app-dev
 description: Scaffold, extend, and run the Eclipse Theia desktop application and Theia extensions for the Game Development Control Room (TypeScript, InversifyJS DI, contribution points, Electron target, Theia AI agents and tool providers). Use when creating the Theia monorepo, adding a Theia extension, wiring a widget/command/menu/preference, or integrating a Theia AI agent.
 license: MIT
-compatibility: Requires Node.js >=24, npm 11 (Theia dropped yarn), and native build tools for Electron rebuilds (Linux: libx11-dev libxkbfile-dev libsecret-1-dev). Desktop target is Electron on Windows/Linux only.
+compatibility: "Requires Node.js >=24, npm 11 (Theia dropped yarn), and native build tools for Electron rebuilds (Linux: libx11-dev libxkbfile-dev libsecret-1-dev). Desktop target is Electron on Windows/Linux only."
 metadata:
   author: gamedev-platform
   version: "1.1"

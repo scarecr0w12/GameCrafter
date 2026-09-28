@@ -37,6 +37,16 @@ import {
   RouteOutcomeSchema,
   RouteRequestSchema,
 } from '../models';
+import {
+  ProjectSkillEntrySchema,
+  RoleRecordSchema,
+  SkillActivationSchema,
+  SkillActivationResultSchema,
+  SkillCatalogEntrySchema,
+  SkillEnablementSchema,
+  SkillRecordSchema,
+  SkillValidationResultSchema,
+} from '../skills';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -111,6 +121,13 @@ export const RpcMethods = {
   'project/get': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: ProjectSummarySchema,
+  },
+  'project/trust': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), trusted: Type.Boolean() },
       { additionalProperties: false },
     ),
     result: ProjectSummarySchema,
@@ -557,6 +574,122 @@ export const RpcMethods = {
       { additionalProperties: false },
     ),
   },
+  'skills/install': {
+    params: Type.Object(
+      {
+        source: Type.String(),
+        name: Type.Optional(Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}$' })),
+        force: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { installed: Type.Array(SkillRecordSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'skills/uninstall': {
+    params: Type.Object({ name: Type.String() }, { additionalProperties: false }),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'skills/list': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { skills: Type.Array(ProjectSkillEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'skills/enable': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        name: Type.String(),
+        enabled: Type.Boolean(),
+        roles: Type.Optional(Type.Union([Type.Array(Type.String()), Type.Null()])),
+        workTypes: Type.Optional(Type.Union([Type.Array(Type.String()), Type.Null()])),
+        pin: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: SkillEnablementSchema,
+  },
+  'skills/catalog': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        agentRole: Type.Optional(Type.String()),
+        workType: Type.Optional(Type.String()),
+        taskText: Type.Optional(Type.String()),
+        accessMode: Type.Optional(AccessModeSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { entries: Type.Array(SkillCatalogEntrySchema), truncated: Type.Boolean() },
+      { additionalProperties: false },
+    ),
+  },
+  'skills/activate': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        name: Type.String(),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+        agentId: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: SkillActivationResultSchema,
+  },
+  'skills/search': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        query: Type.String(),
+        agentRole: Type.Optional(Type.String()),
+        workType: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { entries: Type.Array(SkillCatalogEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'skills/validate': {
+    params: Type.Object({ path: Type.String() }, { additionalProperties: false }),
+    result: SkillValidationResultSchema,
+  },
+  'skills/activations': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { activations: Type.Array(SkillActivationSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'roles/list': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ roles: Type.Array(RoleRecordSchema) }, { additionalProperties: false }),
+  },
+  'roles/get': {
+    params: Type.Object(
+      { name: Type.String(), projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: RoleRecordSchema,
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -686,6 +819,14 @@ export const RpcErrorCode = {
   PoolNotFound: -32044,
   DecisionNotFound: -32045,
   ProviderUnsupportedFeature: -32046,
+  SkillNotFound: -32050,
+  SkillInvalid: -32051,
+  SkillSourceUnsupported: -32052,
+  SkillTooLarge: -32053,
+  SkillAlreadyInstalled: -32054,
+  RoleNotFound: -32055,
+  RoleInvalid: -32056,
+  ProjectUntrusted: -32057,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

@@ -14,7 +14,13 @@ import {
   type ProviderKind,
   type RouteDecision,
   type RouteOutcome,
+  type RoleRecord,
+  type SkillActivation,
+  type SkillCatalogEntry,
+  type SkillEnablement,
+  type SkillRecord,
   type ProjectCreateInput,
+  type ProjectSkillEntry,
   type ProjectSummary,
   type ServiceInfo,
   type TaskCreateInput,
@@ -328,6 +334,84 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   }> {
     const client = await this.getPlatformClient();
     return client.call('router/stats', { taskType });
+  }
+
+  async listSkills(projectId?: string): Promise<ProjectSkillEntry[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('skills/list', { projectId })).skills;
+  }
+
+  async installSkills(source: string, name?: string, force = false): Promise<SkillRecord[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('skills/install', { source, name, force })).installed;
+  }
+
+  async uninstallSkill(name: string): Promise<void> {
+    const client = await this.getPlatformClient();
+    await client.call('skills/uninstall', { name });
+  }
+
+  async enableSkill(input: {
+    projectId: string;
+    name: string;
+    enabled: boolean;
+    roles?: string[] | null;
+    workTypes?: string[] | null;
+    pin?: boolean;
+  }): Promise<SkillEnablement> {
+    const client = await this.getPlatformClient();
+    return client.call('skills/enable', input);
+  }
+
+  async previewSkillCatalog(input: {
+    projectId: string;
+    agentRole?: string;
+    workType?: string;
+    taskText?: string;
+    accessMode?: AccessMode;
+  }): Promise<{ entries: SkillCatalogEntry[]; truncated: boolean }> {
+    const client = await this.getPlatformClient();
+    return client.call('skills/catalog', input);
+  }
+
+  async searchSkills(input: {
+    projectId: string;
+    query: string;
+    agentRole?: string;
+    workType?: string;
+  }): Promise<{ entries: SkillCatalogEntry[] }> {
+    const client = await this.getPlatformClient();
+    return client.call('skills/search', input);
+  }
+
+  async validateSkill(skillPath: string): Promise<{
+    ok: boolean;
+    errors: string[];
+    warnings: string[];
+    record: SkillRecord | null;
+  }> {
+    const client = await this.getPlatformClient();
+    return client.call('skills/validate', { path: skillPath });
+  }
+
+  async listSkillActivations(projectId: string, taskId?: string): Promise<SkillActivation[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('skills/activations', { projectId, taskId })).activations;
+  }
+
+  async listRoles(projectId?: string): Promise<RoleRecord[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('roles/list', { projectId })).roles;
+  }
+
+  async getRole(name: string, projectId?: string): Promise<RoleRecord> {
+    const client = await this.getPlatformClient();
+    return client.call('roles/get', { name, projectId });
+  }
+
+  async trustProject(projectId: string, trusted: boolean): Promise<ProjectSummary> {
+    const client = await this.getPlatformClient();
+    return client.call('project/trust', { projectId, trusted });
   }
 
   async stopServiceOnWindowClose(): Promise<void> {

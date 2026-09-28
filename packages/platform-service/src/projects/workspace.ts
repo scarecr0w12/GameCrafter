@@ -80,6 +80,7 @@ export function summaryFromManifest(
   manifest: ProjectManifest,
   projectPath: string,
   lastOpenedAt: string | null,
+  trusted = false,
 ): ProjectSummary {
   return {
     projectId: manifest.projectId,
@@ -89,6 +90,7 @@ export function summaryFromManifest(
     genres: manifest.genres,
     modules: manifest.modules,
     path: projectPath,
+    trusted,
     createdAt: manifest.createdAt,
     lastOpenedAt,
   };
@@ -201,7 +203,7 @@ export class ProjectWorkspace {
         database.close();
       }
 
-      const summary = summaryFromManifest(manifest, projectPath, null);
+      const summary = summaryFromManifest(manifest, projectPath, null, true);
       this.options.profile.register(summary);
       return summary;
     } catch (error) {
@@ -330,7 +332,7 @@ export class ProjectWorkspace {
         database.close();
       }
 
-      const summary = summaryFromManifest(manifest, projectPath, null);
+      const summary = summaryFromManifest(manifest, projectPath, null, true);
       this.options.profile.register(summary);
       return summary;
     } catch (error) {
@@ -343,7 +345,12 @@ export class ProjectWorkspace {
     const absolutePath = path.resolve(projectPath);
     const manifest = this.readManifest(absolutePath);
     const previous = this.options.profile.getById(manifest.projectId);
-    const unopened = summaryFromManifest(manifest, absolutePath, previous?.lastOpenedAt ?? null);
+    const unopened = summaryFromManifest(
+      manifest,
+      absolutePath,
+      previous?.lastOpenedAt ?? null,
+      previous?.trusted ?? false,
+    );
     this.options.profile.register(unopened);
     const lastOpenedAt = this.now().toISOString();
     this.options.profile.touchOpened(manifest.projectId, lastOpenedAt);
@@ -360,7 +367,12 @@ export class ProjectWorkspace {
       throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
     }
     try {
-      return summaryFromManifest(this.readManifest(record.path), record.path, record.lastOpenedAt);
+      return summaryFromManifest(
+        this.readManifest(record.path),
+        record.path,
+        record.lastOpenedAt,
+        record.trusted,
+      );
     } catch {
       throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
     }
@@ -372,13 +384,26 @@ export class ProjectWorkspace {
       if (!existsSync(path.join(record.path, PROJECT_MANIFEST_FILENAME))) continue;
       try {
         summaries.push(
-          summaryFromManifest(this.readManifest(record.path), record.path, record.lastOpenedAt),
+          summaryFromManifest(
+            this.readManifest(record.path),
+            record.path,
+            record.lastOpenedAt,
+            record.trusted,
+          ),
         );
       } catch {
         continue;
       }
     }
     return summaries;
+  }
+
+  trust(projectId: string, trusted: boolean): ProjectSummary {
+    if (!this.options.profile.getById(projectId)) {
+      throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
+    }
+    this.options.profile.setTrusted(projectId, trusted);
+    return this.get(projectId);
   }
 
   private readManifest(projectPath: string): ProjectManifest {

@@ -24,7 +24,14 @@ import { ToolRegistry } from './tool-registry';
 const execFileAsync = promisify(execFile);
 const maxOutputBytes = 1024 * 1024;
 
-export function registerBuiltinTools(registry: ToolRegistry): void {
+export interface BuiltinToolOptions {
+  readOnlyRoots?: (projectId: string) => string[];
+}
+
+export function registerBuiltinTools(
+  registry: ToolRegistry,
+  options: BuiltinToolOptions = {},
+): void {
   registry.register(
     definition(
       'fs/read-file',
@@ -53,11 +60,15 @@ export function registerBuiltinTools(registry: ToolRegistry): void {
     ),
     async (context, input) => {
       const requestedPath = String(asRecord(input).path);
-      const filePath = resolveProjectPath(context.projectPath, requestedPath);
-      const content = readFileSync(filePath, 'utf8');
+      const resolved = resolveReadablePath(
+        context.projectPath,
+        requestedPath,
+        options.readOnlyRoots?.(context.projectId) ?? [],
+      );
+      const content = readFileSync(resolved.path, 'utf8');
       return {
         output: { content, encoding: 'utf8', bytes: Buffer.byteLength(content, 'utf8') },
-        evidence: [{ kind: 'file', ref: projectRelativePath(context.projectPath, filePath) }],
+        evidence: [{ kind: 'file', ref: resolved.referencePath }],
       };
     },
   );
@@ -139,8 +150,12 @@ export function registerBuiltinTools(registry: ToolRegistry): void {
     ),
     async (context, input) => {
       const args = asRecord(input);
-      const root = realpathSync(context.projectPath);
-      const directory = resolveProjectPath(context.projectPath, String(args.path ?? '.'));
+      const resolved = resolveReadablePath(
+        context.projectPath,
+        String(args.path ?? '.'),
+        options.readOnlyRoots?.(context.projectId) ?? [],
+      );
+      const directory = resolved.path;
       const entries: { path: string; type: 'file' | 'directory' | 'symlink'; size: number }[] = [];
       const visit = (currentPath: string): void => {
         for (const entry of readdirSync(currentPath, { withFileTypes: true })) {
@@ -152,7 +167,7 @@ export function registerBuiltinTools(registry: ToolRegistry): void {
               ? 'directory'
               : 'file';
           entries.push({
-            path: path.relative(root, entryPath).split(path.sep).join('/'),
+            path: joinReference(resolved.referencePath, path.relative(directory, entryPath)),
             type,
             size: stats.size,
           });
@@ -165,7 +180,7 @@ export function registerBuiltinTools(registry: ToolRegistry): void {
       entries.sort((left, right) => left.path.localeCompare(right.path));
       return {
         output: { entries },
-        evidence: [{ kind: 'directory', ref: projectRelativePath(root, directory) }],
+        evidence: [{ kind: 'directory', ref: resolved.referencePath }],
       };
     },
   );
@@ -342,6 +357,65 @@ function definition(
     capabilities,
     source: 'builtin',
   };
+}
+
+interface ReadablePath {
+  path: string;
+  referencePath: string;
+}
+
+function resolveReadablePath(
+  projectPath: string,
+  requestedPath: string,
+  readOnlyRoots: string[],
+): ReadablePath {
+  try {
+    const target = resolveProjectPath(projectPath, requestedPath);
+    return { path: target, referencePath: projectRelativePath(projectPath, target) };
+  } catch (error) {
+    if (!(error instanceof RpcError) || error.code !== RpcErrorCode.PathOutsideProject) throw error;
+  }
+
+  const projectRoot = realpathSync(projectPath);
+  const target = path.resolve(projectRoot, requestedPath);
+  for (const root of readOnlyRoots) {
+    if (!pathExists(root)) continue;
+    const realRoot = realpathSync(root);
+    let ancestor = target;
+    while (!pathExists(ancestor)) {
+      const parent = path.dirname(ancestor);
+      if (parent === ancestor) break;
+      ancestor = parent;
+    }
+    let realAncestor: string;
+    try {
+      realAncestor = realpathSync(ancestor);
+    } catch {
+      continue;
+    }
+    if (!isWithin(realRoot, realAncestor)) continue;
+    if (pathExists(target)) {
+      let realTarget: string;
+      try {
+        realTarget = realpathSync(target);
+      } catch {
+        continue;
+      }
+      if (!isWithin(realRoot, realTarget)) continue;
+    }
+    const relative = path.relative(realRoot, target);
+    return {
+      path: target,
+      referencePath: joinReference(path.basename(realRoot), relative),
+    };
+  }
+  throw pathOutsideProject(requestedPath);
+}
+
+function joinReference(root: string, relative: string): string {
+  const child = relative.split(path.sep).join('/');
+  if (root === '.' || root.length === 0) return child || '.';
+  return child.length === 0 ? root : `${root}/${child}`;
 }
 
 function resolveProjectPath(

@@ -112,4 +112,25 @@ export const profileMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 4,
+    name: 'create skills registry and Project trust',
+    up: `
+      ALTER TABLE projects_registry ADD COLUMN trusted INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE installed_skills (
+        name TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        resolved_ref TEXT,
+        version TEXT,
+        hash TEXT NOT NULL,
+        previous_hash TEXT,
+        license TEXT,
+        compatibility TEXT,
+        description TEXT NOT NULL,
+        metadata TEXT NOT NULL,
+        installed_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];
