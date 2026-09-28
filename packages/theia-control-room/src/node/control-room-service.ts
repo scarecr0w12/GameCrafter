@@ -5,6 +5,15 @@ import {
   type AccessMode,
   type ApprovalRequest,
   type EffectiveSetting,
+  type Model,
+  type ModelCapabilities,
+  type ModelPool,
+  type ModelPoolTarget,
+  type ModelPricing,
+  type ProviderAccount,
+  type ProviderKind,
+  type RouteDecision,
+  type RouteOutcome,
   type ProjectCreateInput,
   type ProjectSummary,
   type ServiceInfo,
@@ -186,6 +195,139 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   ): Promise<ApprovalRequest> {
     const client = await this.getPlatformClient();
     return client.call('broker/approve', { projectId, approvalId, approve: approved, reason });
+  }
+
+  async listProviderAccounts(): Promise<ProviderAccount[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('provider/accounts', {})).accounts;
+  }
+
+  async addProviderAccount(input: {
+    providerKind: ProviderKind;
+    displayName: string;
+    baseUrl: string;
+    apiKey?: string;
+    headers?: Record<string, string>;
+    isLocal?: boolean;
+  }): Promise<ProviderAccount> {
+    const client = await this.getPlatformClient();
+    return client.call('provider/addAccount', input);
+  }
+
+  async updateProviderAccount(
+    accountId: string,
+    patch: {
+      displayName?: string;
+      baseUrl?: string;
+      apiKey?: string | null;
+      headers?: Record<string, string>;
+      enabled?: boolean;
+      isLocal?: boolean;
+    },
+  ): Promise<ProviderAccount> {
+    const client = await this.getPlatformClient();
+    return client.call('provider/updateAccount', { accountId, patch });
+  }
+
+  async removeProviderAccount(accountId: string): Promise<void> {
+    const client = await this.getPlatformClient();
+    await client.call('provider/removeAccount', { accountId });
+  }
+
+  async testProviderAccount(accountId: string): Promise<{
+    ok: boolean;
+    latencyMs: number;
+    discoveredModels: number;
+    error?: string;
+  }> {
+    const client = await this.getPlatformClient();
+    return client.call('provider/testAccount', { accountId });
+  }
+
+  async listModels(accountId?: string, enabledOnly?: boolean): Promise<Model[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('model/list', { accountId, enabledOnly })).models;
+  }
+
+  async discoverModels(
+    accountId: string,
+  ): Promise<{ added: number; updated: number; models: Model[] }> {
+    const client = await this.getPlatformClient();
+    return client.call('model/discover', { accountId });
+  }
+
+  async updateModel(
+    modelId: string,
+    patch: {
+      enabled?: boolean;
+      displayName?: string;
+      capabilities?: Partial<ModelCapabilities>;
+      pricing?: ModelPricing;
+      tags?: string[];
+      workTypes?: string[];
+      roles?: string[];
+    },
+  ): Promise<Model> {
+    const client = await this.getPlatformClient();
+    return client.call('model/update', { modelId, patch });
+  }
+
+  async listModelPools(projectId?: string): Promise<ModelPool[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('pool/list', { projectId })).pools;
+  }
+
+  async createModelPool(input: {
+    name: string;
+    scope: 'platform' | 'project';
+    projectId?: string;
+    target: ModelPoolTarget | null;
+    modelIds: string[];
+  }): Promise<ModelPool> {
+    const client = await this.getPlatformClient();
+    return client.call('pool/create', input);
+  }
+
+  async updateModelPool(
+    poolId: string,
+    patch: {
+      name?: string;
+      scope?: 'platform' | 'project';
+      projectId?: string | null;
+      target?: ModelPoolTarget | null;
+      modelIds?: string[];
+    },
+  ): Promise<ModelPool> {
+    const client = await this.getPlatformClient();
+    return client.call('pool/update', { poolId, patch });
+  }
+
+  async deleteModelPool(poolId: string): Promise<void> {
+    const client = await this.getPlatformClient();
+    await client.call('pool/delete', { poolId });
+  }
+
+  async listRouteDecisions(
+    projectId?: string,
+    limit = 100,
+  ): Promise<Array<{ decision: RouteDecision; outcome: RouteOutcome | null }>> {
+    const client = await this.getPlatformClient();
+    return (await client.call('router/decisions', { projectId, limit })).decisions;
+  }
+
+  async routerStats(taskType?: string): Promise<{
+    models: Array<{
+      modelId: string;
+      taskType: string | null;
+      observations: number;
+      successRate: number;
+      qualityMean: number | null;
+      meanCostUsd: number | null;
+      meanLatencyMs: number | null;
+    }>;
+  }> {
+    const client = await this.getPlatformClient();
+    return client.call('router/stats', { taskType });
   }
 
   async stopServiceOnWindowClose(): Promise<void> {

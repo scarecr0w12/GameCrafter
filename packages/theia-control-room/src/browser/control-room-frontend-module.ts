@@ -9,6 +9,8 @@ import { ControlRoomClientEvents, ControlRoomClientToken } from './control-room-
 import { CreateProjectCommand } from './create-project-command';
 import { ProjectHomeContribution } from './project-home-contribution';
 import { ProjectHomeWidget } from './project-home-widget';
+import { ModelsWidget } from './models-widget';
+import { ModelsViewContribution } from './models-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -30,6 +32,7 @@ export default new ContainerModule((bind) => {
 
   bind(ProjectHomeWidget).toSelf().inSingletonScope();
   bind(GameCrafterSettingsWidget).toSelf().inSingletonScope();
+  bind(ModelsWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -42,9 +45,16 @@ export default new ContainerModule((bind) => {
       createWidget: () => context.container.get(GameCrafterSettingsWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: ModelsWidget.ID,
+      createWidget: () => context.container.get(ModelsWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
+  bindViewContribution(bind, ModelsViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();

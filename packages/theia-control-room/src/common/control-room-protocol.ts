@@ -2,8 +2,17 @@ import type {
   AccessMode,
   ApprovalRequest,
   EffectiveSetting,
+  Model,
+  ModelCapabilities,
+  ModelPool,
+  ModelPoolTarget,
+  ModelPricing,
   ProjectCreateInput,
   ProjectSummary,
+  ProviderAccount,
+  ProviderKind,
+  RouteDecision,
+  RouteOutcome,
   RpcNotificationParams,
   ServiceInfo,
   SettingDefinition,
@@ -60,6 +69,81 @@ export interface ControlRoomService {
     approve: boolean,
     reason?: string,
   ): Promise<ApprovalRequest>;
+  listProviderAccounts(): Promise<ProviderAccount[]>;
+  addProviderAccount(input: {
+    providerKind: ProviderKind;
+    displayName: string;
+    baseUrl: string;
+    apiKey?: string;
+    headers?: Record<string, string>;
+    isLocal?: boolean;
+  }): Promise<ProviderAccount>;
+  updateProviderAccount(
+    accountId: string,
+    patch: {
+      displayName?: string;
+      baseUrl?: string;
+      apiKey?: string | null;
+      headers?: Record<string, string>;
+      enabled?: boolean;
+      isLocal?: boolean;
+    },
+  ): Promise<ProviderAccount>;
+  removeProviderAccount(accountId: string): Promise<void>;
+  testProviderAccount(accountId: string): Promise<{
+    ok: boolean;
+    latencyMs: number;
+    discoveredModels: number;
+    error?: string;
+  }>;
+  listModels(accountId?: string, enabledOnly?: boolean): Promise<Model[]>;
+  discoverModels(accountId: string): Promise<{ added: number; updated: number; models: Model[] }>;
+  updateModel(
+    modelId: string,
+    patch: {
+      enabled?: boolean;
+      displayName?: string;
+      capabilities?: Partial<ModelCapabilities>;
+      pricing?: ModelPricing;
+      tags?: string[];
+      workTypes?: string[];
+      roles?: string[];
+    },
+  ): Promise<Model>;
+  listModelPools(projectId?: string): Promise<ModelPool[]>;
+  createModelPool(input: {
+    name: string;
+    scope: 'platform' | 'project';
+    projectId?: string;
+    target: ModelPoolTarget | null;
+    modelIds: string[];
+  }): Promise<ModelPool>;
+  updateModelPool(
+    poolId: string,
+    patch: {
+      name?: string;
+      scope?: 'platform' | 'project';
+      projectId?: string | null;
+      target?: ModelPoolTarget | null;
+      modelIds?: string[];
+    },
+  ): Promise<ModelPool>;
+  deleteModelPool(poolId: string): Promise<void>;
+  listRouteDecisions(
+    projectId?: string,
+    limit?: number,
+  ): Promise<Array<{ decision: RouteDecision; outcome: RouteOutcome | null }>>;
+  routerStats(taskType?: string): Promise<{
+    models: Array<{
+      modelId: string;
+      taskType: string | null;
+      observations: number;
+      successRate: number;
+      qualityMean: number | null;
+      meanCostUsd: number | null;
+      meanLatencyMs: number | null;
+    }>;
+  }>;
 }
 
 export interface ControlRoomClient {

@@ -115,7 +115,7 @@ flowchart TD
 - **Depends on:** WP5, WP7.
 - **Scope:** provider/account adapter interface (stream, tools, structured output, embeddings, usage); OpenAI-compatible local endpoint adapter first; model catalog with timestamped metadata; pool intersection and deterministic eligibility; outcome store; quality-first selection policy with budgets, exploration, and policy versioning; Theia AI bridged through one adapter `LanguageModel`.
 - **Done when:** eligibility tests cover empty-intersection reporting; router decisions record candidate set, reason, and outcome.
-- **Status:** Not started.
+- **Status:** Implemented (unit-tested against fake HTTP providers; no live provider yet): encrypted credential store, provider accounts, OpenAI-compatible and Anthropic adapters (chat, tools, streaming, embeddings where supported), model catalog with discovery and manual overrides, per-model work-type/role eligibility, agent/task-type pools with intersection and empty-set reporting, quality-first/balanced/cost-first scoring from recorded outcomes, budgeted exploration, `model/complete`/`model/embed`, and the Models & Routing view. The manager model for task classification, online benchmark ingestion, and the Theia AI `LanguageModel` bridge remain open.
 
 ### WP9 — Skills and roles registry
 

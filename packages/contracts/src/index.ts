@@ -1,4 +1,5 @@
 export * from './ids';
+export * from './models';
 export * from './project/manifest';
 export * from './redaction';
 export * from './rpc/protocol';

@@ -23,6 +23,20 @@ import {
   ToolCallRecordSchema,
   ToolDefinitionSchema,
 } from '../tools';
+import {
+  ChatRequestSchema,
+  ChatResponseSchema,
+  ModelPoolSchema,
+  ModelPoolTargetSchema,
+  ModelPricingSchema,
+  ModelSchema,
+  ModelUsageSchema,
+  ProviderAccountSchema,
+  ProviderKindSchema,
+  RouteDecisionSchema,
+  RouteOutcomeSchema,
+  RouteRequestSchema,
+} from '../models';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -40,6 +54,24 @@ const ServiceInfoSchema = Type.Object(
 );
 
 export type ServiceInfo = Static<typeof ServiceInfoSchema>;
+
+const ModelCompleteCommonFields = {
+  request: ChatRequestSchema,
+  projectId: Type.Optional(Type.String({ format: 'uuid' })),
+  taskId: Type.Optional(Type.String({ format: 'uuid' })),
+  requestId: Type.Optional(Type.String()),
+};
+
+export const ModelCompleteParamsSchema = Type.Union([
+  Type.Object(
+    { ...ModelCompleteCommonFields, modelId: Type.String() },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { ...ModelCompleteCommonFields, route: RouteRequestSchema },
+    { additionalProperties: false },
+  ),
+]);
 
 export const RpcMethods = {
   'session/hello': {
@@ -283,6 +315,248 @@ export const RpcMethods = {
     ),
     result: ApprovalRequestSchema,
   },
+  'provider/accounts': {
+    params: EmptyParams,
+    result: Type.Object(
+      { accounts: Type.Array(ProviderAccountSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'provider/addAccount': {
+    params: Type.Object(
+      {
+        providerKind: ProviderKindSchema,
+        displayName: Type.String(),
+        baseUrl: Type.String({ format: 'uri' }),
+        apiKey: Type.Optional(Type.String()),
+        headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+        isLocal: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: ProviderAccountSchema,
+  },
+  'provider/updateAccount': {
+    params: Type.Object(
+      {
+        accountId: Type.String({ format: 'uuid' }),
+        patch: Type.Object(
+          {
+            displayName: Type.Optional(Type.String()),
+            baseUrl: Type.Optional(Type.String({ format: 'uri' })),
+            apiKey: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+            headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+            enabled: Type.Optional(Type.Boolean()),
+            isLocal: Type.Optional(Type.Boolean()),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: ProviderAccountSchema,
+  },
+  'provider/removeAccount': {
+    params: Type.Object(
+      { accountId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'provider/testAccount': {
+    params: Type.Object(
+      { accountId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        ok: Type.Boolean(),
+        latencyMs: Type.Integer({ minimum: 0 }),
+        discoveredModels: Type.Integer({ minimum: 0 }),
+        error: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'model/list': {
+    params: Type.Object(
+      {
+        accountId: Type.Optional(Type.String({ format: 'uuid' })),
+        enabledOnly: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ models: Type.Array(ModelSchema) }, { additionalProperties: false }),
+  },
+  'model/discover': {
+    params: Type.Object(
+      { accountId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        added: Type.Integer({ minimum: 0 }),
+        updated: Type.Integer({ minimum: 0 }),
+        models: Type.Array(ModelSchema),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'model/update': {
+    params: Type.Object(
+      {
+        modelId: Type.String(),
+        patch: Type.Object(
+          {
+            enabled: Type.Optional(Type.Boolean()),
+            displayName: Type.Optional(Type.String()),
+            capabilities: Type.Optional(
+              Type.Object(
+                {
+                  chat: Type.Optional(Type.Boolean()),
+                  tools: Type.Optional(Type.Boolean()),
+                  vision: Type.Optional(Type.Boolean()),
+                  structuredOutput: Type.Optional(Type.Boolean()),
+                  streaming: Type.Optional(Type.Boolean()),
+                  embeddings: Type.Optional(Type.Boolean()),
+                  contextWindow: Type.Optional(
+                    Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+                  ),
+                  maxOutputTokens: Type.Optional(
+                    Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+                  ),
+                },
+                { additionalProperties: false },
+              ),
+            ),
+            pricing: Type.Optional(ModelPricingSchema),
+            tags: Type.Optional(Type.Array(Type.String())),
+            workTypes: Type.Optional(Type.Array(Type.String())),
+            roles: Type.Optional(Type.Array(Type.String())),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: ModelSchema,
+  },
+  'pool/list': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ pools: Type.Array(ModelPoolSchema) }, { additionalProperties: false }),
+  },
+  'pool/create': {
+    params: Type.Object(
+      {
+        name: Type.String(),
+        scope: Type.Union([Type.Literal('platform'), Type.Literal('project')]),
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        target: Type.Union([ModelPoolTargetSchema, Type.Null()]),
+        modelIds: Type.Array(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: ModelPoolSchema,
+  },
+  'pool/update': {
+    params: Type.Object(
+      {
+        poolId: Type.String({ format: 'uuid' }),
+        patch: Type.Object(
+          {
+            name: Type.Optional(Type.String()),
+            scope: Type.Optional(Type.Union([Type.Literal('platform'), Type.Literal('project')])),
+            projectId: Type.Optional(Type.Union([Type.String({ format: 'uuid' }), Type.Null()])),
+            target: Type.Optional(Type.Union([ModelPoolTargetSchema, Type.Null()])),
+            modelIds: Type.Optional(Type.Array(Type.String())),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: ModelPoolSchema,
+  },
+  'pool/delete': {
+    params: Type.Object(
+      { poolId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'router/route': { params: RouteRequestSchema, result: RouteDecisionSchema },
+  'router/reportOutcome': {
+    params: RouteOutcomeSchema,
+    result: Type.Object({ recorded: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'router/decisions': {
+    params: Type.Object(
+      {
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, default: 200 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        decisions: Type.Array(
+          Type.Object(
+            {
+              decision: RouteDecisionSchema,
+              outcome: Type.Union([RouteOutcomeSchema, Type.Null()]),
+            },
+            { additionalProperties: false },
+          ),
+        ),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'router/stats': {
+    params: Type.Object(
+      { taskType: Type.Optional(Type.String()) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        models: Type.Array(
+          Type.Object(
+            {
+              modelId: Type.String(),
+              taskType: Type.Union([Type.String(), Type.Null()]),
+              observations: Type.Integer({ minimum: 0 }),
+              successRate: Type.Number({ minimum: 0, maximum: 1 }),
+              qualityMean: Type.Union([Type.Number({ minimum: 0, maximum: 1 }), Type.Null()]),
+              meanCostUsd: Type.Union([Type.Number({ minimum: 0 }), Type.Null()]),
+              meanLatencyMs: Type.Union([Type.Number({ minimum: 0 }), Type.Null()]),
+            },
+            { additionalProperties: false },
+          ),
+        ),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'model/complete': {
+    params: ModelCompleteParamsSchema,
+    result: ChatResponseSchema,
+  },
+  'model/embed': {
+    params: Type.Object(
+      {
+        modelId: Type.String(),
+        inputs: Type.Array(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { vectors: Type.Array(Type.Array(Type.Number())), usage: ModelUsageSchema },
+      { additionalProperties: false },
+    ),
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -365,6 +639,12 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'model/delta': {
+    params: Type.Object(
+      { requestId: Type.String(), delta: Type.String() },
+      { additionalProperties: false },
+    ),
+  },
 } as const satisfies Record<string, { params: TSchema }>;
 
 export type RpcMethodName = keyof typeof RpcMethods;
@@ -399,6 +679,13 @@ export const RpcErrorCode = {
   ApprovalNotFound: -32033,
   PathOutsideProject: -32034,
   ApprovalAlreadyResolved: -32035,
+  AccountNotFound: -32040,
+  ModelNotFound: -32041,
+  NoEligibleModel: -32042,
+  ProviderRequestFailed: -32043,
+  PoolNotFound: -32044,
+  DecisionNotFound: -32045,
+  ProviderUnsupportedFeature: -32046,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

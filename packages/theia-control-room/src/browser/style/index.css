@@ -104,3 +104,100 @@
 .gamecrafter-settings-project select {
   width: 100%;
 }
+
+.gamecrafter-models {
+  color: var(--theia-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  overflow: auto;
+  padding: 18px;
+}
+
+.gamecrafter-models-header,
+.gamecrafter-models-account-form,
+.gamecrafter-models-pool-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gamecrafter-models-section {
+  border-top: 1px solid var(--theia-widget-border);
+  padding-top: 10px;
+}
+
+.gamecrafter-models-section h2 {
+  font-size: 1.1em;
+}
+
+.gamecrafter-models-section label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gamecrafter-models-checkbox-label,
+.gamecrafter-models-pool-models label {
+  align-items: center;
+  flex-direction: row !important;
+}
+
+.gamecrafter-models-table-scroll {
+  overflow: auto;
+}
+
+.gamecrafter-models-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  text-align: left;
+}
+
+.gamecrafter-models-table th,
+.gamecrafter-models-table td {
+  border-bottom: 1px solid var(--theia-widget-border);
+  padding: 8px;
+  vertical-align: top;
+}
+
+.gamecrafter-models-table input[type='text'] {
+  min-width: 9rem;
+  width: 100%;
+}
+
+.gamecrafter-models-pricing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 10rem;
+}
+
+.gamecrafter-models-pricing input[type='number'] {
+  width: 7rem;
+}
+
+.gamecrafter-models-pool-models {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gamecrafter-models-pool-list {
+  list-style: none;
+  padding: 0;
+}
+
+.gamecrafter-models-pool-list li {
+  align-items: center;
+  border-bottom: 1px solid var(--theia-widget-border);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.gamecrafter-models-error {
+  color: var(--theia-errorForeground);
+}

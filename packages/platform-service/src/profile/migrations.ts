@@ -30,4 +30,86 @@ export const profileMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 3,
+    name: 'create model registry and routing tables',
+    up: `
+      CREATE TABLE credentials (
+        ref TEXT PRIMARY KEY,
+        ciphertext BLOB NOT NULL,
+        iv BLOB NOT NULL,
+        tag BLOB NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE provider_accounts (
+        account_id TEXT PRIMARY KEY,
+        provider_kind TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        base_url TEXT NOT NULL,
+        credential_ref TEXT,
+        has_credential INTEGER NOT NULL,
+        headers TEXT NOT NULL,
+        is_local INTEGER NOT NULL,
+        privacy TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE models (
+        model_id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        provider_model_id TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        capabilities TEXT NOT NULL,
+        pricing TEXT NOT NULL,
+        metadata_source TEXT NOT NULL,
+        metadata_updated_at TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        tags TEXT NOT NULL,
+        work_types TEXT NOT NULL,
+        roles TEXT NOT NULL
+      );
+      CREATE INDEX models_account_id_idx ON models(account_id);
+      CREATE TABLE model_pools (
+        pool_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        project_id TEXT,
+        target TEXT,
+        model_ids TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX model_pools_scope_project_idx ON model_pools(scope, project_id);
+      CREATE TABLE route_decisions (
+        decision_id TEXT PRIMARY KEY,
+        decision TEXT NOT NULL,
+        project_id TEXT,
+        agent_role TEXT,
+        task_type TEXT NOT NULL,
+        engine TEXT,
+        model_id TEXT NOT NULL,
+        explored INTEGER NOT NULL,
+        decided_at TEXT NOT NULL
+      );
+      CREATE INDEX route_decisions_context_idx ON route_decisions(project_id, task_type, decided_at);
+      CREATE INDEX route_decisions_model_id_idx ON route_decisions(model_id);
+      CREATE TABLE route_outcomes (
+        decision_id TEXT PRIMARY KEY REFERENCES route_decisions(decision_id),
+        success INTEGER NOT NULL,
+        quality_score REAL,
+        source TEXT NOT NULL,
+        cost_usd REAL NOT NULL,
+        latency_ms INTEGER NOT NULL,
+        input_tokens INTEGER NOT NULL,
+        output_tokens INTEGER NOT NULL,
+        note TEXT,
+        recorded_at TEXT NOT NULL
+      );
+      CREATE TABLE exploration_spend (
+        day TEXT PRIMARY KEY,
+        cost_usd REAL NOT NULL
+      );
+    `,
+  },
 ];

@@ -13,6 +13,7 @@ import { IpcServer, type RpcHandlers } from './ipc/server';
 import { migrate } from './db/migrator';
 import type { ServicePaths } from './paths';
 import { profileMigrations } from './profile/migrations';
+import { CredentialStore } from './profile/credential-store';
 import { ProfileStore } from './profile/profile-store';
 import { ProjectDatabases } from './projects/project-databases';
 import { ProjectWorkspace } from './projects/workspace';
@@ -23,6 +24,10 @@ import { TaskService } from './tasks/task-service';
 import { HandlerRegistry, registerBuiltinHandlers } from './workers/handler-registry';
 import { WorkerSupervisor } from './workers/supervisor';
 import { log } from './logger';
+import { CompletionService } from './models/completion-service';
+import { ModelRegistry } from './models/model-registry';
+import { ModelRouter } from './models/router';
+import { createBuiltinModelProviders } from './models/providers';
 import { ToolBroker } from './tools/tool-broker';
 import { registerBuiltinTools } from './tools/builtin-tools';
 import { ToolRegistry } from './tools/tool-registry';
@@ -69,6 +74,15 @@ export class PlatformService {
     const builtins = createBuiltinSettings();
     settingsRegistry.register('builtin', builtins.groups, builtins.definitions);
     const settingsService = new SettingsService(settingsRegistry, database, projectDatabases);
+    const credentials = new CredentialStore(database, paths.profileDir);
+    const modelProviders = createBuiltinModelProviders();
+    const modelRegistry = new ModelRegistry(database, credentials, modelProviders);
+    const modelRouter = new ModelRouter({
+      database,
+      registry: modelRegistry,
+      settings: settingsService,
+    });
+    const completionService = new CompletionService(modelRegistry, modelRouter);
     const handlerRegistry = new HandlerRegistry();
     registerBuiltinHandlers(handlerRegistry);
     const taskService = new TaskService(
@@ -189,6 +203,54 @@ export class PlatformService {
       }),
       'broker/approve': ({ projectId, approvalId, approve, reason }) =>
         toolBroker.approve(projectId, approvalId, approve, reason),
+      'provider/accounts': () => ({ accounts: modelRegistry.listAccounts() }),
+      'provider/addAccount': (input) => modelRegistry.addAccount(input),
+      'provider/updateAccount': ({ accountId, patch }) =>
+        modelRegistry.updateAccount(accountId, patch),
+      'provider/removeAccount': ({ accountId }) => {
+        modelRegistry.removeAccount(accountId);
+        return { removed: true };
+      },
+      'provider/testAccount': ({ accountId }) => modelRegistry.testAccount(accountId),
+      'model/list': ({ accountId, enabledOnly }) => ({
+        models: modelRegistry.listModels({ accountId, enabledOnly: enabledOnly ?? false }),
+      }),
+      'model/discover': ({ accountId }) => modelRegistry.discover(accountId),
+      'model/update': ({ modelId, patch }) => modelRegistry.updateModel(modelId, patch),
+      'pool/list': ({ projectId }) => ({ pools: modelRegistry.listPools(projectId) }),
+      'pool/create': (input) => {
+        if (input.scope === 'project' && input.projectId && !profile.getById(input.projectId)) {
+          throw new RpcError(`Project not found: ${input.projectId}`, RpcErrorCode.ProjectNotFound);
+        }
+        return modelRegistry.createPool(input);
+      },
+      'pool/update': ({ poolId, patch }) => {
+        const scope = patch.scope;
+        const projectId = patch.projectId;
+        if ((scope === 'project' || projectId) && projectId && !profile.getById(projectId)) {
+          throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
+        }
+        return modelRegistry.updatePool(poolId, patch);
+      },
+      'pool/delete': ({ poolId }) => {
+        modelRegistry.deletePool(poolId);
+        return { removed: true };
+      },
+      'router/route': (request, context) => modelRouter.route(request, context.sessionId),
+      'router/reportOutcome': (outcome) => {
+        modelRouter.reportOutcome(outcome);
+        return { recorded: true };
+      },
+      'router/decisions': ({ projectId, limit }) => ({
+        decisions: modelRouter.decisions(projectId, limit ?? 200),
+      }),
+      'router/stats': ({ taskType }) => ({ models: modelRouter.stats(taskType) }),
+      'model/complete': (request, context) =>
+        completionService.complete(request, {
+          sessionId: context.sessionId,
+          notify: context.notify,
+        }),
+      'model/embed': ({ modelId, inputs }) => completionService.embed(modelId, inputs),
       'service/stop': ({ checkpoint }) => {
         setTimeout(() => {
           void (async () => {

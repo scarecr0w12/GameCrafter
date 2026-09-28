@@ -1,0 +1,379 @@
+import {
+  RpcError,
+  RpcErrorCode,
+  type ChatMessage,
+  type ChatRequest,
+  type ChatResponse,
+  type Model,
+} from '@gamecrafter/contracts';
+import type {
+  DiscoveredModel,
+  ModelProvider,
+  ProviderCompletionHooks,
+  ProviderRuntimeAccount,
+} from './provider';
+import { endpoint, modelUsage, providerFetch, providerJson, safeExcerpt } from './http-utils';
+
+interface OpenAIModelList {
+  data?: Record<string, unknown>[];
+  models?: Record<string, unknown>[];
+}
+
+interface OpenAIChatResponse {
+  choices?: {
+    message?: Record<string, unknown>;
+    finish_reason?: string | null;
+  }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+export class OpenAICompatibleProvider implements ModelProvider {
+  async listModels(account: ProviderRuntimeAccount): Promise<DiscoveredModel[]> {
+    const response = await providerJson<OpenAIModelList>(
+      account,
+      endpoint(account.baseUrl, 'models'),
+      { method: 'GET' },
+    );
+    const entries = Array.isArray(response.data)
+      ? response.data
+      : Array.isArray(response.models)
+        ? response.models
+        : [];
+    return entries
+      .filter((entry) => typeof entry.id === 'string')
+      .map((entry) => ({
+        providerModelId: String(entry.id),
+        ...(typeof entry.display_name === 'string'
+          ? { displayName: entry.display_name }
+          : typeof entry.name === 'string'
+            ? { displayName: entry.name }
+            : {}),
+        ...(objectValue(entry.capabilities)
+          ? { capabilities: pickCapabilities(entry.capabilities as Record<string, unknown>) }
+          : {}),
+        ...(objectValue(entry.pricing)
+          ? { pricing: pickPricing(entry.pricing as Record<string, unknown>) }
+          : {}),
+      }));
+  }
+
+  async complete(
+    account: ProviderRuntimeAccount,
+    model: Model,
+    request: ChatRequest,
+    hooks: ProviderCompletionHooks,
+  ): Promise<ChatResponse> {
+    return request.stream
+      ? this.completeStream(account, model, request, hooks)
+      : this.completeJson(account, model, request, hooks);
+  }
+
+  async embed(
+    account: ProviderRuntimeAccount,
+    model: Model,
+    inputs: string[],
+  ): Promise<{ vectors: number[][]; usage: ChatResponse['usage'] }> {
+    const response = await providerJson<{
+      data?: { embedding?: number[]; index?: number }[];
+      usage?: { prompt_tokens?: number };
+    }>(account, endpoint(account.baseUrl, 'embeddings'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: model.providerModelId, input: inputs }),
+    });
+    if (!Array.isArray(response.data)) {
+      throw new RpcError(
+        'Provider embedding response did not contain vectors',
+        RpcErrorCode.ProviderRequestFailed,
+      );
+    }
+    const vectors = [...response.data]
+      .sort((left, right) => (left.index ?? 0) - (right.index ?? 0))
+      .map((item) => item.embedding ?? []);
+    return {
+      vectors,
+      usage: modelUsage(model, response.usage?.prompt_tokens ?? 0, 0),
+    };
+  }
+
+  private async completeJson(
+    account: ProviderRuntimeAccount,
+    model: Model,
+    request: ChatRequest,
+    hooks: ProviderCompletionHooks,
+  ): Promise<ChatResponse> {
+    const startedAt = Date.now();
+    const response = await providerJson<OpenAIChatResponse>(
+      account,
+      endpoint(account.baseUrl, 'chat/completions'),
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(this.requestBody(model, request)),
+        signal: hooks.signal,
+      },
+    );
+    const choice = response.choices?.[0];
+    if (!choice || !choice.message) {
+      throw new RpcError(
+        'Provider chat response did not contain a message',
+        RpcErrorCode.ProviderRequestFailed,
+      );
+    }
+    const message = choice.message;
+    const inputTokens = response.usage?.prompt_tokens ?? 0;
+    const outputTokens = response.usage?.completion_tokens ?? 0;
+    return {
+      content: contentText(message.content),
+      toolCalls: openAiToolCalls(message.tool_calls),
+      finishReason: finishReason(choice.finish_reason),
+      usage: modelUsage(model, inputTokens, outputTokens),
+      latencyMs: Date.now() - startedAt,
+      modelId: model.modelId,
+      decisionId: null,
+    };
+  }
+
+  private async completeStream(
+    account: ProviderRuntimeAccount,
+    model: Model,
+    request: ChatRequest,
+    hooks: ProviderCompletionHooks,
+  ): Promise<ChatResponse> {
+    const startedAt = Date.now();
+    const body = {
+      ...this.requestBody(model, request),
+      stream: true,
+      stream_options: { include_usage: true },
+    };
+    const response = await providerFetch(account, endpoint(account.baseUrl, 'chat/completions'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: hooks.signal,
+    });
+    if (!response.body) {
+      throw new RpcError(
+        'Provider streaming response had no body',
+        RpcErrorCode.ProviderRequestFailed,
+      );
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const toolCalls = new Map<number, { id: string; name: string; arguments: string }>();
+    let buffer = '';
+    let content = '';
+    let finish = 'stop';
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let done = false;
+
+    const consumeEvent = (event: string) => {
+      const data = event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trimStart())
+        .join('\n');
+      if (!data || data === '[DONE]') return;
+      let chunk: Record<string, unknown>;
+      try {
+        chunk = JSON.parse(data) as Record<string, unknown>;
+      } catch {
+        throw new RpcError('Provider sent invalid SSE JSON', RpcErrorCode.ProviderRequestFailed);
+      }
+      if (objectValue(chunk.error)) {
+        throw new RpcError(
+          `Provider stream failed: ${safeExcerpt(String(chunk.error.message ?? 'unknown error'), account.apiKey)}`,
+          RpcErrorCode.ProviderRequestFailed,
+        );
+      }
+      const usage = objectValue(chunk.usage) ? (chunk.usage as Record<string, unknown>) : undefined;
+      inputTokens = numericValue(usage?.prompt_tokens, inputTokens);
+      outputTokens = numericValue(usage?.completion_tokens, outputTokens);
+      const choices = Array.isArray(chunk.choices) ? chunk.choices : [];
+      const choice = objectValue(choices[0]) ? (choices[0] as Record<string, unknown>) : undefined;
+      if (!choice) return;
+      if (typeof choice.finish_reason === 'string') finish = choice.finish_reason;
+      const delta = objectValue(choice.delta) ? (choice.delta as Record<string, unknown>) : {};
+      if (typeof delta.content === 'string' && delta.content.length > 0) {
+        content += delta.content;
+        hooks.onDelta?.(delta.content);
+      }
+      if (Array.isArray(delta.tool_calls)) {
+        for (const rawCall of delta.tool_calls) {
+          if (!objectValue(rawCall)) continue;
+          const index = numericValue(rawCall.index, 0);
+          const current = toolCalls.get(index) ?? { id: '', name: '', arguments: '' };
+          const functionValue = objectValue(rawCall.function)
+            ? (rawCall.function as Record<string, unknown>)
+            : {};
+          if (typeof rawCall.id === 'string') current.id += rawCall.id;
+          if (typeof functionValue.name === 'string') current.name += functionValue.name;
+          if (typeof functionValue.arguments === 'string')
+            current.arguments += functionValue.arguments;
+          toolCalls.set(index, current);
+        }
+      }
+    };
+
+    try {
+      while (!done) {
+        const chunk = await reader.read();
+        done = chunk.done;
+        buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !done });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? '';
+        for (const event of events) consumeEvent(event);
+      }
+      if (buffer.trim()) consumeEvent(buffer);
+    } finally {
+      reader.releaseLock();
+    }
+
+    const calls = [...toolCalls.values()].map((toolCall) => ({
+      id: toolCall.id,
+      name: toolCall.name,
+      arguments: toolCall.arguments || '{}',
+    }));
+    return {
+      content,
+      toolCalls: calls,
+      finishReason: finishReason(finish),
+      usage: modelUsage(model, inputTokens, outputTokens),
+      latencyMs: Date.now() - startedAt,
+      modelId: model.modelId,
+      decisionId: null,
+    };
+  }
+
+  private requestBody(model: Model, request: ChatRequest): Record<string, unknown> {
+    return {
+      model: model.providerModelId,
+      messages: request.messages.map(openAiMessage),
+      ...(request.maxTokens === undefined ? {} : { max_tokens: request.maxTokens }),
+      ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+      ...(request.tools
+        ? {
+            tools: request.tools.map((tool) => ({
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.inputSchema,
+              },
+            })),
+          }
+        : {}),
+      ...(request.responseFormat?.type === 'json_schema'
+        ? {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'response',
+                strict: true,
+                schema: request.responseFormat.schema,
+              },
+            },
+          }
+        : request.responseFormat?.type === 'text'
+          ? { response_format: { type: 'text' } }
+          : {}),
+      ...(request.stream ? { stream: true } : {}),
+    };
+  }
+}
+
+function openAiMessage(message: ChatMessage): Record<string, unknown> {
+  return {
+    role: message.role,
+    content: message.content,
+    ...(message.name === undefined ? {} : { name: message.name }),
+    ...(message.toolCallId === undefined ? {} : { tool_call_id: message.toolCallId }),
+    ...(message.toolCalls === undefined
+      ? {}
+      : {
+          tool_calls: message.toolCalls.map((toolCall) => ({
+            id: toolCall.id,
+            type: 'function',
+            function: { name: toolCall.name, arguments: toolCall.arguments },
+          })),
+        }),
+  };
+}
+
+function openAiToolCalls(value: unknown): ChatResponse['toolCalls'] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(objectValue).map((call) => {
+    const functionValue = objectValue(call.function) ? call.function : {};
+    return {
+      id: String(call.id ?? ''),
+      name: String(functionValue.name ?? ''),
+      arguments:
+        typeof functionValue.arguments === 'string'
+          ? functionValue.arguments
+          : JSON.stringify(functionValue.arguments ?? {}),
+    };
+  });
+}
+
+function contentText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value)) return '';
+  return value
+    .filter(objectValue)
+    .filter((item) => item.type === 'text' && typeof item.text === 'string')
+    .map((item) => String(item.text))
+    .join('');
+}
+
+function finishReason(value: unknown): ChatResponse['finishReason'] {
+  if (value === 'length') return 'length';
+  if (value === 'tool_calls' || value === 'function_call') return 'tool_calls';
+  return 'stop';
+}
+
+function pickCapabilities(value: Record<string, unknown>): Partial<Model['capabilities']> {
+  const keys: (keyof Model['capabilities'])[] = [
+    'chat',
+    'tools',
+    'vision',
+    'structuredOutput',
+    'streaming',
+    'embeddings',
+    'contextWindow',
+    'maxOutputTokens',
+  ];
+  const result: Partial<Model['capabilities']> = {};
+  for (const key of keys) {
+    const capability = value[key];
+    if (typeof capability === 'boolean') {
+      (result as Record<string, unknown>)[key] = capability;
+    } else if (
+      (key === 'contextWindow' || key === 'maxOutputTokens') &&
+      (typeof capability === 'number' || capability === null)
+    ) {
+      (result as Record<string, unknown>)[key] = capability;
+    }
+  }
+  return result;
+}
+
+function pickPricing(value: Record<string, unknown>): Partial<Model['pricing']> {
+  return {
+    ...(typeof value.inputPerMTokUsd === 'number' || value.inputPerMTokUsd === null
+      ? { inputPerMTokUsd: value.inputPerMTokUsd }
+      : {}),
+    ...(typeof value.outputPerMTokUsd === 'number' || value.outputPerMTokUsd === null
+      ? { outputPerMTokUsd: value.outputPerMTokUsd }
+      : {}),
+  };
+}
+
+function objectValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function numericValue(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}

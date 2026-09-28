@@ -20,6 +20,7 @@ import type { ServicePaths } from '../paths';
 
 export interface RpcRequestContext {
   sessionId: string;
+  notify<N extends RpcNotificationName>(name: N, params: RpcNotificationParams<N>): void;
 }
 
 export type RpcHandlers = {
@@ -93,6 +94,15 @@ export class IpcServer {
         void client.connection.sendNotification(name, params).catch(() => undefined);
       }
     }
+  }
+
+  private notifyClient<N extends RpcNotificationName>(
+    client: ClientConnection,
+    name: N,
+    params: RpcNotificationParams<N>,
+  ): void {
+    if (!client.authenticated) return;
+    void client.connection.sendNotification(name, params).catch(() => undefined);
   }
 
   async close(): Promise<void> {
@@ -175,7 +185,13 @@ export class IpcServer {
             input: unknown,
             context: RpcRequestContext,
           ) => unknown;
-          const result = await handler(params, { sessionId: client.sessionId! });
+          const result = await handler(params, {
+            sessionId: client.sessionId!,
+            notify: <N extends RpcNotificationName>(
+              name: N,
+              notificationParams: RpcNotificationParams<N>,
+            ) => this.notifyClient(client, name, notificationParams),
+          });
           const resultValidator = methodValidators.result;
           if (!resultValidator.check(result)) {
             throw new ResponseError(
