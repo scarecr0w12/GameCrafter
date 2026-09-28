@@ -11,6 +11,8 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly settingsChangedEmitter = new Emitter<
     RpcNotificationParams<'settings/changed'>
   >();
+  private readonly taskChangedEmitter = new Emitter<RpcNotificationParams<'task/changed'>>();
+  private readonly taskQuestionEmitter = new Emitter<RpcNotificationParams<'task/question'>>();
   private readonly serviceStatusEmitter = new Emitter<{
     connected: boolean;
     message?: string;
@@ -18,6 +20,8 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   readonly projectChanged = this.projectChangedEmitter.event;
   readonly settingsChanged = this.settingsChangedEmitter.event;
+  readonly taskChanged = this.taskChangedEmitter.event;
+  readonly taskQuestion = this.taskQuestionEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
@@ -26,6 +30,14 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onSettingsChanged(event: RpcNotificationParams<'settings/changed'>): void {
     this.settingsChangedEmitter.fire(event);
+  }
+
+  onTaskChanged(event: RpcNotificationParams<'task/changed'>): void {
+    this.taskChangedEmitter.fire(event);
+  }
+
+  onTaskQuestion(event: RpcNotificationParams<'task/question'>): void {
+    this.taskQuestionEmitter.fire(event);
   }
 
   onServiceStatus(status: { connected: boolean; message?: string }): void {

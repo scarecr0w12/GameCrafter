@@ -99,7 +99,7 @@ flowchart TD
 - **Depends on:** WP3, WP5.
 - **Scope:** append-only events with current-state projections; parent/child lineage, dependencies, priorities, leases, checkpoints, cancellation, completion evidence; supervised worker processes with idempotency keys; window-close behaviour (continue or stop/checkpoint) from Settings; restart reconciliation.
 - **Done when:** crash-recovery tests restart the service mid-task and reconcile without duplicating side effects.
-- **Status:** Not started.
+- **Status:** Implemented (unit/integration-tested): task records with explicit state machine, append-only events, dependencies (ready/blocked), goal-hash deduplication, depth and concurrency limits from Settings, forked worker processes with heartbeats/leases, checkpoint resume, retries, questions/answers, cancel cascade, `service/stop` with checkpoint, and restart reconciliation. Only `noop.*` handlers exist until the agent runtime (WP8/WP9) registers real ones; there is no task UI yet (U04).
 
 ### WP7 — Tool broker, access modes, and audit
 

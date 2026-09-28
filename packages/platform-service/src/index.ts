@@ -10,4 +10,6 @@ export * from './projects/migrations';
 export * from './projects/project-databases';
 export * from './projects/workspace';
 export * from './settings';
+export * from './tasks';
+export * from './workers';
 export * from './service';

@@ -6,6 +6,8 @@ import {
   type ProjectCreateInput,
   type ProjectSummary,
   type ServiceInfo,
+  type TaskCreateInput,
+  type TaskRecord,
   type SettingDefinition,
   type SettingGroup,
   type SettingsScope,
@@ -19,6 +21,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private client?: ControlRoomClient;
   private removeProjectChangedListener?: () => void;
   private removeSettingsChangedListener?: () => void;
+  private removeTaskChangedListener?: () => void;
+  private removeTaskQuestionListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -29,6 +33,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   setClient(client: ControlRoomClient): void {
     this.removeProjectChangedListener?.();
     this.removeSettingsChangedListener?.();
+    this.removeTaskChangedListener?.();
+    this.removeTaskQuestionListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -36,6 +42,12 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     });
     this.removeSettingsChangedListener = this.platformConnection.onSettingsChanged((event) => {
       this.client?.onSettingsChanged(event);
+    });
+    this.removeTaskChangedListener = this.platformConnection.onTaskChanged((event) => {
+      this.client?.onTaskChanged(event);
+    });
+    this.removeTaskQuestionListener = this.platformConnection.onTaskQuestion((event) => {
+      this.client?.onTaskQuestion(event);
     });
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -100,6 +112,42 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       projectId,
       sessionId: scope === 'session' ? client.sessionId : undefined,
     });
+  }
+
+  async listTasks(projectId: string): Promise<TaskRecord[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('task/list', { projectId, limit: 200 })).tasks;
+  }
+
+  async createTask(input: TaskCreateInput): Promise<{ task: TaskRecord; deduplicated: boolean }> {
+    const client = await this.getPlatformClient();
+    return client.call('task/create', input);
+  }
+
+  async cancelTask(projectId: string, taskId: string, reason?: string): Promise<string[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('task/cancel', { projectId, taskId, reason })).cancelled;
+  }
+
+  async answerQuestion(
+    projectId: string,
+    taskId: string,
+    questionId: string,
+    answer: unknown,
+  ): Promise<TaskRecord> {
+    const client = await this.getPlatformClient();
+    return client.call('task/answer', { projectId, taskId, questionId, answer });
+  }
+
+  async stopServiceOnWindowClose(): Promise<void> {
+    const client = await this.getPlatformClient();
+    const behavior = await client.call('settings/get', {
+      key: 'window.closeBehavior',
+      sessionId: client.sessionId,
+    });
+    if (behavior.value === 'stop-and-checkpoint') {
+      await client.call('service/stop', { checkpoint: true });
+    }
   }
 
   private async getPlatformClient(): Promise<ServiceClient> {

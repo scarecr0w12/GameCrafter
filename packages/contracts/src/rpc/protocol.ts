@@ -10,6 +10,13 @@ import {
   SettingGroupSchema,
   SettingsScope,
 } from '../settings/schema';
+import {
+  TaskCreateInputSchema,
+  TaskEventSchema,
+  TaskQuestionSchema,
+  TaskRecordSchema,
+  TaskStateSchema,
+} from '../tasks';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -114,6 +121,98 @@ export const RpcMethods = {
     ),
     result: EffectiveSettingSchema,
   },
+  'task/create': {
+    params: TaskCreateInputSchema,
+    result: Type.Object(
+      { task: TaskRecordSchema, deduplicated: Type.Boolean() },
+      { additionalProperties: false },
+    ),
+  },
+  'task/get': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        taskId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: TaskRecordSchema,
+  },
+  'task/list': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        states: Type.Optional(Type.Array(TaskStateSchema)),
+        parentTaskId: Type.Optional(Type.Union([Type.String({ format: 'uuid' }), Type.Null()])),
+        rootTaskId: Type.Optional(Type.String({ format: 'uuid' })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, default: 200 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ tasks: Type.Array(TaskRecordSchema) }, { additionalProperties: false }),
+  },
+  'task/tree': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        rootTaskId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ tasks: Type.Array(TaskRecordSchema) }, { additionalProperties: false }),
+  },
+  'task/cancel': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        taskId: Type.String({ format: 'uuid' }),
+        reason: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { cancelled: Type.Array(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+  },
+  'task/events': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+        afterSeq: Type.Optional(Type.Integer({ minimum: 0 })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, default: 500 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ events: Type.Array(TaskEventSchema) }, { additionalProperties: false }),
+  },
+  'task/answer': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        taskId: Type.String({ format: 'uuid' }),
+        questionId: Type.String({ format: 'uuid' }),
+        answer: Type.Unknown(),
+      },
+      { additionalProperties: false },
+    ),
+    result: TaskRecordSchema,
+  },
+  'task/questions': {
+    params: Type.Object(
+      { pendingOnly: Type.Optional(Type.Boolean()) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { questions: Type.Array(TaskQuestionSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'service/stop': {
+    params: Type.Object({ checkpoint: Type.Boolean() }, { additionalProperties: false }),
+    result: Type.Object({ ok: Type.Literal(true) }, { additionalProperties: false }),
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -142,6 +241,33 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'task/changed': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        task: TaskRecordSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'task/event': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        event: TaskEventSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'task/question': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        question: TaskQuestionSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
 } as const satisfies Record<string, { params: TSchema }>;
 
 export type RpcMethodName = keyof typeof RpcMethods;
@@ -163,6 +289,13 @@ export const RpcErrorCode = {
   InvalidSettingValue: -32011,
   SettingScopeNotAllowed: -32012,
   UnknownSession: -32013,
+  TaskNotFound: -32020,
+  TaskDepthExceeded: -32021,
+  InvalidTaskTransition: -32022,
+  TaskDependencyCycle: -32023,
+  UnknownTaskKind: -32024,
+  QuestionNotFound: -32025,
+  TaskNotWaiting: -32026,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

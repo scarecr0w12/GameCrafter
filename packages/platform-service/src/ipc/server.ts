@@ -89,7 +89,9 @@ export class IpcServer {
 
   broadcast<N extends RpcNotificationName>(name: N, params: RpcNotificationParams<N>): void {
     for (const client of this.clients) {
-      if (client.authenticated) client.connection.sendNotification(name, params);
+      if (client.authenticated) {
+        void client.connection.sendNotification(name, params).catch(() => undefined);
+      }
     }
   }
 

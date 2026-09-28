@@ -11,6 +11,7 @@ import { ProjectHomeContribution } from './project-home-contribution';
 import { ProjectHomeWidget } from './project-home-widget';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
+import { TaskQuestionHandler } from './task-question-handler';
 import '../../src/browser/style/index.css';
 
 export default new ContainerModule((bind) => {
@@ -43,6 +44,8 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
+  bind(TaskQuestionHandler).toSelf().inSingletonScope();
+  bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
 
   bind(CreateProjectCommand).toSelf().inSingletonScope();
   bind(CommandContribution).toService(CreateProjectCommand);

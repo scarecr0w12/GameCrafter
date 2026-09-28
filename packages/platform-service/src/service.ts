@@ -6,6 +6,7 @@ import {
   RpcErrorCode,
   type ProjectCloneInput,
   type ProjectCreateInput,
+  type TaskCreateInput,
 } from '@gamecrafter/contracts';
 import { Database } from './db/database';
 import { IpcServer, type RpcHandlers } from './ipc/server';
@@ -18,11 +19,17 @@ import { ProjectWorkspace } from './projects/workspace';
 import { createBuiltinSettings } from './settings/definitions';
 import { SettingsRegistry } from './settings/registry';
 import { SettingsService } from './settings/settings-service';
+import { TaskService } from './tasks/task-service';
+import { HandlerRegistry, registerBuiltinHandlers } from './workers/handler-registry';
+import { WorkerSupervisor } from './workers/supervisor';
+import { log } from './logger';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
   platformVersion: string;
   onClientEvent?: (event: 'connected' | 'closed') => void;
+  onStopRequested?: (checkpoint: boolean) => Promise<void> | void;
+  onWorkerStarted?: (taskId: string, pid: number) => void;
 }
 
 export class PlatformService {
@@ -34,6 +41,7 @@ export class PlatformService {
     private readonly server: IpcServer,
     private readonly database: Database,
     private readonly projectDatabases: ProjectDatabases,
+    private readonly workerSupervisor: WorkerSupervisor,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -56,6 +64,27 @@ export class PlatformService {
     const builtins = createBuiltinSettings();
     settingsRegistry.register('builtin', builtins.groups, builtins.definitions);
     const settingsService = new SettingsService(settingsRegistry, database, projectDatabases);
+    const handlerRegistry = new HandlerRegistry();
+    registerBuiltinHandlers(handlerRegistry);
+    const taskService = new TaskService(
+      profile,
+      projectDatabases,
+      settingsService,
+      handlerRegistry,
+      {
+        taskChanged: (projectId, task) => server.broadcast('task/changed', { projectId, task }),
+        taskEvent: (projectId, event) => server.broadcast('task/event', { projectId, event }),
+        taskQuestion: (projectId, question) =>
+          server.broadcast('task/question', { projectId, question }),
+      },
+    );
+    const workerSupervisor = new WorkerSupervisor({
+      tasks: taskService,
+      settings: settingsService,
+      handlers: handlerRegistry,
+      onWorkerStarted: options.onWorkerStarted,
+    });
+    taskService.setSupervisor(workerSupervisor);
     const startedAt = new Date().toISOString();
     const handlers: RpcHandlers = {
       'service/info': () => ({
@@ -100,6 +129,47 @@ export class PlatformService {
           projectId: params.projectId,
           sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
         }),
+      'task/create': (input: TaskCreateInput) => taskService.create(input),
+      'task/get': ({ projectId, taskId }) => taskService.get(projectId, taskId),
+      'task/list': ({ projectId, states, parentTaskId, rootTaskId, limit }) => ({
+        tasks: taskService.list(projectId, {
+          states,
+          parentTaskId,
+          rootTaskId,
+          limit: limit ?? 200,
+        }),
+      }),
+      'task/tree': ({ projectId, rootTaskId }) => ({
+        tasks: taskService.tree(projectId, rootTaskId),
+      }),
+      'task/cancel': ({ projectId, taskId, reason }) =>
+        taskService.cancel(projectId, taskId, reason),
+      'task/events': ({ projectId, taskId, afterSeq, limit }) => ({
+        events: taskService.eventsForProject(projectId, {
+          taskId,
+          afterSeq,
+          limit: limit ?? 500,
+        }),
+      }),
+      'task/answer': ({ projectId, taskId, questionId, answer }) =>
+        taskService.answer(projectId, taskId, questionId, answer),
+      'task/questions': ({ pendingOnly }) => ({
+        questions: taskService.questions(pendingOnly ?? false),
+      }),
+      'service/stop': ({ checkpoint }) => {
+        setImmediate(() => {
+          void (async () => {
+            await workerSupervisor.stopAll({ checkpoint });
+            await platformService.stop(checkpoint);
+            await options.onStopRequested?.(checkpoint);
+          })().catch((error: unknown) => {
+            log('error', 'Service stop request failed', {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        });
+        return { ok: true };
+      },
     };
     const server = new IpcServer({
       paths,
@@ -111,20 +181,32 @@ export class PlatformService {
       onSessionClosed: (sessionId) => settingsService.closeSession(sessionId),
     });
     settingsService.onChanged((event) => server.broadcast('settings/changed', event));
+    const platformService = new PlatformService(
+      server,
+      database,
+      projectDatabases,
+      workerSupervisor,
+      paths,
+      startedAt,
+    );
 
     try {
       await server.listen();
+      workerSupervisor.recoverOnStart();
     } catch (error) {
+      await server.close();
       projectDatabases.close();
       database.close();
       throw error;
     }
-    return new PlatformService(server, database, projectDatabases, paths, startedAt);
+    workerSupervisor.start();
+    return platformService;
   }
 
-  async stop(): Promise<void> {
+  async stop(checkpoint = true): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
+    await this.workerSupervisor.stopAll({ checkpoint });
     await this.server.close();
     this.projectDatabases.close();
     this.database.close();

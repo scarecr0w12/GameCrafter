@@ -107,7 +107,7 @@ describe('platform service integration', () => {
       path.join(project.path, '.gamecrafter', 'project.sqlite'),
     );
     try {
-      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(1);
+      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(2);
       expect(
         projectDatabase.prepare('SELECT kind FROM events WHERE kind = ?').all('project.created'),
       ).toHaveLength(1);

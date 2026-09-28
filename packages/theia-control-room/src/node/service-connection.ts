@@ -22,6 +22,12 @@ export class PlatformServiceConnection {
   private readonly settingsChangedListeners = new Set<
     (event: RpcNotificationParams<'settings/changed'>) => void
   >();
+  private readonly taskChangedListeners = new Set<
+    (event: RpcNotificationParams<'task/changed'>) => void
+  >();
+  private readonly taskQuestionListeners = new Set<
+    (event: RpcNotificationParams<'task/question'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -48,6 +54,16 @@ export class PlatformServiceConnection {
   ): () => void {
     this.settingsChangedListeners.add(listener);
     return () => this.settingsChangedListeners.delete(listener);
+  }
+
+  onTaskChanged(listener: (event: RpcNotificationParams<'task/changed'>) => void): () => void {
+    this.taskChangedListeners.add(listener);
+    return () => this.taskChangedListeners.delete(listener);
+  }
+
+  onTaskQuestion(listener: (event: RpcNotificationParams<'task/question'>) => void): () => void {
+    this.taskQuestionListeners.add(listener);
+    return () => this.taskQuestionListeners.delete(listener);
   }
 
   onServiceStatus(
@@ -77,6 +93,12 @@ export class PlatformServiceConnection {
         });
         client.onNotification('settings/changed', (event) => {
           for (const listener of this.settingsChangedListeners) listener(event);
+        });
+        client.onNotification('task/changed', (event) => {
+          for (const listener of this.taskChangedListeners) listener(event);
+        });
+        client.onNotification('task/question', (event) => {
+          for (const listener of this.taskQuestionListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

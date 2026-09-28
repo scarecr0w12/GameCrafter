@@ -43,20 +43,28 @@ async function runForeground(paths: ReturnType<typeof resolvePaths>): Promise<vo
   mkdirSync(paths.profileDir, { recursive: true, mode: 0o700 });
   const lock = acquireLock(paths);
   let service: PlatformService;
+  let stopping = false;
+  const shutdown = async (checkpoint = true) => {
+    if (stopping) return;
+    stopping = true;
+    await service.stop(checkpoint);
+    lock.release();
+  };
   try {
-    service = await PlatformService.start({ paths, platformVersion: packageJson.version });
+    service = await PlatformService.start({
+      paths,
+      platformVersion: packageJson.version,
+      onStopRequested: () => {
+        stopping = true;
+        lock.release();
+        process.exit(0);
+      },
+    });
   } catch (error) {
     lock.release();
     throw error;
   }
 
-  let stopping = false;
-  const shutdown = async () => {
-    if (stopping) return;
-    stopping = true;
-    await service.stop();
-    lock.release();
-  };
   await new Promise<void>((resolve) => {
     process.once('SIGINT', () => void shutdown().then(resolve));
     process.once('SIGTERM', () => void shutdown().then(resolve));
