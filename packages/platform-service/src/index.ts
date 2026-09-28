@@ -7,5 +7,7 @@ export * from './paths';
 export * from './profile/migrations';
 export * from './profile/profile-store';
 export * from './projects/migrations';
+export * from './projects/project-databases';
 export * from './projects/workspace';
+export * from './settings';
 export * from './service';

@@ -58,13 +58,23 @@ describe('platform service integration', () => {
     const info = await client.call('service/info', {});
     expect(info.protocolVersion).toBe(1);
     expect(info.pid).toBe(process.pid);
+    expect(client.sessionId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const settingsDescription = await client.call('settings/describe', {});
+    expect(settingsDescription.groups).toHaveLength(10);
+    expect(settingsDescription.definitions).toHaveLength(12);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
+    let resolveCloned: (value: unknown) => void = () => undefined;
     const changed = new Promise<unknown>((resolve) => {
       resolveChanged = resolve;
     });
+    const clonedChanged = new Promise<unknown>((resolve) => {
+      resolveCloned = resolve;
+    });
     client.onNotification('project/changed', (params) => {
       if (params.kind === 'created') resolveChanged(params);
+      if (params.kind === 'cloned') resolveCloned(params);
     });
 
     const project = await client.call('project/create', {
@@ -116,10 +126,66 @@ describe('platform service integration', () => {
     const opened = await client.call('project/open', { path: project.path });
     expect(opened.projectId).toBe(project.projectId);
     expect(opened.lastOpenedAt).not.toBeNull();
+    const projectAccess = await client.call('settings/set', {
+      key: 'access.mode',
+      scope: 'project',
+      value: 'restricted',
+      projectId: project.projectId,
+    });
+    expect(projectAccess).toMatchObject({ source: 'project', value: 'restricted' });
+    expect(await client.call('settings/get', { key: 'access.mode' })).toMatchObject({
+      source: 'default',
+      value: 'ask-always',
+    });
     expect(await changed).toMatchObject({
       kind: 'created',
       project: { projectId: project.projectId },
     });
+
+    const originalManifest = readFileSync(
+      path.join(project.path, PROJECT_MANIFEST_FILENAME),
+      'utf8',
+    );
+    execFileSync('git', ['remote', 'add', 'origin', 'https://example.invalid/source.git'], {
+      cwd: project.path,
+    });
+    const clone = await client.call('project/clone', {
+      projectId: project.projectId,
+      name: 'Dungeon Clone',
+      parentDirectory: projectsDirectory,
+    });
+    expect(clone.projectId).not.toBe(project.projectId);
+    expect(clone.engine.family).toBe(project.engine.family);
+    expect(
+      await client.call('settings/get', { key: 'access.mode', projectId: clone.projectId }),
+    ).toMatchObject({ source: 'project', value: 'restricted' });
+    expect(readFileSync(path.join(project.path, PROJECT_MANIFEST_FILENAME), 'utf8')).toBe(
+      originalManifest,
+    );
+    expect(
+      execFileSync('git', ['log', '--oneline'], { cwd: clone.path, encoding: 'utf8' })
+        .trim()
+        .split('\n'),
+    ).toHaveLength(2);
+    expect(execFileSync('git', ['remote'], { cwd: clone.path, encoding: 'utf8' }).trim()).toBe('');
+    expect(readdirSync(path.join(clone.path, '.gamecrafter', 'cache'))).toEqual(['.gitkeep']);
+    expect(readFileSync(path.join(clone.path, 'AGENTS.md'), 'utf8')).toContain('Dungeon Clone');
+
+    const cloneDatabase = Database.open(path.join(clone.path, '.gamecrafter', 'project.sqlite'));
+    try {
+      expect(
+        cloneDatabase
+          .prepare('SELECT value FROM project_meta WHERE key = ?')
+          .get<{ value: string }>('cloned_from')?.value,
+      ).toBe(project.projectId);
+    } finally {
+      cloneDatabase.close();
+    }
+    expect(await clonedChanged).toMatchObject({
+      kind: 'cloned',
+      project: { projectId: clone.projectId },
+    });
+    expect((await client.call('project/list', {})).projects).toHaveLength(2);
 
     await expect(client.call('project/open', { path: emptyDirectory })).rejects.toMatchObject({
       name: 'RpcError',
@@ -138,6 +204,53 @@ describe('platform service integration', () => {
     ).rejects.toMatchObject({ name: 'RpcError', code: -32003 });
 
     client.close();
+  }, 30000);
+
+  it('clears session-scoped settings when a client disconnects', async () => {
+    const profileDir = makeTemporaryDirectory('gc-session-profile-');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    let resolveClientClose: () => void = () => undefined;
+    const clientClosed = new Promise<void>((resolve) => {
+      resolveClientClose = resolve;
+    });
+    service = await PlatformService.start({
+      paths,
+      platformVersion: '0.1.0',
+      onClientEvent: (event) => {
+        if (event === 'closed') resolveClientClose();
+      },
+    });
+    const token = readFileSync(paths.tokenPath, 'utf8').trim();
+    const firstClient = await connect({
+      socketPath: service.socketPath,
+      token,
+      clientName: 'session-test-client',
+      clientVersion: '0.1.0',
+    });
+    await firstClient.call('settings/set', {
+      key: 'access.mode',
+      scope: 'session',
+      value: 'restricted',
+      sessionId: firstClient.sessionId,
+    });
+    firstClient.close();
+    await clientClosed;
+
+    const nextClient = await connect({
+      socketPath: service.socketPath,
+      token,
+      clientName: 'session-test-client',
+      clientVersion: '0.1.0',
+    });
+    expect(nextClient.sessionId).not.toBe(firstClient.sessionId);
+    await expect(
+      nextClient.call('settings/get', { key: 'access.mode', sessionId: firstClient.sessionId }),
+    ).rejects.toMatchObject({ name: 'RpcError', code: -32013 });
+    expect(await nextClient.call('settings/get', { key: 'access.mode' })).toMatchObject({
+      source: 'default',
+      value: 'ask-always',
+    });
+    nextClient.close();
   }, 30000);
 });
 

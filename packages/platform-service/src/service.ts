@@ -1,13 +1,23 @@
 import { randomBytes } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { PROTOCOL_VERSION, type ProjectCreateInput } from '@gamecrafter/contracts';
+import {
+  PROTOCOL_VERSION,
+  RpcError,
+  RpcErrorCode,
+  type ProjectCloneInput,
+  type ProjectCreateInput,
+} from '@gamecrafter/contracts';
 import { Database } from './db/database';
 import { IpcServer, type RpcHandlers } from './ipc/server';
 import { migrate } from './db/migrator';
 import type { ServicePaths } from './paths';
 import { profileMigrations } from './profile/migrations';
 import { ProfileStore } from './profile/profile-store';
+import { ProjectDatabases } from './projects/project-databases';
 import { ProjectWorkspace } from './projects/workspace';
+import { createBuiltinSettings } from './settings/definitions';
+import { SettingsRegistry } from './settings/registry';
+import { SettingsService } from './settings/settings-service';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -23,6 +33,7 @@ export class PlatformService {
   private constructor(
     private readonly server: IpcServer,
     private readonly database: Database,
+    private readonly projectDatabases: ProjectDatabases,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -40,6 +51,11 @@ export class PlatformService {
     migrate(database, profileMigrations);
     const profile = new ProfileStore(database);
     const workspace = new ProjectWorkspace({ profile, platformVersion });
+    const projectDatabases = new ProjectDatabases(profile);
+    const settingsRegistry = new SettingsRegistry();
+    const builtins = createBuiltinSettings();
+    settingsRegistry.register('builtin', builtins.groups, builtins.definitions);
+    const settingsService = new SettingsService(settingsRegistry, database, projectDatabases);
     const startedAt = new Date().toISOString();
     const handlers: RpcHandlers = {
       'service/info': () => ({
@@ -55,6 +71,11 @@ export class PlatformService {
         server.broadcast('project/changed', { kind: 'created', project });
         return project;
       },
+      'project/clone': async (input: ProjectCloneInput) => {
+        const project = await workspace.clone(input);
+        server.broadcast('project/changed', { kind: 'cloned', project });
+        return project;
+      },
       'project/list': () => ({ projects: workspace.list() }),
       'project/open': ({ path: projectPath }) => {
         const project = workspace.open(projectPath);
@@ -62,6 +83,23 @@ export class PlatformService {
         return project;
       },
       'project/get': ({ projectId }) => workspace.get(projectId),
+      'settings/describe': () => settingsService.describe(),
+      'settings/get': (params, context) =>
+        settingsService.resolve(params.key, {
+          projectId: params.projectId,
+          sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
+        }),
+      'settings/getAll': (params, context) => ({
+        settings: settingsService.getAll({
+          projectId: params.projectId,
+          sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
+        }),
+      }),
+      'settings/set': (params, context) =>
+        settingsService.set(params.key, params.scope, params.value, {
+          projectId: params.projectId,
+          sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
+        }),
     };
     const server = new IpcServer({
       paths,
@@ -69,23 +107,35 @@ export class PlatformService {
       token,
       serviceVersion: platformVersion,
       onClientEvent: options.onClientEvent,
+      onSessionOpened: (sessionId) => settingsService.openSession(sessionId),
+      onSessionClosed: (sessionId) => settingsService.closeSession(sessionId),
     });
+    settingsService.onChanged((event) => server.broadcast('settings/changed', event));
 
     try {
       await server.listen();
     } catch (error) {
+      projectDatabases.close();
       database.close();
       throw error;
     }
-    return new PlatformService(server, database, paths, startedAt);
+    return new PlatformService(server, database, projectDatabases, paths, startedAt);
   }
 
   async stop(): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
     await this.server.close();
+    this.projectDatabases.close();
     this.database.close();
   }
+}
+
+function sessionIdForRequest(requested: string | undefined, connectionSessionId: string): string {
+  if (requested && requested !== connectionSessionId) {
+    throw new RpcError(`Unknown session: ${requested}`, RpcErrorCode.UnknownSession);
+  }
+  return connectionSessionId;
 }
 
 function loadOrCreateToken(paths: ServicePaths): string {

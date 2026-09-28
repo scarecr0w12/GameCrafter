@@ -9,6 +9,9 @@ import { ControlRoomClientEvents, ControlRoomClientToken } from './control-room-
 import { CreateProjectCommand } from './create-project-command';
 import { ProjectHomeContribution } from './project-home-contribution';
 import { ProjectHomeWidget } from './project-home-widget';
+import { GameCrafterSettingsWidget } from './settings-widget';
+import { SettingsViewContribution } from './settings-view-contribution';
+import '../../src/browser/style/index.css';
 
 export default new ContainerModule((bind) => {
   bind(ControlRoomClientEvents).toSelf().inSingletonScope();
@@ -24,14 +27,22 @@ export default new ContainerModule((bind) => {
     .inSingletonScope();
 
   bind(ProjectHomeWidget).toSelf().inSingletonScope();
+  bind(GameCrafterSettingsWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
       createWidget: () => context.container.get(ProjectHomeWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: GameCrafterSettingsWidget.ID,
+      createWidget: () => context.container.get(GameCrafterSettingsWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
+  bindViewContribution(bind, SettingsViewContribution);
 
   bind(CreateProjectCommand).toSelf().inSingletonScope();
   bind(CommandContribution).toService(CreateProjectCommand);

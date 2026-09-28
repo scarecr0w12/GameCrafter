@@ -19,6 +19,9 @@ export class PlatformServiceConnection {
   private readonly projectChangedListeners = new Set<
     (event: RpcNotificationParams<'project/changed'>) => void
   >();
+  private readonly settingsChangedListeners = new Set<
+    (event: RpcNotificationParams<'settings/changed'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -38,6 +41,13 @@ export class PlatformServiceConnection {
   ): () => void {
     this.projectChangedListeners.add(listener);
     return () => this.projectChangedListeners.delete(listener);
+  }
+
+  onSettingsChanged(
+    listener: (event: RpcNotificationParams<'settings/changed'>) => void,
+  ): () => void {
+    this.settingsChangedListeners.add(listener);
+    return () => this.settingsChangedListeners.delete(listener);
   }
 
   onServiceStatus(
@@ -64,6 +74,9 @@ export class PlatformServiceConnection {
         this.notifyStatus({ connected: true, message: 'Connected to platform service' });
         client.onNotification('project/changed', (event) => {
           for (const listener of this.projectChangedListeners) listener(event);
+        });
+        client.onNotification('settings/changed', (event) => {
+          for (const listener of this.settingsChangedListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

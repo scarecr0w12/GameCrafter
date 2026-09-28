@@ -19,4 +19,15 @@ export const profileMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 2,
+    name: 'create platform settings table',
+    up: `
+      CREATE TABLE settings_values (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

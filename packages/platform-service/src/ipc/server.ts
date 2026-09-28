@@ -4,6 +4,7 @@ import net, { type Server, type Socket } from 'node:net';
 import {
   compile,
   PROTOCOL_VERSION,
+  uuidv7,
   RpcError,
   RpcMethods,
   type RpcMethodName,
@@ -17,9 +18,14 @@ import type { MessageConnection } from 'vscode-jsonrpc/node';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import type { ServicePaths } from '../paths';
 
+export interface RpcRequestContext {
+  sessionId: string;
+}
+
 export type RpcHandlers = {
   [M in Exclude<RpcMethodName, 'session/hello'>]: (
     params: RpcParams<M>,
+    context: RpcRequestContext,
   ) => RpcResult<M> | Promise<RpcResult<M>>;
 };
 
@@ -29,12 +35,15 @@ export interface IpcServerOptions {
   token: string;
   serviceVersion?: string;
   onClientEvent?: (event: 'connected' | 'closed') => void;
+  onSessionOpened?: (sessionId: string) => void;
+  onSessionClosed?: (sessionId: string) => void;
 }
 
 interface ClientConnection {
   socket: Socket;
   connection: MessageConnection;
   authenticated: boolean;
+  sessionId?: string;
 }
 
 type SchemaValidator = ReturnType<typeof compile<unknown>>;
@@ -129,11 +138,17 @@ export class IpcServer {
       if (hello.protocolVersion !== PROTOCOL_VERSION) {
         throw new ResponseError(-32005, 'Protocol version mismatch');
       }
+      if (!client.sessionId) {
+        const sessionId = uuidv7();
+        this.options.onSessionOpened?.(sessionId);
+        client.sessionId = sessionId;
+      }
       client.authenticated = true;
       return {
         ok: true,
         serviceVersion: this.options.serviceVersion ?? '0.1.0',
         protocolVersion: PROTOCOL_VERSION,
+        sessionId: client.sessionId,
       };
     });
 
@@ -156,8 +171,9 @@ export class IpcServer {
         try {
           const handler = this.options.handlers[method as keyof RpcHandlers] as (
             input: unknown,
+            context: RpcRequestContext,
           ) => unknown;
-          const result = await handler(params);
+          const result = await handler(params, { sessionId: client.sessionId! });
           const resultValidator = methodValidators.result;
           if (!resultValidator.check(result)) {
             throw new ResponseError(
@@ -187,6 +203,7 @@ export class IpcServer {
 
     connection.onClose(() => {
       this.clients.delete(client);
+      if (client.sessionId) this.options.onSessionClosed?.(client.sessionId);
       this.options.onClientEvent?.('closed');
     });
     connection.listen();

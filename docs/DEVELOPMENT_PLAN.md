@@ -71,11 +71,11 @@ flowchart TD
 
 ### WP3 — Project workspace
 
-- **Implements:** W01, W02 (engine family immutable; preferred version recorded), W05 (Project schema), [SKILLS_AGENTS_AND_TOOLS §5](SKILLS_AGENTS_AND_TOOLS.md#5-project-folder-additions). W03 (clone) belongs here but is Not started.
+- **Implements:** W01, W02 (engine family immutable; preferred version recorded), W05 (Project schema), [SKILLS_AGENTS_AND_TOOLS §5](SKILLS_AGENTS_AND_TOOLS.md#5-project-folder-additions). W03 (clone).
 - **Depends on:** WP2.
 - **Scope:** `project/create` writes the folder layout (`gamecrafter.project.json`, `docs/`, `game/`, `.gamecrafter/{project.sqlite,logs,cache}`, `.agents/skills/`, generated `AGENTS.md`, `.gitignore`), runs Project migrations, initialises a Git repository with one commit, appends a `project.created` event, and registers the Project in the profile; `open`, `get`, `list`; rollback of a partially created folder on failure.
 - **Done when:** integration test asserts the folder contents, migrations, Git history, and registry behaviour; clone produces an independent Project with a new ID and reset remotes.
-- **Status:** create/open/get/list Implemented (unit/integration-tested); clone Not started.
+- **Status:** Implemented (unit/integration-tested): create/open/get/list and clone (Git history kept, remotes removed, new Project ID, `cloned_from` recorded).
 
 ### WP4 — Control Room shell (`apps/control-room`, `packages/theia-control-room`)
 
@@ -91,7 +91,7 @@ flowchart TD
 - **Depends on:** WP2, WP4.
 - **Scope:** typed settings schema registry in contracts; platform → Project → session precedence with effective-value and source; `settings/get|set|describe` RPC; Theia settings pages grouped as proposed (no single long page); plugin-contributed settings schemas.
 - **Done when:** precedence and null-versus-inherit rules are tested; the UI shows effective value and scope for every setting.
-- **Status:** Not started.
+- **Status:** Implemented (unit/integration-tested): registry with 10 groups and 12 builtin definitions, `settings/describe|get|getAll|set`, platform → Project → session precedence with per-connection sessions, and the GameCrafter Settings view (group pages, search, schema-driven controls, source badge, scope selector, reset-to-inherit). Plugin-contributed definitions, redacted export, and clone/backup copy rules remain open.
 
 ### WP6 — Task/event graph and scheduler
 

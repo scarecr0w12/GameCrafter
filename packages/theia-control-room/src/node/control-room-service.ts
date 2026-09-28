@@ -2,9 +2,13 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import {
+  type EffectiveSetting,
   type ProjectCreateInput,
   type ProjectSummary,
   type ServiceInfo,
+  type SettingDefinition,
+  type SettingGroup,
+  type SettingsScope,
 } from '@gamecrafter/contracts';
 import type { ServiceClient } from '@gamecrafter/service-client';
 import type { ControlRoomClient, ControlRoomService } from '../common/control-room-protocol';
@@ -14,6 +18,7 @@ import { PlatformServiceConnection } from './service-connection';
 export class ControlRoomServiceImpl implements ControlRoomService {
   private client?: ControlRoomClient;
   private removeProjectChangedListener?: () => void;
+  private removeSettingsChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -23,10 +28,14 @@ export class ControlRoomServiceImpl implements ControlRoomService {
 
   setClient(client: ControlRoomClient): void {
     this.removeProjectChangedListener?.();
+    this.removeSettingsChangedListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
       this.client?.onProjectChanged(event);
+    });
+    this.removeSettingsChangedListener = this.platformConnection.onSettingsChanged((event) => {
+      this.client?.onSettingsChanged(event);
     });
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -61,6 +70,36 @@ export class ControlRoomServiceImpl implements ControlRoomService {
 
   async getDefaultProjectsDirectory(): Promise<string> {
     return path.join(homedir(), 'GameCrafterProjects');
+  }
+
+  async describeSettings(): Promise<{ groups: SettingGroup[]; definitions: SettingDefinition[] }> {
+    const client = await this.getPlatformClient();
+    return client.call('settings/describe', {});
+  }
+
+  async getAllSettings(projectId?: string): Promise<EffectiveSetting[]> {
+    const client = await this.getPlatformClient();
+    const result = await client.call('settings/getAll', {
+      projectId,
+      sessionId: client.sessionId,
+    });
+    return result.settings;
+  }
+
+  async setSetting(
+    key: string,
+    scope: SettingsScope,
+    value: unknown,
+    projectId?: string,
+  ): Promise<EffectiveSetting> {
+    const client = await this.getPlatformClient();
+    return client.call('settings/set', {
+      key,
+      scope,
+      value,
+      projectId,
+      sessionId: scope === 'session' ? client.sessionId : undefined,
+    });
   }
 
   private async getPlatformClient(): Promise<ServiceClient> {

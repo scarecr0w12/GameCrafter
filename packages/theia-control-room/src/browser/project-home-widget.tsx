@@ -10,6 +10,7 @@ import {
 } from '../common/control-room-protocol';
 import { ControlRoomClientEvents } from './control-room-client';
 import { CREATE_PROJECT_COMMAND_ID } from './create-project-command';
+import { SETTINGS_OPEN_COMMAND_ID } from './settings-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ReactWidget {
@@ -57,13 +58,22 @@ export class ProjectHomeWidget extends ReactWidget {
           <h1>GameCrafter</h1>
           <p role="status">{this.serviceStatus}</p>
         </header>
-        <button
-          className="theia-button"
-          type="button"
-          onClick={() => void this.commandService.executeCommand(CREATE_PROJECT_COMMAND_ID)}
-        >
-          Create Project
-        </button>
+        <div className="gamecrafter-project-home-actions">
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(CREATE_PROJECT_COMMAND_ID)}
+          >
+            Create Project
+          </button>
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(SETTINGS_OPEN_COMMAND_ID)}
+          >
+            Settings
+          </button>
+        </div>
         {this.projects.length === 0 ? (
           <p className="gamecrafter-project-home-empty">
             No Projects yet. Create a Project to get started.

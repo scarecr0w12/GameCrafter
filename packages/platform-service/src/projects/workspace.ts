@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -17,6 +18,7 @@ import {
   RpcError,
   RpcErrorCode,
   uuidv7,
+  type ProjectCloneInput,
   type ProjectCreateInput,
   type ProjectManifest,
   type ProjectSummary,
@@ -208,6 +210,135 @@ export class ProjectWorkspace {
     }
   }
 
+  async clone(input: ProjectCloneInput): Promise<ProjectSummary> {
+    const source = this.get(input.projectId);
+    const folderName = input.folderName ?? slug(input.name);
+    const projectPath = path.resolve(input.parentDirectory, folderName);
+    const created = !existsSync(projectPath);
+    if (!created) {
+      const stats = statSync(projectPath);
+      if (!stats.isDirectory() || readdirSync(projectPath).length > 0) {
+        throw new RpcError(
+          `Project folder already exists and is not empty: ${projectPath}`,
+          RpcErrorCode.ProjectAlreadyExists,
+        );
+      }
+    }
+    mkdirSync(projectPath, { recursive: true });
+
+    try {
+      const sourceDatabasePath = path.join(source.path, '.gamecrafter', 'project.sqlite');
+      if (existsSync(sourceDatabasePath)) {
+        const sourceDatabase = Database.open(sourceDatabasePath);
+        try {
+          sourceDatabase.prepare('PRAGMA wal_checkpoint(FULL)').get();
+        } finally {
+          sourceDatabase.close();
+        }
+      }
+
+      cpSync(source.path, projectPath, {
+        recursive: true,
+        filter: (sourceEntry) => {
+          const relative = path.relative(source.path, sourceEntry).split(path.sep).join('/');
+          if (
+            relative === '.gamecrafter/cache' ||
+            relative.startsWith('.gamecrafter/cache/') ||
+            relative === '.gamecrafter/logs' ||
+            relative.startsWith('.gamecrafter/logs/')
+          ) {
+            return false;
+          }
+          const name = path.basename(sourceEntry);
+          return !['-wal', '-shm', '-journal'].some((suffix) => name.endsWith(suffix));
+        },
+      });
+
+      const sourceManifest = this.readManifest(source.path);
+      const manifest = projectManifest.assert({
+        ...sourceManifest,
+        projectId: uuidv7(),
+        name: input.name,
+        createdAt: this.now().toISOString(),
+        createdByPlatformVersion: this.options.platformVersion,
+      });
+      writeFileSync(
+        path.join(projectPath, PROJECT_MANIFEST_FILENAME),
+        `${JSON.stringify(manifest, null, 2)}\n`,
+        'utf8',
+      );
+      writeFileSync(path.join(projectPath, 'AGENTS.md'), renderProjectAgentsMd(manifest), 'utf8');
+      ensureProjectOperationalGitignore(projectPath);
+      for (const directory of ['logs', 'cache']) {
+        const fullPath = path.join(projectPath, '.gamecrafter', directory);
+        mkdirSync(fullPath, { recursive: true });
+        writeFileSync(path.join(fullPath, '.gitkeep'), '', 'utf8');
+      }
+
+      const database = Database.open(path.join(projectPath, '.gamecrafter', 'project.sqlite'));
+      try {
+        migrate(database, projectMigrations);
+        database
+          .prepare(
+            `INSERT INTO project_meta (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+          )
+          .run('project_id', manifest.projectId);
+        database
+          .prepare(
+            `INSERT INTO project_meta (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+          )
+          .run('cloned_from', source.projectId);
+
+        if (!existsSync(path.join(projectPath, '.git'))) {
+          await this.git.run(['init', '-b', 'main'], projectPath);
+        } else {
+          const remotes = (await this.git.run(['remote'], projectPath)).stdout
+            .split(/\r?\n/)
+            .filter((remote) => remote.length > 0);
+          for (const remote of remotes) {
+            await this.git.run(['remote', 'remove', remote], projectPath);
+          }
+        }
+        await this.git.run(['add', '-A'], projectPath);
+        await this.git.run(
+          [
+            '-c',
+            'user.name=GameCrafter',
+            '-c',
+            'user.email=gamecrafter@localhost',
+            'commit',
+            '-m',
+            `Clone Project from "${source.name}"`,
+          ],
+          projectPath,
+        );
+        database
+          .prepare(
+            `INSERT INTO events (event_id, seq, kind, occurred_at, actor, payload)
+             VALUES (?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM events), ?, ?, ?, ?)`,
+          )
+          .run(
+            uuidv7(),
+            'project.cloned',
+            manifest.createdAt,
+            'service',
+            JSON.stringify({ sourceProjectId: source.projectId, sourcePath: source.path }),
+          );
+      } finally {
+        database.close();
+      }
+
+      const summary = summaryFromManifest(manifest, projectPath, null);
+      this.options.profile.register(summary);
+      return summary;
+    } catch (error) {
+      if (created) rmSync(projectPath, { recursive: true, force: true });
+      throw error;
+    }
+  }
+
   open(projectPath: string): ProjectSummary {
     const absolutePath = path.resolve(projectPath);
     const manifest = this.readManifest(absolutePath);
@@ -260,6 +391,25 @@ export class ProjectWorkspace {
         RpcErrorCode.InvalidProjectFolder,
       );
     }
+  }
+}
+
+function ensureProjectOperationalGitignore(projectPath: string): void {
+  const gitignorePath = path.join(projectPath, '.gitignore');
+  const content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
+  const lines = new Set(content.split(/\r?\n/));
+  const required = [
+    '.gamecrafter/cache/',
+    '.gamecrafter/logs/',
+    '.gamecrafter/*.sqlite',
+    '*.sqlite-wal',
+    '*.sqlite-shm',
+    '*.sqlite-journal',
+  ];
+  const missing = required.filter((line) => !lines.has(line));
+  if (missing.length > 0) {
+    const separator = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
+    writeFileSync(gitignorePath, `${content}${separator}${missing.join('\n')}\n`, 'utf8');
   }
 }
 

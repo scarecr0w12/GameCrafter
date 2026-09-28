@@ -21,6 +21,7 @@ export interface ConnectOptions {
 }
 
 export interface ServiceClient {
+  readonly sessionId: string;
   call<M extends RpcMethodName>(method: M, params: RpcParams<M>): Promise<RpcResult<M>>;
   onNotification<N extends RpcNotificationName>(
     name: N,
@@ -62,8 +63,9 @@ export async function connect(options: ConnectOptions): Promise<ServiceClient> {
   );
   connection.listen();
 
+  let hello: RpcResult<'session/hello'>;
   try {
-    await connection.sendRequest('session/hello', {
+    hello = await connection.sendRequest('session/hello', {
       token: options.token,
       clientName: options.clientName,
       clientVersion: options.clientVersion,
@@ -76,6 +78,7 @@ export async function connect(options: ConnectOptions): Promise<ServiceClient> {
   }
 
   return {
+    sessionId: hello.sessionId,
     async call<M extends RpcMethodName>(method: M, params: RpcParams<M>): Promise<RpcResult<M>> {
       try {
         return (await connection.sendRequest(method, params)) as RpcResult<M>;

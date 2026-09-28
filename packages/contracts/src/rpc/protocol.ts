@@ -1,5 +1,15 @@
 import { Static, Type, type TSchema } from '@sinclair/typebox';
-import { ProjectCreateInputSchema, ProjectSummarySchema } from '../project/manifest';
+import {
+  ProjectCloneInputSchema,
+  ProjectCreateInputSchema,
+  ProjectSummarySchema,
+} from '../project/manifest';
+import {
+  EffectiveSettingSchema,
+  SettingDefinitionSchema,
+  SettingGroupSchema,
+  SettingsScope,
+} from '../settings/schema';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -34,12 +44,14 @@ export const RpcMethods = {
         ok: Type.Literal(true),
         serviceVersion: Type.String(),
         protocolVersion: Type.Integer(),
+        sessionId: Type.String({ format: 'uuid' }),
       },
       { additionalProperties: false },
     ),
   },
   'service/info': { params: EmptyParams, result: ServiceInfoSchema },
   'project/create': { params: ProjectCreateInputSchema, result: ProjectSummarySchema },
+  'project/clone': { params: ProjectCloneInputSchema, result: ProjectSummarySchema },
   'project/list': {
     params: EmptyParams,
     result: Type.Object(
@@ -58,6 +70,50 @@ export const RpcMethods = {
     ),
     result: ProjectSummarySchema,
   },
+  'settings/describe': {
+    params: EmptyParams,
+    result: Type.Object(
+      { groups: Type.Array(SettingGroupSchema), definitions: Type.Array(SettingDefinitionSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'settings/get': {
+    params: Type.Object(
+      {
+        key: Type.String(),
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        sessionId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: EffectiveSettingSchema,
+  },
+  'settings/getAll': {
+    params: Type.Object(
+      {
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        sessionId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { settings: Type.Array(EffectiveSettingSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'settings/set': {
+    params: Type.Object(
+      {
+        key: Type.String(),
+        scope: SettingsScope,
+        value: Type.Unknown(),
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        sessionId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: EffectiveSettingSchema,
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -66,10 +122,22 @@ export const RpcNotifications = {
       {
         kind: Type.Union([
           Type.Literal('created'),
+          Type.Literal('cloned'),
           Type.Literal('opened'),
           Type.Literal('removed'),
         ]),
         project: ProjectSummarySchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'settings/changed': {
+    params: Type.Object(
+      {
+        key: Type.String(),
+        scope: SettingsScope,
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        sessionId: Type.Optional(Type.String({ format: 'uuid' })),
       },
       { additionalProperties: false },
     ),
@@ -91,6 +159,11 @@ export const RpcErrorCode = {
   ProjectAlreadyExists: -32003,
   ProjectNotFound: -32004,
   ProtocolVersionMismatch: -32005,
+  UnknownSetting: -32010,
+  InvalidSettingValue: -32011,
+  SettingScopeNotAllowed: -32012,
+  UnknownSession: -32013,
+  InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];
 

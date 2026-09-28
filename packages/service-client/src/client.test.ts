@@ -29,6 +29,7 @@ describe('service client', () => {
         ok: true,
         serviceVersion: '0.1.0',
         protocolVersion: 1,
+        sessionId: '019535d4-2c00-7000-8000-000000000001',
       }));
       connection.onRequest('service/info', () => {
         throw new ResponseError(-32004, 'Missing project');
@@ -43,6 +44,7 @@ describe('service client', () => {
       clientName: 'test',
       clientVersion: '0.1.0',
     });
+    expect(client.sessionId).toBe('019535d4-2c00-7000-8000-000000000001');
 
     await expect(client.call('service/info', {})).rejects.toMatchObject({
       name: 'RpcError',

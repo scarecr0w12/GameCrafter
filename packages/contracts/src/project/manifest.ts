@@ -54,6 +54,17 @@ export const ProjectCreateInputSchema = Type.Object(
 );
 export type ProjectCreateInput = Static<typeof ProjectCreateInputSchema>;
 
+export const ProjectCloneInputSchema = Type.Object(
+  {
+    projectId: Type.String({ format: 'uuid' }),
+    name: Type.String({ minLength: 1 }),
+    parentDirectory: Type.String(),
+    folderName: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+export type ProjectCloneInput = Static<typeof ProjectCloneInputSchema>;
+
 export const ProjectSummarySchema = Type.Object(
   {
     projectId: Type.String({ format: 'uuid' }),
