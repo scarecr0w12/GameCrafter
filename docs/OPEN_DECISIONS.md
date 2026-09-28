@@ -1,0 +1,186 @@
+# Game Development Platform: Decision Register
+
+**Status:** Comprehensive register of decisions still to settle as of 2026-09-27. This is a design document, not an implementation claim.  
+**Scope:** The complete Windows/Linux desktop platform. These are architectural areas, not milestones or phases.  
+**Related records:** [Platform design](PLATFORM_DESIGN.md) and [technical architecture](TECHNICAL_ARCHITECTURE.md).
+**Resolution record:** [Skills, agent roles, and tool connections](SKILLS_AGENTS_AND_TOOLS.md) resolves or gives defaults for several entries below; each affected entry carries a **Status** line.
+
+This register does **not** reopen decisions already confirmed: Theia desktop Control Room; independent Project folders and locked engine choice; installable genre/module/skill/plugin system; full IDE features; CLI/MCP engine connections; optional Docker-launched MCP servers; recursive agents and discussion board; Full/Restricted/Ask always access; cloud and separately hosted local models; Project SQLite plus Markdown/Git; read/write vector search; Windows/Linux support; and encrypted Project/profile backups. The technical architecture selects many sensible defaults. The entries below identify the exact policies, contracts, formats, and verification work those high-level decisions leave open.
+
+**Ownership legend:** **Product** means the answer changes user-visible behavior or creative authority. **Engineering** means the user has delegated the choice to best-practice judgment; record and implement it without serial approval questions. **Verify** means the intended design is clear but must be proven against real software or platform behavior. A recommendation is a starting position, not a claim that the choice has been implemented.
+
+## 1. Product identity and distribution
+
+**P01 — Name, identity, and trademark (Product).** Set the public platform name, repository name, app ID, icons, and whether community forks may reuse the branding. **Default:** use a working name in code until the public identity is chosen; keep the app ID and data directory stable once installers are released. **Why it matters:** renaming later affects updates, profile paths, plugin compatibility, and user trust.
+
+**P02 — Open-source license and contribution rules (Product).** Select the license for the platform, plugin SDK, examples, bundled assets, and documentation; define contribution and third-party notice policy. **Default:** favor a permissive OSI-approved license after checking Theia and bundled dependency obligations, and keep sample/game assets separately licensed. **Resolution:** record exact license files and contribution requirements before publishing the repository.
+
+**P03 — Supported Windows and Linux variants (Engineering).** Define minimum Windows release, Linux packaging formats, CPU architecture, graphics requirements for previews, and whether Wayland/X11 differences need dedicated support. **Default:** target current supported 64-bit Windows and mainstream 64-bit Linux desktops; publish a tested distribution matrix rather than implying every distro works. Connector support is reported separately per OS.
+
+**P04 — Platform update behavior (Engineering).** Choose manual versus automatic update checking, update source, rollback, and behavior when a schema/plugin upgrade accompanies the app. **Default:** signed or checksum-verified GitHub releases, user-controlled installation, compatibility checks, and a recovery path for failed migrations. No hosted platform service is introduced.
+
+**P05 — Existing game onboarding (Product).** Clarify how an existing Unity/Unreal/Godot game that was not created in this platform becomes a Project. This must respect the confirmed rule that a new Project cannot remain linked to another Project. **Default:** copy the existing game into a new independent Project folder, initialize or preserve its Git history as appropriate, and never create a live dependency on the source directory.
+
+## 2. Project, Git, and local data contracts
+
+**W01 — Project folder layout and manifest (Engineering).** Fix where engine files, Markdown canon, generated previews, Project settings, SQLite, plugin references, logs, and temporary worktrees live. Define stable Project IDs and schema version fields. **Default:** a small versioned manifest at the folder root, readable `docs/` records, a hidden platform metadata directory, and explicit cache directories that can be rebuilt.
+
+**W02 — Engine identity versus engine version (Engineering).** The chosen engine is locked, but version upgrades and multiple installed versions still need rules. **Default:** keep the engine family immutable; store a preferred engine version and detected actual version, allow deliberate version upgrades with compatibility checks and backups, and never silently rewrite a Project to another engine.
+
+**W03 — Full-clone rewrite rules (Engineering).** Specify which IDs, Git remotes, provider links, credentials, backup schedules, external paths, engine cache files, and vector namespaces change in a clone. **Default:** copy the whole folder and Git history, mint a new Project ID, reset publishing remotes and machine-specific paths, retain authored canon, and rebuild external indexes under the new ID. Verify the clone can run without the source.
+
+**W04 — Git policy for code, design, and large assets (Engineering).** Decide commit boundaries, branch/worktree naming, Git LFS or alternative binary tracking, ignored/generated files, and what agents may commit automatically. **Default:** Git tracks source and Markdown; configurable LFS for large binaries; previews and caches are ignored; validated, conflict-free changes may be integrated under the selected access policy. Never force a conflict resolution without evidence.
+
+**W05 — SQLite schema, migration, and corruption handling (Engineering).** Define Project and global-profile schemas, IDs, foreign keys, migrations, transaction boundaries, backup consistency, and recovery after interrupted writes. **Default:** versioned, reversible-or-restorable migrations with pre-migration snapshots and integrity checks. Operational records live in SQLite, while canon remains in files.
+
+**W06 — Settings precedence and export (Engineering).** Specify which values exist globally, per Project, and per session; how null/disabled differs from inherit; how plugin settings migrate; and which settings copy with a clone or profile backup. **Default:** typed schema with platform → Project → session precedence where allowed, effective-value display, and a redacted export that omits secrets.
+
+**W07 — Multiple open Projects and windows (Engineering).** Define service ownership when several windows or Projects are open, which Project receives a chat request, and whether a job survives closing its Project window. **Default:** one local service manages many independent Projects; every task carries an explicit Project ID; background behavior follows the configured window-close setting.
+
+## 3. Genres, modules, canon, and change impact
+
+**K01 — Module and genre-pack manifests (Engineering).** Define IDs, versions, dependencies, required/optional modules, settings, schemas, migrations, UI contributions, agent roles, and validation hooks. **Default:** versioned manifests with explicit compatibility ranges; packs declare requirements and suggestions, while module data survives disablement.
+
+**K02 — Hybrid-genre conflict rules (Product).** Decide what happens when two selected genre packs define overlapping or incompatible concepts, workflows, or required settings. **Default:** compose compatible records by stable ID and explicit extension points; show conflicts instead of silently choosing one pack. Genre-specific views can differ while shared concepts retain one canonical identity.
+
+**K03 — Canon record format and taxonomy (Engineering).** Define the common Markdown metadata and links for characters, locations, factions, quests, encounters, mechanics, assets, dialogue, and timeline events; allow modules to add types. **Default:** stable IDs, typed front matter, human-readable body, references, provenance, status, and schema version. Avoid forcing every genre into one rigid quest/story schema.
+
+**K04 — Canon authority and status (Product).** Decide how drafts, proposals, accepted canon, deprecated facts, and retcons are represented, and who can promote or supersede a fact. **Default:** explicit status and revision history; a binding user board decision outranks an agent proposal; agents may make changes under access mode but must link the decision/evidence that justified them.
+
+**K05 — Cross-discipline impact graph (Engineering).** Define how story events, quests, gameplay systems, code symbols, scenes, assets, and tests link, and how far a requested change propagates. **Default:** typed, bidirectional references with confidence and source; an impact analysis identifies likely dependent artifacts and marks uncertain links for validation rather than treating inferred connections as canon.
+
+**K06 — Decision-to-record synchronization (Engineering).** Specify what triggers Markdown updates when a board decision is binding, how conflicts with existing canon are found, and how partial failures recover. **Default:** an idempotent transaction-like workflow: capture decision ID, compute affected records, write reviewable diffs, validate links, and mark the board item synchronized only after success.
+
+**K07 — Optional story and disabled-module records (Engineering).** Decide how a Project without Story handles narrative requests and how disabled modules affect search, agent actions, and validations. **Default:** keep records intact and discoverable as inactive data, but do not present disabled-module content as active canon or run its workflows until re-enabled. Genre requirements prevent invalid disablement.
+
+## 4. Agents, discussion, and human feedback
+
+**A01 — Task/event state machine (Engineering).** Define task states, parent/child lineage, dependency edges, priorities, leases, checkpoints, outputs, cancellation, and completion evidence. **Default:** append-only events plus current-state projections in Project SQLite; every external effect has a task, actor, tool, timestamp, and result ID.
+
+**A02 — Agent spawning and swarm limits (Engineering).** Define when agents can delegate, maximum depth/concurrency, per-task resource budgets, and how duplicate work is prevented. **Default:** agents may spawn recursively within inherited permissions and configurable token/cost/concurrency limits; scheduler deduplicates overlapping tasks and can pause lower-priority work. **Status:** defaults recorded in [SKILLS_AGENTS_AND_TOOLS.md §3.3](SKILLS_AGENTS_AND_TOOLS.md#33-delegation-and-swarm-limits-defaults-for-a02); exact deduplication heuristics still open.
+
+**A03 — Agent roles and dynamic skill/tool loading (Engineering).** Specify role packages, compact discovery metadata, eligibility filters, mid-task loading, version pinning, and context budgets. **Default:** registry returns short descriptions first; full skill/tool instructions are loaded on use; each load is recorded so outcomes can be traced to the active version. **Status:** resolved by [SKILLS_AGENTS_AND_TOOLS.md §2.4 and §3.1](SKILLS_AGENTS_AND_TOOLS.md#24-catalog-selection-and-loading-resolves-a03s08-for-skills).
+
+**A04 — Shared resources and edit integration (Engineering).** Define worktree ownership, engine/DCC session locks, lease expiry, merge queue, and treatment of binary conflicts. **Default:** independent code/docs tasks use worktrees; shared live sessions and source assets require locks; merged output is revalidated in the target Project state.
+
+**A05 — Retry, cancellation, crash recovery (Engineering).** Decide which actions are idempotent, when automatic retry is safe, how orphaned workers and locks are recovered, and whether jobs resume after app/machine restart. **Default:** checkpoint and reconcile before retry; uncertain paid or destructive external actions stop for review rather than repeating blindly. Window-close behavior remains a setting.
+
+**A06 — Validation and completion contract (Engineering).** Define what counts as a completed code, story, gameplay, or asset task and what evidence is required. **Default:** distinguish generated output, static checks, actual engine/tool validation, user review, and final integration; a worker cannot mark an unverified external change as tested.
+
+**A07 — User feedback loop (Product).** Define which creative choices prompt the user, how feedback reopens dependent tasks, and how the user rejects or edits agent output. **Default:** ask for genuinely ambiguous creative direction or binding canon decisions; allow inline feedback on artifacts and board threads; propagate revisions through the impact graph without requiring approval for every routine action.
+
+**A08 — Board structure and binding decisions (Engineering).** Define threads, message types, subscriptions, task/artifact links, user versus agent authorship, decision markers, and edit history. **Default:** structured persistent board with immutable message history and explicit binding-decision events; summaries are derived, not replacements for source discussion.
+
+**A09 — Board maintenance agent policy (Engineering).** Choose model eligibility, audit triggers, archive/summary schedule, escalation rules, and protection against deleting or rewriting binding history. **Default:** immediate synchronization for new binding decisions, periodic drift audits, archival summaries that preserve originals, and no permanent deletion unless explicitly configured.
+
+## 5. Providers, adaptive routing, and budgets
+
+**M01 — Provider/account adapter contract (Engineering).** Define streaming, tool calls, structured output, embeddings, media, usage reporting, retries, cancellation, and account-specific credentials. **Default:** one versioned interface with capability declarations; multiple accounts per provider remain distinct, and unsupported features are reported rather than emulated silently.
+
+**M02 — Local model endpoint protocols (Engineering).** Decide which user-run server protocols have first-party connectors, discovery, authentication, and health checks. **Default:** support common OpenAI-compatible endpoints first and add protocol-specific adapters where behavior differs; accept localhost and user-configured private-network endpoints without bundling a model runtime. **Status:** protocol notes for Ollama, LM Studio, llama.cpp, and vLLM in [research/local-model-and-routing-sources.md](research/local-model-and-routing-sources.md).
+
+**M03 — Model catalog and metadata freshness (Engineering).** Define how models are added, capabilities verified, prices refreshed, provider claims labeled, and stale/unavailable models handled. **Default:** combine provider metadata with local observations; timestamp every field and preserve manual overrides. Never treat marketing benchmarks as measured local quality. **Status:** OpenRouter catalog/usage fields recorded in [research/local-model-and-routing-sources.md](research/local-model-and-routing-sources.md).
+
+**M04 — Pool composition and scope precedence (Engineering).** Agent and task pools are confirmed to intersect; resolve how platform, Project, and session pools interact, how manual selection works, and how provider-account restrictions apply. **Default:** enforce every applicable eligibility constraint, report an empty pool clearly, and never widen selection implicitly.
+
+**M05 — Routing objective and cold start (Engineering).** Define the task classifier, quality estimate, cost/latency constraints, reliability penalty, confidence handling, and behavior for a new model with little evidence. **Default:** quality-first contextual scoring with explicit budget limits and uncertainty; the smaller manager model assists classification but deterministic filters control eligibility.
+
+**M06 — Outcome labels and human feedback (Engineering).** Decide how code tests, engine validation, asset acceptance, narrative consistency, reviewer findings, and user ratings become router training signals. **Default:** weight independent validation and explicit human feedback above an agent's self-assessment; retain raw evidence and policy versions to audit learning.
+
+**M07 — Exploration and online information (Engineering).** Set exploration rate/budget, which online benchmarks or provider feeds may influence scoring, how old data decays, and how exploration is disclosed. **Default:** explore only eligible models within user budgets, record why a model was tried, and quarantine unverified online claims from strong quality updates.
+
+**M08 — Cross-Project learning and privacy (Product).** All local Projects contribute to shared router learning, as confirmed. Decide whether prompts, source snippets, and task artifacts may enter shared training records or external evaluation services. **Default:** share structured outcome features across Projects, not raw private content; external benchmark/telemetry upload is off unless configured.
+
+**M09 — Spending and failure behavior (Engineering).** Define per-job, per-Project, per-provider-account, and global budget limits; what happens on rate limits, outages, or price changes; and whether Full access changes spending limits. **Default:** access mode governs approval, while separately configured budgets remain enforceable; fallback stays inside the eligible model pool and logs the reason.
+
+## 6. Access, plugins, and skills
+
+**S01 — Access-mode capability taxonomy (Engineering).** Convert Full, Restricted, and Ask always into precise rules for filesystem writes, shell commands, network, paid APIs, Git publish, deletion, plugin install, and external tools. **Default:** Full executes within available credentials without added approvals; Restricted allowlists explicit capabilities; Ask always prompts for side-effecting or paid actions. Spawned agents inherit the narrowest effective scope. **Status:** side-effect taxonomy and ceiling inheritance recorded in [SKILLS_AGENTS_AND_TOOLS.md §4.2](SKILLS_AGENTS_AND_TOOLS.md#42-capability-metadata-and-per-operation-execution-mode); prompt grouping still open.
+
+**S02 — Windows and Linux worker isolation (Verify).** Select and prove OS mechanisms that stop Restricted/Ask-always plugins from bypassing the broker through direct filesystem, process, or network access. **Default:** separate supervised processes with OS-enforced limits; fail closed when a requested restriction cannot be enforced. Do not claim isolation until adversarial tests demonstrate it on both OS targets. **Status:** candidate mechanisms selected in [SKILLS_AGENTS_AND_TOOLS.md §4.5](SKILLS_AGENTS_AND_TOOLS.md#45-plugin-worker-isolation-direction-for-s02-still-verify) from [research/process-isolation.md](research/process-isolation.md); remains Verify.
+
+**S03 — Theia editor-extension privileges (Product).** VS Code-compatible extensions have a different runtime from platform plugins. Decide how the unified catalog explains that their filesystem/network behavior may not be governed by our platform tool broker. **Default:** show extension type and privilege boundary plainly; do not imply Restricted mode controls arbitrary third-party editor extension code.
+
+**S04 — Platform plugin package and API (Engineering).** Define manifest schema, package format, execution protocol, capability requests, dependencies, compatibility range, settings, UI contributions, migrations, and uninstall cleanup. **Default:** versioned language-neutral RPC contract with TypeScript SDK and Python/native workers; runtime plugins cannot require a Theia rebuild. **Status:** skill packaging resolved (Agent Skills format) in [SKILLS_AGENTS_AND_TOOLS.md §2.1](SKILLS_AGENTS_AND_TOOLS.md#21-format); plugin manifest schema still open.
+
+**S05 — Plugin UI boundaries (Engineering).** Decide which views, commands, menus, settings pages, and dashboards a runtime plugin may add and how frontend code is isolated. **Default:** registered extension points and declarative or sandboxed panels; deep Theia changes remain compile-time core extensions.
+
+**S06 — Installation sources and trust display (Engineering).** Define local archives, Git sources, future registry/marketplace, package hashes/signatures, dependency installation, rollback, and permission display. **Default:** support local package and Git installation independently of a marketplace; show publisher, version, requested capabilities, and provenance before activation. Full access does not add a hidden action-approval gate. **Status:** resolved for skills and roles in [SKILLS_AGENTS_AND_TOOLS.md §2.3](SKILLS_AGENTS_AND_TOOLS.md#23-installation-sources-resolves-s06-for-skills); plugin package signing still open.
+
+**S07 — Plugin and skill version pinning (Engineering).** Define global install versus per-Project enablement, updates, dependency conflicts, migration rollback, and reproducibility of a cloned Project. **Default:** Project records pin package versions and enabled state; profile stores installed packages; clone detects missing versions and offers exact reinstalls or compatible migration. **Status:** default confirmed in [SKILLS_AGENTS_AND_TOOLS.md §5](SKILLS_AGENTS_AND_TOOLS.md#5-project-folder-additions).
+
+**S08 — Skill/tool selection evidence (Engineering).** Define compact catalog metadata, ranking, lazy loading, and how a skill's effectiveness is evaluated. **Default:** select by task, agent, current context, permissions, and observed success; record selected version and invocation; allow mid-task discovery without dumping all skill text into context. **Status:** resolved by [SKILLS_AGENTS_AND_TOOLS.md §2.4–2.5](SKILLS_AGENTS_AND_TOOLS.md#24-catalog-selection-and-loading-resolves-a03s08-for-skills).
+
+**S09 — Audit and retention (Engineering).** Define immutable action records, secret redaction, log retention, export, and deletion settings for tasks, model calls, plugin actions, and paid operations. **Default:** preserve enough local evidence to explain changes and costs; redact credentials and private payloads in routine logs; no external telemetry by default.
+
+## 7. MCP, engines, DCC tools, and generated assets
+
+**C01 — MCP connection definitions (Engineering).** Specify settings for spawned local command, existing endpoint, and app-launched Docker container; include credentials, transport/version negotiation, environment, mounts, working directory, timeouts, and health. **Default:** one connection record with a mode-specific configuration and explicit platform/Project scope. **Status:** resolved by [SKILLS_AGENTS_AND_TOOLS.md §4.1](SKILLS_AGENTS_AND_TOOLS.md#41-mcp-connection-manager-resolves-c01-policy); note MCP revision 2026-07-28 removed sessions and the initialize handshake, so negotiation must span 2025-03-26 through 2026-07-28.
+
+**C02 — Docker MCP lifecycle (Engineering).** Decide image pinning, pull/update policy, container naming, volume permissions, network exposure, cleanup, and behavior after a crash. **Default:** pin images by immutable digest when possible, start/stop only containers the platform owns, expose the minimum required mounts/network, and display those privileges. Docker remains optional.
+
+**C03 — Engine connector capability contract (Engineering).** Define operations such as discover, inspect, import, edit, build, test, run, and validate; specify request IDs, errors, artifacts, and evidence. **Default:** adapters report actual capabilities from their CLI/MCP interfaces; they never infer live editor control merely from an installed binary or running process. **Status:** resolved by [SKILLS_AGENTS_AND_TOOLS.md §4.2–4.3](SKILLS_AGENTS_AND_TOOLS.md#43-engine-connectors-implements-c03-informs-c04).
+
+**C04 — Unity, Unreal, and Godot mapping (Verify).** For each supported engine version and OS, determine which operations work through CLI, which need a live MCP session, which are unavailable, and how Project identity is proven. **Default:** publish and test a per-engine capability matrix. Companion editor plugins are outside the current connector design unless explicitly revisited. **Status:** source matrix started in [research/engine-connectors.md](research/engine-connectors.md); remains Verify.
+
+**C05 — Game-art tool support matrix (Verify).** Select exact Maya/3ds Max, Blender, Cinema 4D, ZBrush, and other game-art versions/OS combinations and determine their real CLI/MCP surfaces. **Default:** first-party adapters for tools with verifiable interfaces; other applications use community plugins. A connector reports unsupported actions honestly. **Status:** source matrix started in [research/dcc-and-asset-tools.md](research/dcc-and-asset-tools.md); remains Verify.
+
+**C06 — External asset-generation job contract (Engineering).** Define Meshy, Tripo3D, and future provider request formats, asynchronous status, retries, cancellation, pricing, license/provenance, artifact download, and review before import. **Default:** all services share a typed job lifecycle, but keep provider-specific features available behind declared capabilities. **Status:** provenance-recording default added in [SKILLS_AGENTS_AND_TOOLS.md §4.4](SKILLS_AGENTS_AND_TOOLS.md#44-dcc-and-generation-connectors-implements-c05c06-defaults) because Meshy/Tripo3D schemas were not verified to carry license fields.
+
+**C07 — Asset preview and derived files (Engineering).** Choose preview conversion methods, glTF/GLB version support, animation/material/LOD/rig inspection behavior, cache invalidation, and how source-asset edits reopen in external tools. **Default:** preserve original files, create disposable preview derivatives, and display conversion warnings rather than silently changing source assets.
+
+**C08 — External action recovery (Engineering).** Define idempotency and rollback for imports, DCC exports, engine edits, builds, and paid generation jobs. **Default:** use operation IDs and before/after evidence; retry only known-safe actions; for non-reversible effects record compensating steps and stop uncertain repeats.
+
+## 8. Search and vector indexing
+
+**R01 — Indexing scope (Product).** Decide whether semantic indexing includes current canon, inactive modules, board history, code, asset metadata, generated previews, old Git revisions, and external references. **Default:** index current Project docs, code, active structured records, and asset metadata; expose board/history and inactive content as separately filterable sources. Do not index whole binary assets as text.
+
+**R02 — Embedding model selection (Engineering).** Choose a model from connected local/cloud providers, dimension/version recording, batch limits, privacy settings, and what happens when the model changes. **Default:** one configured embedding profile per Project/index; pin its model/version and rebuild changed vectors when the profile changes. No built-in model runtime.
+
+**R03 — Vector database adapters and isolation (Engineering).** Qdrant is the recommended first-party adapter; define collection/namespace strategy, authentication, connectivity, and a portable interface for other stores. **Default:** enforce Project ID on every upsert/delete/query; allow a user-run local Qdrant service and add alternatives through plugins. **Status:** Qdrant tenancy and deployment notes in [research/local-model-and-routing-sources.md](research/local-model-and-routing-sources.md).
+
+**R04 — Synchronization and reindexing (Engineering).** Choose file-watcher behavior, Git-change detection, chunking, stable vector IDs, stale-entry deletion, crash recovery, and clone/restore rebuild behavior. **Default:** incremental updates plus periodic reconciliation against authoritative files; index state is disposable and never the sole location of knowledge.
+
+**R05 — Retrieval ranking and citations (Engineering).** Define lexical/semantic fusion, recency, canon status, task relevance, token budget, and evidence shown to agents. **Default:** combine file/code search with vector results; favor accepted canon and exact source matches; return file path, revision, record ID, and quote span so agents can verify context.
+
+## 9. Backup, recovery, and secrets
+
+**B01 — Archive format and consistency (Engineering).** Choose full/incremental archive layout, compression, content hashes, SQLite-consistent snapshots, Git/LFS handling, and plugin-version manifest. **Default:** portable encrypted snapshots with manifest and integrity verification; incremental storage is optional but must restore into an exact coherent Project/profile state.
+
+**B02 — Encryption and recovery secret (Engineering).** Select a maintained authenticated-encryption implementation, password-based key derivation, key rotation, and recovery instructions. **Default:** random per-archive keys protected by a user-controlled unlock secret kept outside the archive; store only non-reversible verification material where needed, never the plaintext secret.
+
+**B03 — Destination adapters and credentials (Engineering).** Define local, FTP, S3, Google Drive, and plugin destination APIs; authentication refresh, resume, retries, and encryption-before-upload. **Default:** encrypt before any remote transfer, use the destination's secure transport where available, and keep provider credentials in the profile credential store.
+
+**B04 — Schedule, retention, and storage limits (Engineering).** Define manual/scheduled triggers, idle/battery/network behavior, pruning, free-space checks, and notification policy. **Default:** configurable schedules and retention per Project/profile and destination; never prune the last known-good backup before a new backup is verified.
+
+**B05 — Restore semantics (Product).** Decide whether restoring replaces an existing Project, creates a new independent Project, or supports both; how global profile conflicts and missing plugins are handled. **Default:** restore into a new folder/profile by default, verify integrity and compatibility, then let the user activate it; in-place replacement is an explicit higher-risk operation.
+
+**B06 — Recovery testing (Verify).** Define automated archive verification and periodic restore drills across Windows/Linux, including encrypted credentials and large assets. **Default:** verify content hashes after every backup and run a test restore into an isolated temporary location where feasible. A successful upload alone is not recovery evidence.
+
+## 10. Control Room and settings experience
+
+**U01 — Main navigation and layouts (Product).** Specify how Project home, code, canon, genre modules, agents/task graph, board, assets, connections, validation, and settings fit into Theia's workbench. **Default:** project-centered navigation with dockable views, saved layouts, global search, and contextual links; keep coding features first-class without turning every view into an IDE panel.
+
+**U02 — Project creation and clone flows (Product).** Define field order, genre/module selection, fixed-engine warning, LLM name/description helper, clone preview, and incomplete/missing connector handling. **Default:** show a complete review before creation; suggestions remain editable; cloning states what will be copied and which external references are reset.
+
+**U03 — Settings information architecture (Engineering).** Define page hierarchy, search, scope indicator, effective-value display, validation, plugin sections, and reset/import/export behavior. **Default:** separate pages for Projects, agents, models, tools, plugins, security, search, backup, board, and appearance; no giant text page.
+
+**U04 — Progress, costs, and feedback surfaces (Product).** Decide how a user sees active swarms, spawned tasks, model selections, spent/estimated cost, validation evidence, questions, conflicts, and final change summaries. **Default:** a task graph with concise status and drill-down evidence, notifications only for meaningful changes or required input, and visible manual override controls.
+
+**U05 — Asset inspection controls (Engineering).** Finalize 2D navigation, 3D orbit/pan/zoom, animation playback, rig hierarchy, texture channels, material inspection, and LOD switching, including fallback when preview conversion fails. **Default:** read-only viewer controls with source-file location and an explicit Open in authoring tool action.
+
+## 11. Validation, operations, and public project health
+
+**Q01 — Test and evidence matrix (Engineering).** Define unit, contract, integration, UI, clone/restore, plugin escape, and live tool tests, including which claims require an actual connected engine/DCC instance. **Default:** every connector capability has a contract test and live evidence where feasible; distinguish source checks from editor/runtime validation in status reports.
+
+**Q02 — Performance and resource limits (Engineering).** Decide service memory/CPU targets, indexing throttles, worker concurrency, project-size limits, cache quotas, and behavior on low-resource machines. **Default:** configurable budgets and backpressure; the UI remains responsive while agents, vector indexing, backups, and preview conversion run separately.
+
+**Q03 — Packaging and reproducible builds (Engineering).** Define toolchain versions, dependency locks, Windows/Linux CI builds, installer/package formats, checksums/signing, release notes, and rollback artifacts. **Default:** pinned dependencies and automated build/test workflows producing verifiable Windows and Linux packages. No hosted service dependency.
+
+**Q04 — Plugin SDK and contributor documentation (Engineering).** Decide example plugins, API reference, versioning policy, compatibility tests, and migration guides for genre packs, connectors, skills, and UI panels. **Default:** publish runnable examples and conformance tests with the SDK so a community plugin can be built without reading platform internals.
+
+**Q05 — Accessibility and localization (Engineering).** Define keyboard navigation, screen-reader labels, high contrast, scaling, and whether localization is supported from the start. **Default:** follow Theia's accessibility conventions, make custom views keyboard accessible, and keep user-visible strings extractable for localization even if English is the initial language.
+
+## How to use this register
+
+When a choice is made, record the selected behavior in the relevant design/architecture section and change its entry here from open to resolved, with a link to the decision. Engineering-owned entries may be resolved through implementation and verification without asking the user. Product-owned entries should be brought to the user only when the recommendation cannot safely stand in for their intent. Evidence-dependent entries stay open until tested against the real Windows/Linux, engine, DCC, provider, or plugin behavior they describe.

@@ -1,0 +1,91 @@
+# Technical Architecture: Proposed Stack
+
+**Status:** Complete target-stack recommendation. User-confirmed choices appear in `PLATFORM_DESIGN.md`; other selections here are engineering defaults authorized for best-practice judgment, not implementation claims.  
+**Last updated:** 2026-09-27
+
+This describes the complete target system. It is organized by component, not by milestone or release phase.
+
+**Supported desktop systems:** Windows and Linux. Connector availability must be reported per OS. macOS is outside the intended support scope.
+
+**Model hosting:** Connect to cloud providers or separately running local model servers. The desktop installation does not include a model inference runtime.
+
+**Plugin execution:** Executable platform plugins run in separate processes with Windows/Linux operating-system isolation and a central tool broker. Docker or Podman is not required. The specific isolation implementation for each OS remains to be selected and verified.
+
+**MCP server setup:** The platform can launch a local command, connect to an existing endpoint, or launch a configured local Docker container and connect to its MCP transport. Docker is optional and is not used as a required plugin runtime.
+
+**Agent orchestration:** The local platform service runs a durable scheduler using Project-local SQLite. Supervised worker processes execute agents and tools; no separate workflow server is required.
+
+## Recommended core stack
+
+| Component | Recommendation | Reason |
+| --- | --- | --- |
+| Desktop Control Room | Eclipse Theia on Electron; TypeScript and React for custom views | Builds on the selected Theia workbench, editor, terminal, debugging, Git, and extension support. Theia already divides its frontend and Node backend. |
+| Platform service | Separate local Node.js/TypeScript process, with a versioned local RPC/event API | Owns durable work independently of the desktop window, including Projects, agents, routing, plugin hosts, settings, backups, and indexes. Supports the chosen window-close setting. No hosted service is required. |
+| Agents and tasks | Local service scheduler with a transactional task/event graph in Project SQLite, run by supervised worker processes | Preserves parent/child tasks, board messages, decisions, leases, checkpoints, retries, costs, and validation evidence across crashes or restarts. No separate workflow server is required; concurrency and budgets are settings. |
+| Project data | Markdown and game/source/asset files in each Project folder; Project-local SQLite for operational state | Keeps canon portable and reviewable while making discussion, task, and asset metadata queryable. A full folder clone carries its Project state. |
+| Global profile | Separate SQLite database plus encrypted credential store | Holds providers/accounts, installed plugins, global settings, and shared router learning outside Project clones. |
+| Search | File/code search plus SQLite FTS5 for indexed text; read/write adapters for connected local vector databases such as Qdrant | Source files stay authoritative. The platform writes embeddings and queries them for semantic retrieval; indexes are derived and rebuildable. |
+| Asset inspection | Three.js view with glTF/GLB preview derivatives; 2D image viewer | Supports orbit, animation, scene hierarchy, materials, and LOD inspection. Original DCC files remain the source assets. |
+| Contracts | TypeScript interfaces with versioned JSON schemas for persisted records and plugin/RPC messages | Gives plugins and connectors a stable, language-neutral boundary. |
+| Skills and agent roles | Agent Skills (`SKILL.md`) directories with `gdp-*` metadata; Markdown+frontmatter role packages | Interoperates with the existing skill ecosystem (agentskills.io, skills.sh) and familiar subagent-definition conventions; see [SKILLS_AGENTS_AND_TOOLS.md](SKILLS_AGENTS_AND_TOOLS.md). |
+
+Theia's frontend/backend split and local Electron operation are documented in its [architecture overview](https://theia-ide.org/docs/architecture/). [Theia AI](https://theia-ide.org/docs/theia_ai/) can supply reusable chat, agent, tool, and model UI pieces where they fit, but the platform service should own the persistent recursive swarm, access enforcement, and adaptive model router. Its interfaces should not make our Project and task records depend on Theia internals. Theia AI's documented extension points (agents, prompt fragments, capabilities, tool providers, `AiConfigurationCategory`) fit the in-editor chat and configuration surfaces; its LLM-provider layer is documented as not yet having a fixed contribution point, which is a further reason to keep the model router in the platform service ([Theia AI](https://theia-ide.org/docs/theia_ai/)).
+
+## Process and data boundaries
+
+```mermaid
+flowchart LR
+  U[Theia Electron Control Room] <--> S[Local platform service]
+  S <--> P[(Project folders: Git, Markdown, assets, SQLite)]
+  S <--> G[(Global profile: settings, providers, router history)]
+  S --> W[Supervised agent and plugin workers]
+  W <--> T[Engine, DCC, asset-service adapters]
+  W <--> M[Selected local or cloud models]
+```
+
+- The desktop uses a local, authenticated API. Plugins and engine bridges do not receive unrestricted access to that API by default.
+- The service records a work request as durable tasks and events. Workers claim tasks, publish findings to the Project board, create child tasks, and checkpoint results. Each side effect is linked to the responsible task, files, tool call, and validation record.
+- Confirmed coordination rule: use isolated Git worktrees for independent code/docs work and resource locks for shared live engine or asset operations. A task cannot claim a mutable engine session or asset source already held by another incompatible task. The coordinator validates and resolves conflicts before integration.
+- A new Project folder contains its game repository, readable records, Project configuration, Project SQLite database, and local task history. Secrets and shared routing observations stay in the global profile. A clone gets a new Project ID and should reset Git remotes by default.
+
+## Agent, model, and access design
+
+- Model providers implement one common request/stream/tool-use interface. Provider accounts are separate records, so the same provider can have multiple accounts. A model registry captures capabilities, price, limits, and freshness of metadata.
+- Local-model connectors point to an independently running endpoint on the user's machine or network. The platform does not install or supervise model-serving engines. Cloud and local endpoints use the same eligibility and routing pipeline, while retaining endpoint-specific capabilities and privacy settings.
+- The router first enforces account, agent, task, capability, and user-pool eligibility. It then estimates quality, cost, latency, and reliability from provider data and local outcomes. A small manager model can help classify and rank work but cannot override eligibility. The service records candidate sets, selections, validation, user feedback, and cost for ongoing policy learning.
+- The agent runtime uses a compact registry of eligible tools and skills. It loads full instructions/schemas only when chosen and can discover more during a task. Spawned agents inherit the parent's maximum access and receive their own task, context, model, budget, and worker identity.
+- A single tool broker applies Full access, Restricted, or Ask always at execution time and logs the decision. Full access permits high-risk actions as requested. Restricted and Ask always require strong boundaries for executable plugins; a plugin running with ordinary host filesystem or network access could bypass a prompt. Game-platform plugins therefore run in supervised, isolated workers with declared capabilities and brokered operations. No Docker or Podman dependency is required. The exact OS isolation mechanism must be chosen and verified for Windows and Linux.
+- Theia/VS Code-compatible extensions are a separate runtime with their own privileges. The catalog must show that distinction; our access mode cannot honestly promise to govern arbitrary third-party editor extensions unless their execution is isolated under the same policy.
+
+## Plugin and connector contract
+
+The unified Plugins catalog shows both coding extensions and platform plugins. Native game-platform plugins use a versioned manifest declaring entry points, contributed module/genre/agent/skill/tool/UI types, compatible versions, settings schema, dependencies, requested capabilities, and migrations. Runtime plugin code runs out of the main UI process. UI additions use registered extension points or declarative panels so community packages do not need to rebuild Theia. Theia's [extension model](https://theia-ide.org/docs/extensions/) distinguishes compiled Theia extensions from installable compatible extensions; the platform plugin API is our own contract.
+
+Engine and DCC connectors implement capability discovery, connection status, read/inspect, apply, and validate operations. Unity, Unreal, and Godot connectors use CLI and/or MCP. Other authoring and generation services use their actual supported MCP, CLI, or API surface. Adapters expose engine-specific actions without pretending Unity, Unreal, and Godot have identical capabilities. Meshy, Tripo3D, and similar services use the same asset job lifecycle: request, status, result, license/provenance, review, import, and validation. The source asset remains intact; preview conversion creates derived glTF/GLB where needed. [Three.js GLTFLoader](https://threejs.org/docs/pages/GLTFLoader.html) supports the preview format.
+
+**Chosen engine boundary:** use CLI and MCP connectors. Each connector reports its actual engine process or MCP session, Project identity when available, engine version, readiness, supported operations, and validation evidence. The platform must distinguish file/CLI access from a verified live editor connection and must not claim editor actions that its connector cannot perform. In-editor companion plugins may be considered as a later expansion of the connector system, but are not required by the current design.
+
+**MCP connection manager:** store each server's launch or endpoint definition in organized settings, with platform/Project scope and effective configuration shown. For a Docker-launched server, configure image reference, command, transport, mounts, environment/secrets, startup/stop behavior, and connection health. The platform starts and supervises only containers it launched; it can also connect to a user-managed server endpoint. The tool broker applies agent access rules to MCP calls, while container mounts and network privileges are shown as part of that server's capabilities. Support MCP transport/version negotiation across revisions 2025-03-26 through 2026-07-28 instead of hard-coding one; the 2026-07-28 revision removes protocol sessions and the initialize handshake, adds `server/discover`, and deprecates Roots, Sampling, and Logging, while many community engine/DCC servers still implement the older handshake ([MCP changelog](https://modelcontextprotocol.io/specification/latest/changelog)). Docker's [run command](https://docs.docker.com/reference/cli/docker/container/run) supports container input/output, mounts, and environment configuration; the MCP [TypeScript SDK](https://ts.sdk.modelcontextprotocol.io/) supports standard stdio and Streamable HTTP transports.
+
+## Storage, backup, and recovery
+
+Canon and design remain Markdown in Git. Agents write new durable knowledge to those reviewable files or structured Project records; they do not create vector-only canon. Project SQLite stores structured operational data, references, task/board history, and indexes. SQLite [FTS5](https://www.sqlite.org/fts5.html) can index text. A replaceable read/write vector-store adapter connects to a separately running local database such as Qdrant. It must create or select a Project namespace, upsert embeddings and source metadata, delete stale entries, and run filtered similarity queries. [Qdrant's point API](https://qdrant.tech/documentation/manage-data/points/) supports upsert and delete operations. The indexing service reacts to Project changes and periodically reconciles against source files; it records the embedding model/version so a model change can trigger reindexing. Search results carry file path, revision, and canon status. Indexes can be rebuilt from source, including after Project cloning or restore. Vector content from different Projects must not leak across queries.
+
+Backup jobs snapshot either whole Project folders or the separate global profile, with destination plugins for local, FTP, S3, Google Drive, and others. Both scopes are encrypted by default with a user-controlled recovery secret stored separately from backup archives. A backup manifest records content hashes, schema/plugin versions, and restore requirements. Restore goes to a new location first for verification and can then be selected as the active Project/profile. Recommended settings include manual and scheduled runs, retention rules, compression, integrity checks, and optional incremental archives. Use a maintained authenticated-encryption library and password-based key derivation; do not invent a new archive cipher or store the recovery secret with the archive.
+
+## Engineering defaults for remaining technology choices
+
+- **Repository layout:** use a TypeScript monorepo for the Theia app, platform service, shared contracts, plugin SDK, and first-party connectors. Keep Project files independent of the platform source repository. Publish versioned plugin contracts and migration rules.
+- **Local API:** use a versioned RPC/event protocol over a local-only, OS-native IPC endpoint with per-install authentication. Workers and plugins reach Projects and tools through service-issued capabilities. Do not expose the control API on a public network interface by default.
+- **Plugin languages:** publish a TypeScript SDK over a language-neutral process protocol. Permit Python and native executable workers through the same protocol, so DCC-specific integrations do not require a Node rewrite. Use registered UI extension points rather than allowing marketplace plugins to alter Theia internals directly.
+- **Skills and roles:** adopt the Agent Skills open format for installable skills and a Markdown-plus-frontmatter role package; use three-tier progressive disclosure through a broker `activate_skill` tool; accept every source form the `skills` CLI accepts; details in [SKILLS_AGENTS_AND_TOOLS.md](SKILLS_AGENTS_AND_TOOLS.md).
+- **Settings:** typed schemas with validation, migrations, and platform → Project → applicable session precedence. Each page shows the effective value and source. Plugin settings use the same schema and navigation system.
+- **Knowledge records:** give canon and design entries stable IDs and typed metadata in Markdown. The Project database stores links, task/board state, and index checkpoints; source files remain readable and reviewable. Use schema migrations that preserve older Project content.
+- **Semantic search:** ship a first-party Qdrant adapter and a versioned vector-store interface for alternatives. Connect to an existing service instead of bundling a vector database. Embedding models are selected from the same local/cloud model registry and pinned per index version; changing the embedding model triggers a controlled rebuild. Project identity must be enforced on every vector write and query.
+- **Model routing:** eligibility filters are deterministic; a quality-first contextual selection policy learns from engine validation, tests, reviewer findings, user feedback, cost, and latency. Explore only eligible models within configured budgets. Keep outcome history and policy versions so bad updates can be inspected and rolled back.
+- **Git integration:** auto-integrate validated, conflict-free work only when the selected access mode permits it. Conflicts are assigned for reconciliation and revalidation; never force an unseen overwrite. Shared live engine/DCC sessions use leases with expiry and explicit ownership.
+- **Recovery:** on service restart, reconcile tasks and external side effects before retrying. Workers use idempotency keys and checkpoints; uncertain non-idempotent actions stop for review. Window-close and restart behavior follow Settings.
+- **Security:** Full access remains unrestricted as requested. Restricted and Ask always fail closed for a plugin or connector when its OS isolation or requested capability cannot be enforced. Selected candidate mechanisms are AppContainer plus Job Objects on Windows and a bubblewrap launcher layered with Landlock and seccomp on Linux ([research](research/process-isolation.md)); verify them against real plugin escape tests before describing them as enforced.
+- **Validation:** contract tests for plugins/connectors, Project clone/restore and migration tests, agent recovery tests, and live engine/DCC tests only against a verified connected instance. Record exact command/tool results as evidence; a running process alone is not a live editor test.
+
+These are selected engineering defaults under the user's direction to move quickly. The exact Windows/Linux sandbox mechanisms, archive format, and database schemas require implementation research and testing, but they do not require another routine preference question.
