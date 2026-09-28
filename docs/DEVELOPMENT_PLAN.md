@@ -107,7 +107,7 @@ flowchart TD
 - **Depends on:** WP6.
 - **Scope:** tool registry with `execution-mode`, `side-effects`, and `evidence` metadata; Full/Restricted/Ask-always applied at execution with ceiling inheritance; question path for approvals; immutable audit log with secret redaction.
 - **Done when:** tests prove Full executes without gates, Restricted denies outside the allowlist, Ask always prompts for side effects, and spawned scopes never exceed the parent.
-- **Status:** Not started.
+- **Status:** Implemented (unit/integration-tested): tool registry with execution-mode/side-effect/evidence metadata, six builtin tools with Project path containment, broker decisions for all three modes with ceiling composition (`min` of session mode, request ceiling, and task ceiling), restricted side-effect and tool-glob allowlists, Ask-always approvals with timeout and restart recovery, redacted `tool_calls`/`approvals` audit tables, `tool.called` events, worker-side `ctx.tool()`, and Approve/Reject prompts in the Control Room. Prompt grouping and a dedicated audit view (U04) remain open.
 
 ### WP8 — Model providers, registry, and adaptive router
 
