@@ -1,0 +1,15 @@
+node_modules/
+/plugins/
+.playwright-mcp/
+lib/
+dist/
+coverage/
+.turbo/
+.browser_modules/
+*.log
+*.tsbuildinfo
+*.sqlite*
+.DS_Store
+apps/*/src-gen/
+apps/*/esbuild.mjs
+apps/*/gen-esbuild*.mjs

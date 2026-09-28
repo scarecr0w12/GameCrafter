@@ -1,19 +1,41 @@
-# Game Development Platform
+# GameCrafter
 
-This repository is the working home for the design of a free, open-source, locally run game development platform. The platform is intended for one user initially and is designed to support multiple game genres, engines, agents, model providers, and asset tools. A desktop-only Eclipse Theia application is the selected foundation for its all-in-one Game Development Control Room.
+GameCrafter is a free, open-source, locally run game development platform: an all-in-one Game Development Control Room built on Eclipse Theia, a local platform service that owns Projects, agents, model routing, and plugins, and CLI/MCP connectors to Unity, Unreal Engine, Godot, and game-art tools. It is designed for one user first and for anyone who installs it from GitHub. Licensed under [Apache-2.0](LICENSE).
+
+This repository holds both the design and the code. The design describes the complete intended system by architectural area; the code implements it in dependency-ordered work packages.
 
 ## Documents
 
-- [Living platform design](docs/PLATFORM_DESIGN.md): confirmed decisions, proposed architecture, and open questions. Update it as decisions are made so later discussions have a stable reference.
+- [Living platform design](docs/PLATFORM_DESIGN.md): confirmed decisions, proposed architecture, and decision log.
 - [Technical architecture](docs/TECHNICAL_ARCHITECTURE.md): the complete target stack with selected engineering defaults.
-- [Skills, agent roles, and tool connections](docs/SKILLS_AGENTS_AND_TOOLS.md): how installable skills (Agent Skills format), agent role packages, MCP connections, and engine/DCC connectors are specified.
-- [Decision register](docs/OPEN_DECISIONS.md): every currently identified unresolved product, technical, and verification decision, with recommended defaults and ownership.
-- [Research notes](docs/research/): sourced reference material gathered for the design (skills ecosystem, engine and DCC automation surfaces, process isolation, model routing sources). Each note carries a "Last researched" date; re-verify before relying on a fast-moving fact.
+- [Skills, agent roles, and tool connections](docs/SKILLS_AGENTS_AND_TOOLS.md): installable skills (Agent Skills format), agent role packages, MCP connections, and engine/DCC connectors.
+- [Decision register](docs/OPEN_DECISIONS.md): every identified unresolved product, technical, and verification decision, with recommended defaults and status.
+- [Development plan](docs/DEVELOPMENT_PLAN.md): work packages ordered by technical dependency, what each implements, and their current status.
+- [Research notes](docs/research/): sourced reference material. Each note carries a "Last researched" date; re-verify before relying on a fast-moving fact.
 
-The design describes the complete intended system. Its sections are architectural areas, not development phases or milestones.
+## Code
 
-Agent instructions for working in this repository are in [AGENTS.md](AGENTS.md).
+| Path | Package | Purpose |
+| --- | --- | --- |
+| `packages/contracts` | `@gamecrafter/contracts` | TypeBox schemas, types, RPC method table, error codes |
+| `packages/platform-service` | `@gamecrafter/platform-service` | Local daemon: authenticated JSON-RPC over a Unix socket / named pipe, profile SQLite, Project workspaces; CLI `gamecrafter-service start\|stop\|status` |
+| `packages/service-client` | `@gamecrafter/service-client` | Typed client used by the Theia backend and tests |
+| `packages/theia-control-room` | `@gamecrafter/theia-control-room` | Theia extension: service bridge, Project Home view, Create Project flow |
+| `apps/control-room` | `@gamecrafter/control-room` | Theia Electron application (the desktop product) |
+| `apps/control-room-browser` | `@gamecrafter/control-room-browser` | Development-only browser target for UI smoke tests |
 
-Agent skills and subagent profiles for developing the platform live under [.agents/](.agents/).
+### Build and run
 
-Agent skills and subagent profiles for developing the platform live under [.agents/](.agents/).
+Requirements: Node 24, npm 11, git. Linux additionally needs `libx11-dev libxkbfile-dev libsecret-1-dev` for Theia's native modules.
+
+```bash
+npm ci
+npx turbo run build typecheck lint test   # packages
+npm run download:plugins                  # VS Code builtin plugins (Git, themes, language basics)
+npm run build -w @gamecrafter/control-room-browser && npm run start -w @gamecrafter/control-room-browser   # http://127.0.0.1:3000
+npm run build -w @gamecrafter/control-room && npm run start -w @gamecrafter/control-room                   # Electron
+```
+
+The Control Room starts the platform service automatically if it is not running. Set `GAMECRAFTER_PROFILE_DIR` to use a separate profile (settings, token, socket, registry) for testing.
+
+Agent instructions for working in this repository are in [AGENTS.md](AGENTS.md); project skills and subagent profiles live under [.agents/](.agents/).

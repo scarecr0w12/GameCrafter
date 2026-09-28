@@ -2,27 +2,23 @@
 name: theia-app-dev
 description: Scaffold, extend, and run the Eclipse Theia desktop application and Theia extensions for the Game Development Control Room (TypeScript, InversifyJS DI, contribution points, Electron target, Theia AI agents and tool providers). Use when creating the Theia monorepo, adding a Theia extension, wiring a widget/command/menu/preference, or integrating a Theia AI agent.
 license: MIT
-compatibility: Requires Node.js >=18, yarn 1.x (Theia default), and native build tools for Electron rebuilds. Desktop target is Electron on Windows/Linux only.
+compatibility: Requires Node.js >=24, npm 11 (Theia dropped yarn), and native build tools for Electron rebuilds (Linux: libx11-dev libxkbfile-dev libsecret-1-dev). Desktop target is Electron on Windows/Linux only.
 metadata:
   author: gamedev-platform
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Theia application and extension development
 
 Project rule: the Theia app is a **client** of the local platform service. Do not put durable state (tasks, board, router learning, Project records) in Theia frontend/backend code; call the service over its RPC API. See `docs/TECHNICAL_ARCHITECTURE.md`.
 
-## Scaffold (first time)
+## Where things are in this repository
 
-```bash
-npm install -g yo generator-theia-extension
-mkdir <app> && cd <app>
-yo theia-extension   # pick "Hello World" (or "Empty") and answer prompts
-yarn                 # installs workspaces
-yarn build:electron && yarn start:electron
-```
-
-The generator creates a yarn/lerna monorepo with `browser-app/`, `electron-app/`, and one extension package. Keep `browser-app` only as a dev convenience; the product is desktop-only (`"theia": { "target": "electron" }`). Source: [Build your own IDE/Tool](https://theia-ide.org/docs/composing_applications/).
+- `apps/control-room` (Electron, the product) and `apps/control-room-browser` (browser, dev-only for Playwright smoke tests) are Theia application packages; `packages/theia-control-room` is the Theia extension. All `@theia/*` packages are pinned to **1.75.0**, `electron` to **42.8.1**, React 19 (a Theia peer dependency since 1.74). Never bump one Theia package alone.
+- Build: `npm run build -w @gamecrafter/control-room-browser` / `-w @gamecrafter/control-room` (the Electron script runs `theia rebuild:electron` first). Start: `npm run start -w <app>`; the browser target listens on `http://127.0.0.1:3000`. `npm run download:plugins` fetches the VS Code builtin plugins listed under `theiaPlugins` into `/plugins` (shared by both apps). Theia-generated files (`src-gen/`, `lib/`, `gen-esbuild.*.mjs`, `esbuild.mjs`) are git-ignored.
+- Theia builds are excluded from the default `turbo run build`; use `npm run build:apps`.
+- `@theia/git` is no longer published. Git, merge-conflict, themes, and language basics come from the `vscode.*` builtin plugins (`eclipse-theia/vscode-builtin-extensions` releases). `@theia/getting-started` is deliberately not included: Project Home is the landing view.
+- Do not use `yo generator-theia-extension`; add new extensions by copying `packages/theia-control-room`'s package shape. Source: [Build your own IDE/Tool](https://theia-ide.org/docs/composing_applications/).
 
 ## Anatomy of an extension package
 
@@ -30,12 +26,12 @@ The generator creates a yarn/lerna monorepo with `browser-app/`, `electron-app/`
 - Each module file default-exports an InversifyJS `ContainerModule`: `export default new ContainerModule(bind => { bind(CommandContribution).to(MyCommands); bind(MenuContribution).to(MyMenus); });`
 - Behaviour is added by implementing `*Contribution` interfaces (`CommandContribution`, `MenuContribution`, `KeybindingContribution`, `FrontendApplicationContribution`, `BackendApplicationContribution`, `PreferenceContribution`, `WidgetFactory`, …) and binding them; the runtime multi-injects all contributions of a kind.
 - Use `@injectable()` classes and `@inject(Service)` constructor params; never `new` a Theia service.
-- Add the extension to the app's `dependencies` in `electron-app/package.json`; the app scripts run `theia rebuild:electron` then `theia build`.
+- Add the extension to both apps' `dependencies` (`apps/control-room/package.json`, `apps/control-room-browser/package.json`); the Electron app's build script runs `theia rebuild:electron` then `theia build`.
 Source: [Authoring Theia Extensions](https://theia-ide.org/docs/authoring_extensions/).
 
 ## Frontend/backend split
 
-Frontend (browser/Electron renderer) and backend (Node) each have their own DI container. Cross-process calls use Theia's JSON-RPC (`ConnectionHandler` / `RpcConnectionHandler` in the backend, proxied service in the frontend). Anything touching the filesystem, child processes, or the platform service belongs in the backend module. Source: [Architecture overview](https://theia-ide.org/docs/architecture/), [JSON-RPC](https://theia-ide.org/docs/json_rpc/).
+Frontend (browser/Electron renderer) and backend (Node) each have their own DI container. Cross-process calls use Theia's JSON-RPC: in the backend bind `ConnectionHandler` to a `RpcConnectionHandler` (`@theia/core/lib/common/messaging/proxy-factory`); in the frontend create the proxy with `ServiceConnectionProvider.createProxy(container, path, client)` (`@theia/core/lib/browser/messaging/service-connection-provider`). See `packages/theia-control-room/src/{node,browser}/control-room-*-module.ts` for the working pattern. Anything touching the filesystem, child processes, or the platform service belongs in the backend module; the backend reaches the platform service only through `@gamecrafter/service-client`. Source: [Architecture overview](https://theia-ide.org/docs/architecture/), [JSON-RPC](https://theia-ide.org/docs/json_rpc/).
 
 ## Custom views
 
@@ -60,8 +56,8 @@ Theia distinguishes compiled **Theia extensions** from runtime **plugins** (VS C
 
 ## Gotchas
 
-- Generated `package.json` snippets in Theia docs pin `"@theia/core": "latest"`; pin an exact Theia version across all packages and run `theia check:theia-version` (postinstall in the generated root).
-- Electron native modules must be rebuilt (`theia rebuild:electron`) after dependency changes; failures usually mean missing build tools, not code errors.
-- Theia uses yarn 1.x workspaces + lerna by default; do not mix with pnpm/npm in the same tree.
+- Theia docs snippets pin `"@theia/core": "latest"`; here every Theia package is pinned to the same exact version. Check a new Theia release is at least 7 days old before adopting it.
+- Electron native modules must be rebuilt (`theia rebuild:electron`) after dependency changes; failures usually mean missing build tools, not code errors. npm has installed `@electron/rebuild`'s CLI without its executable bit; the Electron app's `prebuild` script restores it.
+- The tree is npm workspaces only; do not introduce yarn or pnpm.
 - Keep Theia-facing TypeScript strict; Theia's own tsconfig uses `strict: true` and decorators (`experimentalDecorators`, `emitDecoratorMetadata`) which InversifyJS requires.
 - Never let plugin or agent code depend on Theia internals; keep Project/task records in the service's contracts package.

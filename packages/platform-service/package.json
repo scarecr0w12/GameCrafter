@@ -1,0 +1,25 @@
+{
+  "name": "@gamecrafter/platform-service",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "gamecrafter-service": "lib/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@gamecrafter/contracts": "0.1.0",
+    "vscode-jsonrpc": "9.0.2"
+  },
+  "devDependencies": {
+    "@gamecrafter/service-client": "0.1.0"
+  }
+}

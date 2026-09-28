@@ -1,6 +1,6 @@
 # Game Development Platform: Decision Register
 
-**Status:** Comprehensive register of decisions still to settle as of 2026-09-27. This is a design document, not an implementation claim.  
+**Status:** Comprehensive register of decisions still to settle as of 2026-09-28. This is a design document, not an implementation claim.  
 **Scope:** The complete Windows/Linux desktop platform. These are architectural areas, not milestones or phases.  
 **Related records:** [Platform design](PLATFORM_DESIGN.md) and [technical architecture](TECHNICAL_ARCHITECTURE.md).
 **Resolution record:** [Skills, agent roles, and tool connections](SKILLS_AGENTS_AND_TOOLS.md) resolves or gives defaults for several entries below; each affected entry carries a **Status** line.
@@ -11,9 +11,9 @@ This register does **not** reopen decisions already confirmed: Theia desktop Con
 
 ## 1. Product identity and distribution
 
-**P01 — Name, identity, and trademark (Product).** Set the public platform name, repository name, app ID, icons, and whether community forks may reuse the branding. **Default:** use a working name in code until the public identity is chosen; keep the app ID and data directory stable once installers are released. **Why it matters:** renaming later affects updates, profile paths, plugin compatibility, and user trust.
+**P01 — Name, identity, and trademark (Product).** Set the public platform name, repository name, app ID, icons, and whether community forks may reuse the branding. **Default:** use a working name in code until the public identity is chosen; keep the app ID and data directory stable once installers are released. **Why it matters:** renaming later affects updates, profile paths, plugin compatibility, and user trust. **Status:** Resolved (Confirmed, 2026-09-28): the platform is **GameCrafter**; npm scope `@gamecrafter/*`, metadata prefix `gamecrafter-`, profile directory `gamecrafter`, Project folder `.gamecrafter/`; see the [decision log](PLATFORM_DESIGN.md#decision-log). Icons and fork-branding rules remain open.
 
-**P02 — Open-source license and contribution rules (Product).** Select the license for the platform, plugin SDK, examples, bundled assets, and documentation; define contribution and third-party notice policy. **Default:** favor a permissive OSI-approved license after checking Theia and bundled dependency obligations, and keep sample/game assets separately licensed. **Resolution:** record exact license files and contribution requirements before publishing the repository.
+**P02 — Open-source license and contribution rules (Product).** Select the license for the platform, plugin SDK, examples, bundled assets, and documentation; define contribution and third-party notice policy. **Default:** favor a permissive OSI-approved license after checking Theia and bundled dependency obligations, and keep sample/game assets separately licensed. **Resolution:** record exact license files and contribution requirements before publishing the repository. **Status:** Resolved (Confirmed, 2026-09-28): **Apache-2.0** for platform code, SDK, and documentation (`LICENSE`, `NOTICE` at the repository root); sample/game assets stay separately licensed. Contribution rules and third-party notice policy remain open.
 
 **P03 — Supported Windows and Linux variants (Engineering).** Define minimum Windows release, Linux packaging formats, CPU architecture, graphics requirements for previews, and whether Wayland/X11 differences need dedicated support. **Default:** target current supported 64-bit Windows and mainstream 64-bit Linux desktops; publish a tested distribution matrix rather than implying every distro works. Connector support is reported separately per OS.
 
@@ -23,7 +23,7 @@ This register does **not** reopen decisions already confirmed: Theia desktop Con
 
 ## 2. Project, Git, and local data contracts
 
-**W01 — Project folder layout and manifest (Engineering).** Fix where engine files, Markdown canon, generated previews, Project settings, SQLite, plugin references, logs, and temporary worktrees live. Define stable Project IDs and schema version fields. **Default:** a small versioned manifest at the folder root, readable `docs/` records, a hidden platform metadata directory, and explicit cache directories that can be rebuilt.
+**W01 — Project folder layout and manifest (Engineering).** Fix where engine files, Markdown canon, generated previews, Project settings, SQLite, plugin references, logs, and temporary worktrees live. Define stable Project IDs and schema version fields. **Default:** a small versioned manifest at the folder root, readable `docs/` records, a hidden platform metadata directory, and explicit cache directories that can be rebuilt. **Status:** default implemented as manifest v1 (`gamecrafter.project.json`) and the folder layout in [DEVELOPMENT_PLAN.md WP3](DEVELOPMENT_PLAN.md#wp3--project-workspace); engine files default to `game/`, operational SQLite to `.gamecrafter/` (not versioned in the Project's Git repository). Log and temporary-worktree locations remain open.
 
 **W02 — Engine identity versus engine version (Engineering).** The chosen engine is locked, but version upgrades and multiple installed versions still need rules. **Default:** keep the engine family immutable; store a preferred engine version and detected actual version, allow deliberate version upgrades with compatibility checks and backups, and never silently rewrite a Project to another engine.
 
@@ -175,7 +175,7 @@ This register does **not** reopen decisions already confirmed: Theia desktop Con
 
 **Q02 — Performance and resource limits (Engineering).** Decide service memory/CPU targets, indexing throttles, worker concurrency, project-size limits, cache quotas, and behavior on low-resource machines. **Default:** configurable budgets and backpressure; the UI remains responsive while agents, vector indexing, backups, and preview conversion run separately.
 
-**Q03 — Packaging and reproducible builds (Engineering).** Define toolchain versions, dependency locks, Windows/Linux CI builds, installer/package formats, checksums/signing, release notes, and rollback artifacts. **Default:** pinned dependencies and automated build/test workflows producing verifiable Windows and Linux packages. No hosted service dependency.
+**Q03 — Packaging and reproducible builds (Engineering).** Define toolchain versions, dependency locks, Windows/Linux CI builds, installer/package formats, checksums/signing, release notes, and rollback artifacts. **Default:** pinned dependencies and automated build/test workflows producing verifiable Windows and Linux packages. No hosted service dependency. **Status:** toolchain pinned (Node 24, npm workspaces, Turborepo, Theia 1.75.0, Electron 42.8.1) and a CI workflow added in [DEVELOPMENT_PLAN.md WP0](DEVELOPMENT_PLAN.md#wp0--repository-foundation); installers, signing, and release artifacts remain open (WP19).
 
 **Q04 — Plugin SDK and contributor documentation (Engineering).** Decide example plugins, API reference, versioning policy, compatibility tests, and migration guides for genre packs, connectors, skills, and UI panels. **Default:** publish runnable examples and conformance tests with the SDK so a community plugin can be built without reading platform internals.
 

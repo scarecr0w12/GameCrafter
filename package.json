@@ -1,0 +1,43 @@
+{
+  "name": "gamecrafter",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "npm@11.19.0",
+  "scripts": {
+    "build": "turbo run build --filter='./packages/*'",
+    "build:apps": "turbo run build --filter='./apps/*'",
+    "download:plugins": "npm run download:plugins -w @gamecrafter/control-room",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "24.13.6",
+    "eslint": "10.11.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.8",
+    "turbo": "2.11.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1"
+  },
+  "allowScripts": {
+    "@theia/ffmpeg@1.75.0": true,
+    "puppeteer@25.1.0": true,
+    "esbuild@0.28.2": true,
+    "@parcel/watcher@2.6.0": true,
+    "drivelist@12.0.2": true,
+    "keytar@7.9.0": true,
+    "native-keymap@2.5.0": true,
+    "node-pty@1.2.0-beta.12": true,
+    "msgpackr-extract@3.0.4": true
+  }
+}

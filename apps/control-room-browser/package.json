@@ -1,0 +1,69 @@
+{
+  "name": "@gamecrafter/control-room-browser",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Development-only browser target for UI smoke tests; the product is desktop-only.",
+  "main": "lib/backend/main.js",
+  "scripts": {
+    "build": "theia build --mode development",
+    "start": "theia start --port 3000 --hostname 127.0.0.1 --plugins=local-dir:../../plugins",
+    "download:plugins": "theia download:plugins --rate-limit=15 --parallel=false"
+  },
+  "theia": {
+    "target": "browser",
+    "frontend": {
+      "config": {
+        "applicationName": "GameCrafter",
+        "defaultTheme": {
+          "light": "light",
+          "dark": "dark"
+        }
+      }
+    }
+  },
+  "theiaPluginsDir": "../../plugins",
+  "theiaPlugins": {
+    "vscode.git": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.git.vsix",
+    "vscode.git-base": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.git-base.vsix",
+    "vscode.merge-conflict": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.merge-conflict.vsix",
+    "vscode.theme-defaults": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.theme-defaults.vsix",
+    "vscode.markdown": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.markdown.vsix",
+    "vscode.markdown-language-features": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.markdown-language-features.vsix",
+    "vscode.json": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.json.vsix",
+    "vscode.json-language-features": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.json-language-features.vsix",
+    "vscode.yaml": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.yaml.vsix",
+    "vscode.typescript": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.typescript.vsix",
+    "vscode.javascript": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.javascript.vsix",
+    "vscode.csharp": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.csharp.vsix",
+    "vscode.cpp": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.cpp.vsix",
+    "vscode.python": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.python.vsix",
+    "vscode.shaderlab": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.shaderlab.vsix",
+    "vscode.hlsl": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.hlsl.vsix"
+  },
+  "dependencies": {
+    "@gamecrafter/theia-control-room": "0.1.0",
+    "@theia/core": "1.75.0",
+    "@theia/editor": "1.75.0",
+    "@theia/filesystem": "1.75.0",
+    "@theia/workspace": "1.75.0",
+    "@theia/navigator": "1.75.0",
+    "@theia/terminal": "1.75.0",
+    "@theia/preferences": "1.75.0",
+    "@theia/messages": "1.75.0",
+    "@theia/monaco": "1.75.0",
+    "@theia/markers": "1.75.0",
+    "@theia/plugin-ext": "1.75.0",
+    "@theia/plugin-ext-vscode": "1.75.0",
+    "@theia/search-in-workspace": "1.75.0",
+    "@theia/process": "1.75.0",
+    "@theia/keymaps": "1.75.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@theia/cli": "1.75.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
+  }
+}

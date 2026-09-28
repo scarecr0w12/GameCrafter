@@ -1,8 +1,10 @@
 # Game Development Platform: Living Design
 
 **Status:** Working design, not an implementation claim.  
-**Last updated:** 2026-09-27  
+**Last updated:** 2026-09-28  
 **Purpose:** Preserve decisions and open questions as we design the complete platform.
+
+**Implementation status:** [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) tracks which work packages are implemented; nothing in this document is an implementation claim.
 
 **Discussion preference:** The user delegated remaining routine technology choices to best-practice judgment. Present a complete recommendation rather than asking serial approval questions; preserve the difference between user-confirmed requirements and selected engineering defaults.
 
@@ -148,7 +150,7 @@ Use the delegated best-practice judgment for these details, record the choice, a
 - What signals establish model performance by work type: automated evaluation, engine validation, user ratings, reviewer judgments, or a combination? How should stale or sparse data affect routing?
 - Which game concepts are shared by every project, and which belong only to genre modules? How are hybrid genres represented?
 - What are the canonical tool contracts for engine edits, asset generation, import, review, and validation?
-- What license and contribution rules should govern the open-source project?
+- What contribution rules and third-party notice policy should accompany the Apache-2.0 license?
 - Should the platform embed a skills.sh browsing view (requires a proxy for its OIDC-only API) or rely on paste-a-source installation only?
 
 ## Decision log
@@ -215,6 +217,9 @@ Use the delegated best-practice judgment for these details, record the choice, a
 | Auto continually learns from local outcomes, human feedback, and available online sources, with controlled exploration among eligible models | Confirmed | User discussion |
 | Recursive learning improves the router's model selections; it does not fine-tune LLM model weights | Confirmed | User discussion |
 | Router performance learning is shared across all local Projects, while task and Project context remain available for scoring | Confirmed | User discussion |
+| The platform is named **GameCrafter** (npm scope `@gamecrafter/*`, metadata prefix `gamecrafter-`, Project folder `.gamecrafter/`) | Confirmed | User discussion |
+| Platform code, SDK, and documentation are licensed under Apache-2.0; sample/game assets are licensed separately | Confirmed | User discussion |
+| Code and design documents share one monorepo; the development plan orders work packages by technical dependency only | Confirmed | User discussion |
 | Adopt the Agent Skills (`SKILL.md`) open format for installable skills, with platform metadata under namespaced keys | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |
 | Agent roles are Markdown-plus-frontmatter packages with an access ceiling that delegation cannot exceed | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |
 | Every Project folder carries a generated AGENTS.md and a `.agents/skills/` directory | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |

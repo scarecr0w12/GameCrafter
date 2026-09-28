@@ -1,0 +1,34 @@
+{
+  "name": "@gamecrafter/theia-control-room",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "keywords": [
+    "theia-extension"
+  ],
+  "files": [
+    "lib",
+    "src"
+  ],
+  "theiaExtensions": [
+    {
+      "frontend": "lib/browser/control-room-frontend-module",
+      "backend": "lib/node/control-room-backend-module"
+    }
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@theia/core": "1.75.0",
+    "@gamecrafter/contracts": "0.1.0",
+    "@gamecrafter/service-client": "0.1.0",
+    "@gamecrafter/platform-service": "0.1.0"
+  }
+}

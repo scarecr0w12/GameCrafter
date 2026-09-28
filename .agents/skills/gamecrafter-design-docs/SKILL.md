@@ -1,5 +1,5 @@
 ---
-name: gdp-design-docs
+name: gamecrafter-design-docs
 description: Edit or extend the Game Development Platform design documents in docs/ (PLATFORM_DESIGN, TECHNICAL_ARCHITECTURE, SKILLS_AGENTS_AND_TOOLS, OPEN_DECISIONS). Use when recording a decision, resolving a decision-register entry, adding an architectural proposal, or checking cross-document consistency in this repository.
 license: MIT
 metadata:
@@ -9,7 +9,7 @@ metadata:
 
 # Working on the platform design documents
 
-This repository is design-only. The deliverables are Markdown documents; consistency between them is the quality bar.
+The design documents under `docs/` are the specification the code in `packages/` and `apps/` implements. Consistency between them is the quality bar; the code may only be described as implementing a section once that behaviour is covered by tests in this repository.
 
 ## Document roles (never blur these)
 
@@ -19,7 +19,7 @@ This repository is design-only. The deliverables are Markdown documents; consist
 | `docs/TECHNICAL_ARCHITECTURE.md` | Selected engineering defaults for the stack | Agent may update under delegated judgment |
 | `docs/SKILLS_AGENTS_AND_TOOLS.md` | Skill/role/MCP/connector contracts | Agent may update |
 | `docs/OPEN_DECISIONS.md` | Decision register (IDs like A03, S02, C04) | Agent updates `**Status:**` in place; never delete an entry |
-| `docs/research/*.md` | Sourced reference notes | Use the `gdp-research-note` skill |
+| `docs/research/*.md` | Sourced reference notes | Use the `gamecrafter-research-note` skill |
 
 ## Procedure: record a decision
 
@@ -40,7 +40,8 @@ This repository is design-only. The deliverables are Markdown documents; consist
 - No phases, milestones, roadmaps, "first game", or "MVP" language. Sections are architectural areas.
 - Present complete recommendations; do not add lists of questions for the user unless genuinely product/creative.
 - Never state something is implemented, tested, or secure. Write "candidate", "selected direction", "remains Verify".
-- Prefix for platform-specific metadata keys is `gdp-` until decision P01 (name) is resolved.
+- Prefix for platform-specific metadata keys is `gamecrafter-` (P01 resolved: the platform is named GameCrafter).
+- Dependency ordering between work packages belongs only in `docs/DEVELOPMENT_PLAN.md`; when a work package lands, update its "Status" there and the register entries it resolves.
 - Keep `**Last updated:**` current in any header you touch (format `YYYY-MM-DD`).
 
 ## Link check (run after edits)

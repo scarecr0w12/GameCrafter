@@ -1,5 +1,5 @@
 ---
-name: gdp-research-note
+name: gamecrafter-research-note
 description: Write or refresh a sourced research note under docs/research/ for the Game Development Platform (engine CLIs, MCP servers, DCC tools, sandboxing, model providers, agent standards). Use when gathering external facts before a design decision, or when a note's "Last researched" date is stale.
 license: MIT
 metadata:
@@ -41,7 +41,7 @@ Length target: 80–200 lines. Split by topic rather than exceed it.
 3. For open-source projects record: URL, language, how it connects (stdio/HTTP/socket/addon), what it exposes, license, and last activity date **only if you actually saw it** — otherwise "not verified in this pass".
 4. For APIs record: auth scheme, job lifecycle, output formats, rate-limit/pricing page link, license/provenance fields (or state that none were found).
 5. For OS/security mechanisms: what it restricts (fs/network/process), unprivileged availability, known deployments. Never write "secure" or "proven".
-6. Write the note, then add a `**Status:**` pointer from the relevant `OPEN_DECISIONS.md` entry to the note (see `gdp-design-docs`).
+6. Write the note, then add a `**Status:**` pointer from the relevant `OPEN_DECISIONS.md` entry to the note (see `gamecrafter-design-docs`).
 
 ## Gotchas
 

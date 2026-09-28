@@ -24,7 +24,7 @@ Rationale: the `SKILL.md` format is already supported by dozens of agent product
 
 ### 2.1 Format
 
-A platform skill **is** an Agent Skills directory. `SKILL.md` frontmatter follows the specification exactly (`name` matching the directory, `description` ≤1024 chars that says what and when, optional `license`, `compatibility`, `allowed-tools`). Platform-specific data lives under `metadata` with a `gdp-` prefix (working name; rename with P01) so unknown-key rules of other clients are respected:
+A platform skill **is** an Agent Skills directory. `SKILL.md` frontmatter follows the specification exactly (`name` matching the directory, `description` ≤1024 chars that says what and when, optional `license`, `compatibility`, `allowed-tools`). Platform-specific data lives under `metadata` with a `gamecrafter-` prefix (P01 resolved the name as GameCrafter) so unknown-key rules of other clients are respected:
 
 ```yaml
 ---
@@ -33,17 +33,17 @@ description: Audit a Godot 4 scene tree for missing scripts, broken node paths, 
 license: MIT
 compatibility: Requires a Godot 4.x editor binary on PATH for headless checks.
 metadata:
-  gdp-version: "1.2.0"
-  gdp-engines: godot
-  gdp-genres: "*"
-  gdp-work-types: validation,code-review
-  gdp-roles: validator,engine-engineer
-  gdp-capabilities: process.spawn:godot,fs.read:project
-  gdp-min-platform: "0.1"
+  gamecrafter-version: "1.2.0"
+  gamecrafter-engines: godot
+  gamecrafter-genres: "*"
+  gamecrafter-work-types: validation,code-review
+  gamecrafter-roles: validator,engine-engineer
+  gamecrafter-capabilities: process.spawn:godot,fs.read:project
+  gamecrafter-min-platform: "0.1"
 ---
 ```
 
-`gdp-*` keys are advisory hints for the platform's catalog and eligibility filters. They are validated by the platform and ignored by other clients. All values are strings (the spec requires string→string maps); lists are comma-separated.
+`gamecrafter-*` keys are advisory hints for the platform's catalog and eligibility filters. They are validated by the platform and ignored by other clients. All values are strings (the spec requires string→string maps); lists are comma-separated.
 
 ### 2.2 Storage and scopes
 
@@ -62,7 +62,7 @@ Confirmed requirement satisfied: skills are installed once, enabled per Project,
 
 The platform's skill installer accepts the same source forms as the `skills` CLI so users can paste any `npx skills add` argument: `owner/repo`, full GitHub/GitLab/Azure URL, tree URL to one skill, any Git URL, local path, direct `SKILL.md`/archive URL, and skills.sh pack URLs (`https://skills.sh/p/<id>`). Enforce download caps comparable to the CLI (10 MiB archive, 25 MiB extracted, 1000 files) with user override. Git sources record the resolved commit; archive sources record a content hash.
 
-Before activation the catalog UI shows: source, resolved version/commit, license, `compatibility`, requested `gdp-capabilities`, `allowed-tools`, and a diff of the `SKILL.md` body against the previously installed version on update. skills.sh audit results are shown when available, with the caveat that skills.sh cannot guarantee safety; the platform's own review is the trust decision. Because the skills.sh API is only available to Vercel-OIDC-authenticated callers, in-app browsing of the leaderboard is a possible later feature behind an optional proxy plugin, not a core dependency; local and Git installation never depend on it.
+Before activation the catalog UI shows: source, resolved version/commit, license, `compatibility`, requested `gamecrafter-capabilities`, `allowed-tools`, and a diff of the `SKILL.md` body against the previously installed version on update. skills.sh audit results are shown when available, with the caveat that skills.sh cannot guarantee safety; the platform's own review is the trust decision. Because the skills.sh API is only available to Vercel-OIDC-authenticated callers, in-app browsing of the leaderboard is a possible later feature behind an optional proxy plugin, not a core dependency; local and Git installation never depend on it.
 
 Trust rule: Project-local and compatibility-scanned skills are loaded only when the Project folder is trusted (Projects created by the platform are trusted; imported or cloned-from-external folders prompt once).
 
@@ -72,7 +72,7 @@ Three-tier progressive disclosure, as in the specification:
 
 1. **Catalog (tier 1).** For the current task the platform computes the *eligible set* deterministically: enabled in Project ∩ eligible for the agent role ∩ eligible for the work type ∩ engine/genre tags compatible ∩ requested capabilities permitted under the current access mode. Only that set's `name` + `description` + `location` enter context. Filtered skills are hidden entirely. If the set is empty, no catalog or activation tool is registered.
 2. **Instructions (tier 2).** Activation goes through a dedicated `activate_skill(name)` broker tool whose `name` parameter is an enum of the eligible set. The tool returns the body with frontmatter stripped, wrapped in a structured `<skill_content name=… version=… dir=…>` block that lists bundled resources without reading them. Activation is recorded (task ID, skill name, version/hash, agent, model) so outcomes trace to the exact skill version.
-3. **Resources (tier 3).** Skill directories are allowlisted for read access in every access mode so `references/`, `assets/`, and `scripts/` can be read without approval prompts. `scripts/` execution is **not** implicitly allowed: it runs through the tool broker under the skill's declared `gdp-capabilities` and the session's access mode.
+3. **Resources (tier 3).** Skill directories are allowlisted for read access in every access mode so `references/`, `assets/`, and `scripts/` can be read without approval prompts. `scripts/` execution is **not** implicitly allowed: it runs through the tool broker under the skill's declared `gamecrafter-capabilities` and the session's access mode.
 
 Ranking when the eligible set is large (>~40 skills): order by observed success for this work type/engine, then lexical match between task text and description, then recency of use; truncate the catalog and expose a `search_skills(query)` broker tool so agents can discover more mid-task. This satisfies the confirmed requirement that agents can discover and load additional eligible skills during an active task.
 
@@ -105,7 +105,7 @@ disallowed-tools: engine.*,shell.*
 skills: narrative-style-guide    # preloaded in full at start
 mcp-servers: []                  # named servers from settings; inline definitions not allowed for marketplace roles
 max-turns: 60
-memory: project                  # <project>/.gdp/agent-memory/<name>/
+memory: project                  # <project>/.gamecrafter/agent-memory/<name>/
 board-subscriptions: narrative,canon
 isolation: none                  # or worktree (code roles)
 ---
@@ -172,14 +172,14 @@ Selected direction from `research/process-isolation.md`: Windows workers run in 
 
 ## 5. Project folder additions
 
-Each Project folder gains: `AGENTS.md` (generated, describes canon location, records, engine, conventions, and how to run validation), `.agents/skills/` (Project-authored skills), `.gdp/roles/` (Project-authored roles), `.gdp/agent-memory/<role>/`, and `.gdp/skill-enablement` state in Project SQLite. Cloning copies all of these; pinned skill versions missing on the destination machine are offered for exact reinstall (S07 default).
+Each Project folder gains: `AGENTS.md` (generated, describes canon location, records, engine, conventions, and how to run validation), `.agents/skills/` (Project-authored skills), `.gamecrafter/roles/` (Project-authored roles), `.gamecrafter/agent-memory/<role>/`, and `.gamecrafter/skill-enablement` state in Project SQLite. Cloning copies all of these; pinned skill versions missing on the destination machine are offered for exact reinstall (S07 default).
 
 ## 6. Decision-register effects
 
 | Entry | Effect of this document |
 | --- | --- |
 | A03 | Resolved: role package format, catalog tiers, mid-task discovery, activation recording |
-| S04 (skill portion) | Resolved: skills are Agent Skills directories with `gdp-*` metadata |
+| S04 (skill portion) | Resolved: skills are Agent Skills directories with `gamecrafter-*` metadata |
 | S06 | Resolved for skills/roles: CLI-compatible sources, caps, trust display; marketplace remains optional |
 | S07 | Default confirmed: pinned versions in Project, exact-reinstall offer on clone |
 | S08 | Resolved: deterministic eligibility, ranking, search tool, outcome linkage |
