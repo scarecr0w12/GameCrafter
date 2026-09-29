@@ -10,13 +10,16 @@ import {
 import { PlatformServiceConnection } from './service-connection';
 import { ControlRoomServiceImpl } from './control-room-service';
 import { ControlRoomShutdownContribution } from './control-room-shutdown-contribution';
+import { AssetPreviewContribution } from './asset-preview-contribution';
 
 export default new ContainerModule((bind) => {
   bind(PlatformServiceConnection).toSelf().inSingletonScope();
   bind(ControlRoomServiceImpl).toSelf().inSingletonScope();
   bind(ControlRoomService).toService(ControlRoomServiceImpl);
   bind(ControlRoomShutdownContribution).toSelf().inSingletonScope();
+  bind(AssetPreviewContribution).toSelf().inSingletonScope();
   bind(BackendApplicationContribution).toService(ControlRoomShutdownContribution);
+  bind(BackendApplicationContribution).toService(AssetPreviewContribution);
   bind(ConnectionHandler)
     .toDynamicValue(
       (ctx) =>

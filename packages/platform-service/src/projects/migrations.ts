@@ -391,4 +391,27 @@ export const projectMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 8,
+    name: 'create asset jobs and preview cache',
+    up: `
+      CREATE TABLE asset_jobs (
+        job_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        job_json TEXT NOT NULL
+      );
+      CREATE INDEX asset_jobs_project_created_idx ON asset_jobs(project_id, created_at DESC);
+      CREATE INDEX asset_jobs_project_status_idx ON asset_jobs(project_id, status, created_at DESC);
+      CREATE TABLE asset_previews (
+        source_path TEXT PRIMARY KEY,
+        source_sha256 TEXT NOT NULL,
+        preview_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX asset_previews_created_idx ON asset_previews(created_at);
+    `,
+  },
 ];

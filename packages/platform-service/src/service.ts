@@ -54,6 +54,7 @@ import { PluginRegistry } from './plugins/plugin-registry';
 import { PluginService } from './plugins/plugin-service';
 import type { IsolationLauncher } from './plugins/isolation/types';
 import { EngineConnectorService } from './engines/engine-connector-service';
+import { AssetService } from './assets/asset-service';
 import { KnowledgeService } from './knowledge/knowledge-service';
 import type { VectorStore } from './knowledge/vector-store';
 
@@ -87,6 +88,7 @@ export class PlatformService {
     private readonly boardMaintenanceScheduler: BoardMaintenanceScheduler,
     private readonly pluginHost: PluginHost,
     private readonly knowledgeService: KnowledgeService,
+    private readonly assetService: AssetService,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -225,6 +227,11 @@ export class PlatformService {
       if (!engineRef.service) throw new Error('Engine connector service is not initialized');
       return engineRef.service;
     };
+    const assetRef: { service?: AssetService } = {};
+    const assets = (): AssetService => {
+      if (!assetRef.service) throw new Error('Asset service is not initialized');
+      return assetRef.service;
+    };
     const knowledgeRef: { service?: KnowledgeService } = {};
     const knowledge = (): KnowledgeService => {
       if (!knowledgeRef.service) throw new Error('Knowledge service is not initialized');
@@ -279,6 +286,33 @@ export class PlatformService {
         engines()
           .setLiveBridge(projectId, connectionId)
           .then((boundConnectionId) => ({ connectionId: boundConnectionId })),
+      'asset/providers': () => ({ providers: assets().providersList() }),
+      'asset/accounts': () => ({ accounts: assets().accounts() }),
+      'asset/addAccount': (input) => assets().addAccount(input),
+      'asset/updateAccount': ({ accountId, patch }) => assets().updateAccount(accountId, patch),
+      'asset/removeAccount': ({ accountId }) => {
+        assets().removeAccount(accountId);
+        return { removed: true };
+      },
+      'asset/testAccount': ({ accountId }) => assets().testAccount(accountId),
+      'asset/generate': ({ projectId, accountId, request, taskId }) =>
+        assets().generate(projectId, accountId, request, taskId),
+      'asset/jobs': ({ projectId, limit, status }) => ({
+        jobs: assets().jobs(projectId, limit, status),
+      }),
+      'asset/job': ({ projectId, jobId }) => assets().job(projectId, jobId),
+      'asset/cancel': ({ projectId, jobId }) => assets().cancel(projectId, jobId),
+      'asset/review': ({ projectId, jobId, decision, note }) =>
+        assets().review(projectId, jobId, decision, note),
+      'asset/import': ({ projectId, jobId, artifactId, destinationDir }) =>
+        assets().importAsset(projectId, jobId, artifactId, destinationDir),
+      'asset/files': ({ projectId, directory }) => ({
+        files: assets().files(projectId, directory),
+      }),
+      'asset/preview': ({ projectId, path: sourcePath, refresh }) =>
+        assets().preview(projectId, sourcePath, refresh),
+      'asset/openInAuthoringTool': ({ projectId, path: sourcePath }) =>
+        assets().openInAuthoringTool(projectId, sourcePath),
       'knowledge/records': ({ projectId, type, status, module, includeInactive, search }) =>
         knowledge().records(projectId, { type, status, module, includeInactive, search }),
       'knowledge/record': ({ projectId, recordId }) => knowledge().record(projectId, recordId),
@@ -655,6 +689,17 @@ export class PlatformService {
         runChanged: (projectId, run) => server.broadcast('engine/runChanged', { projectId, run }),
       },
     });
+    assetRef.service = new AssetService({
+      database,
+      projects: profile,
+      projectDatabases,
+      credentials,
+      settings: settingsService,
+      toolRegistry,
+      events: {
+        jobChanged: (projectId, job) => server.broadcast('asset/jobChanged', { projectId, job }),
+      },
+    });
     knowledgeRef.service = new KnowledgeService({
       projects: profile,
       projectDatabases,
@@ -677,6 +722,7 @@ export class PlatformService {
     });
     settingsService.onChanged((event) => {
       if (event.key.startsWith('engine.')) void engines().onSettingChanged(event);
+      if (event.key.startsWith('assets.')) assets().onSettingChanged(event);
       if (event.key.startsWith('knowledge.')) knowledge().onSettingChanged(event);
       server.broadcast('settings/changed', event);
       void plugins()
@@ -697,6 +743,7 @@ export class PlatformService {
       boardMaintenance(),
       pluginHost,
       knowledge(),
+      assets(),
       paths,
       startedAt,
     );
@@ -715,6 +762,7 @@ export class PlatformService {
     workerSupervisor.start();
     boardMaintenance().start();
     await plugins().autoStartRegisteredProjects();
+    await assets().start();
     await knowledge().start();
     return platformService;
   }
@@ -722,6 +770,7 @@ export class PlatformService {
   async stop(checkpoint = true): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
+    await this.assetService.stop();
     this.knowledgeService.stop();
     this.boardMaintenanceScheduler.stop();
     await this.pluginHost.stopAll();

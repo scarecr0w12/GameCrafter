@@ -52,8 +52,14 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(28);
+    expect(result.tools).toHaveLength(34);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
+      'asset/files',
+      'asset/generate',
+      'asset/import',
+      'asset/job',
+      'asset/jobs',
+      'asset/preview',
       'board/post',
       'board/propose-decision',
       'board/read',
@@ -87,6 +93,16 @@ describe('Tool broker integration', () => {
       executionMode: 'headless-process',
       sideEffects: 'destructive',
       capabilities: ['process.spawn'],
+      source: 'builtin',
+    });
+    expect(result.tools.find((tool) => tool.toolId === 'asset/generate')).toMatchObject({
+      sideEffects: 'paid',
+      capabilities: ['asset:generate'],
+      source: 'builtin',
+    });
+    expect(result.tools.find((tool) => tool.toolId === 'asset/import')).toMatchObject({
+      sideEffects: 'workspace-write',
+      capabilities: ['asset:import'],
       source: 'builtin',
     });
     expect(result.tools.find((tool) => tool.toolId === 'engine/check')).toMatchObject({

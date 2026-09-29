@@ -4,6 +4,11 @@ import type {
   EffectiveSetting,
   ExecutionMode,
   EngineCapabilityReport,
+  AssetFileEntry,
+  AssetJob,
+  AssetPreview,
+  AssetProviderAccount,
+  AssetProviderCapabilities,
   EngineFamily,
   EngineInstallation,
   EngineOperationRun,
@@ -216,6 +221,24 @@ export interface ControlRoomService {
   listEngineRuns(projectId: string, limit?: number): Promise<EngineOperationRun[]>;
   getEngineRun(projectId: string, runId: string): Promise<EngineOperationRun>;
   setEngineLiveBridge(projectId: string, connectionId: string | null): Promise<string | null>;
+  getProject(projectId: string): Promise<ProjectSummary>;
+  listAssetProviders(): Promise<AssetProviderCapabilities[]>;
+  listAssetAccounts(): Promise<AssetProviderAccount[]>;
+  addAssetAccount(input: RpcParams<'asset/addAccount'>): Promise<AssetProviderAccount>;
+  updateAssetAccount(input: RpcParams<'asset/updateAccount'>): Promise<AssetProviderAccount>;
+  removeAssetAccount(accountId: string): Promise<void>;
+  testAssetAccount(accountId: string): Promise<RpcResult<'asset/testAccount'>>;
+  generateAsset(input: RpcParams<'asset/generate'>): Promise<AssetJob>;
+  listAssetJobs(input: RpcParams<'asset/jobs'>): Promise<AssetJob[]>;
+  getAssetJob(input: RpcParams<'asset/job'>): Promise<AssetJob>;
+  cancelAssetJob(input: RpcParams<'asset/cancel'>): Promise<AssetJob>;
+  reviewAssetJob(input: RpcParams<'asset/review'>): Promise<AssetJob>;
+  importAsset(input: RpcParams<'asset/import'>): Promise<RpcResult<'asset/import'>>;
+  listAssetFiles(input: RpcParams<'asset/files'>): Promise<AssetFileEntry[]>;
+  previewAsset(input: RpcParams<'asset/preview'>): Promise<AssetPreview>;
+  openAssetInAuthoringTool(
+    input: RpcParams<'asset/openInAuthoringTool'>,
+  ): Promise<RpcResult<'asset/openInAuthoringTool'>>;
   listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]>;
   addMcpConnection(
     config: McpConnectionInput,
@@ -328,6 +351,7 @@ export interface ControlRoomClient {
   onPluginChanged(event: RpcNotificationParams<'plugin/changed'>): void;
   onEngineCapabilitiesChanged(event: RpcNotificationParams<'engine/capabilitiesChanged'>): void;
   onEngineRunChanged(event: RpcNotificationParams<'engine/runChanged'>): void;
+  onAssetJobChanged(event: RpcNotificationParams<'asset/jobChanged'>): void;
   onKnowledgeIndexChanged(event: RpcNotificationParams<'knowledge/indexChanged'>): void;
   onKnowledgeRecordChanged(event: RpcNotificationParams<'knowledge/recordChanged'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;

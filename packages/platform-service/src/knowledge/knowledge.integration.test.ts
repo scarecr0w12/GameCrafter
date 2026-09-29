@@ -62,6 +62,10 @@ describe('knowledge service integration', () => {
     );
     writeFileSync(codePath, 'export function harborRoute() { return "north quay"; }\n');
     writeFileSync(assetPath, Buffer.from('DO_NOT_INDEX_BINARY_PRIVATE_MARKER'));
+    writeFileSync(
+      `${assetPath}.gamecrafter-provenance.json`,
+      JSON.stringify({ providerKind: 'meshy', providerTaskId: 'generated-task', schemaVersion: 1 }),
+    );
 
     const thread = await client!.call('board/createThread', {
       projectId: project.projectId,
@@ -134,6 +138,17 @@ describe('knowledge service integration', () => {
       mode: 'lexical',
     });
     expect(codeHit.hits[0]?.path).toBe('game/src/harbor.ts');
+    const assetHits = await client!.call('knowledge/search', {
+      projectId: project.projectId,
+      query: 'artifact provenance',
+      sources: ['assets'],
+      mode: 'lexical',
+    });
+    expect(
+      assetHits.hits.some(
+        (entry) => entry.path === 'game/assets/artifact.png.gamecrafter-provenance.json',
+      ),
+    ).toBe(true);
     const leaked = await client!.call('knowledge/search', {
       projectId: project.projectId,
       query: 'DO_NOT_INDEX_BINARY_PRIVATE_MARKER',

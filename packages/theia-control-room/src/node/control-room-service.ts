@@ -4,6 +4,11 @@ import { inject, injectable } from '@theia/core/shared/inversify';
 import {
   type AccessMode,
   type ApprovalRequest,
+  type AssetFileEntry,
+  type AssetJob,
+  type AssetPreview,
+  type AssetProviderAccount,
+  type AssetProviderCapabilities,
   type EffectiveSetting,
   type ExecutionMode,
   type EngineCapabilityReport,
@@ -78,6 +83,7 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removePluginChangedListener?: () => void;
   private removeEngineCapabilitiesChangedListener?: () => void;
   private removeEngineRunChangedListener?: () => void;
+  private removeAssetJobChangedListener?: () => void;
   private removeKnowledgeIndexChangedListener?: () => void;
   private removeKnowledgeRecordChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
@@ -104,6 +110,7 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removePluginChangedListener?.();
     this.removeEngineCapabilitiesChangedListener?.();
     this.removeEngineRunChangedListener?.();
+    this.removeAssetJobChangedListener?.();
     this.removeKnowledgeIndexChangedListener?.();
     this.removeKnowledgeRecordChangedListener?.();
     this.removeServiceStatusListener?.();
@@ -162,6 +169,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       );
     this.removeEngineRunChangedListener = this.platformConnection.onEngineRunChanged((event) =>
       this.client?.onEngineRunChanged(event),
+    );
+    this.removeAssetJobChangedListener = this.platformConnection.onAssetJobChanged((event) =>
+      this.client?.onAssetJobChanged(event),
     );
     this.removeKnowledgeIndexChangedListener = this.platformConnection.onKnowledgeIndexChanged(
       (event) => this.client?.onKnowledgeIndexChanged(event),
@@ -540,6 +550,78 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     return (await this.getPlatformClient())
       .call('engine/setLiveBridge', { projectId, connectionId })
       .then((result) => result.connectionId);
+  }
+
+  async getProject(projectId: string): Promise<ProjectSummary> {
+    return (await this.getPlatformClient()).call('project/get', { projectId });
+  }
+
+  async listAssetProviders(): Promise<AssetProviderCapabilities[]> {
+    return (await this.getPlatformClient())
+      .call('asset/providers', {})
+      .then((result) => result.providers);
+  }
+
+  async listAssetAccounts(): Promise<AssetProviderAccount[]> {
+    return (await this.getPlatformClient())
+      .call('asset/accounts', {})
+      .then((result) => result.accounts);
+  }
+
+  async addAssetAccount(input: RpcParams<'asset/addAccount'>): Promise<AssetProviderAccount> {
+    return (await this.getPlatformClient()).call('asset/addAccount', input);
+  }
+
+  async updateAssetAccount(input: RpcParams<'asset/updateAccount'>): Promise<AssetProviderAccount> {
+    return (await this.getPlatformClient()).call('asset/updateAccount', input);
+  }
+
+  async removeAssetAccount(accountId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('asset/removeAccount', { accountId });
+  }
+
+  async testAssetAccount(accountId: string): Promise<RpcResult<'asset/testAccount'>> {
+    return (await this.getPlatformClient()).call('asset/testAccount', { accountId });
+  }
+
+  async generateAsset(input: RpcParams<'asset/generate'>): Promise<AssetJob> {
+    return (await this.getPlatformClient()).call('asset/generate', input);
+  }
+
+  async listAssetJobs(input: RpcParams<'asset/jobs'>): Promise<AssetJob[]> {
+    return (await this.getPlatformClient()).call('asset/jobs', input).then((result) => result.jobs);
+  }
+
+  async getAssetJob(input: RpcParams<'asset/job'>): Promise<AssetJob> {
+    return (await this.getPlatformClient()).call('asset/job', input);
+  }
+
+  async cancelAssetJob(input: RpcParams<'asset/cancel'>): Promise<AssetJob> {
+    return (await this.getPlatformClient()).call('asset/cancel', input);
+  }
+
+  async reviewAssetJob(input: RpcParams<'asset/review'>): Promise<AssetJob> {
+    return (await this.getPlatformClient()).call('asset/review', input);
+  }
+
+  async importAsset(input: RpcParams<'asset/import'>): Promise<RpcResult<'asset/import'>> {
+    return (await this.getPlatformClient()).call('asset/import', input);
+  }
+
+  async listAssetFiles(input: RpcParams<'asset/files'>): Promise<AssetFileEntry[]> {
+    return (await this.getPlatformClient())
+      .call('asset/files', input)
+      .then((result) => result.files);
+  }
+
+  async previewAsset(input: RpcParams<'asset/preview'>): Promise<AssetPreview> {
+    return (await this.getPlatformClient()).call('asset/preview', input);
+  }
+
+  async openAssetInAuthoringTool(
+    input: RpcParams<'asset/openInAuthoringTool'>,
+  ): Promise<RpcResult<'asset/openInAuthoringTool'>> {
+    return (await this.getPlatformClient()).call('asset/openInAuthoringTool', input);
   }
 
   async listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]> {

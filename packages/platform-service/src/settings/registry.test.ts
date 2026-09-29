@@ -9,8 +9,8 @@ describe('SettingsRegistry', () => {
     registry.register('builtin', builtins.groups, builtins.definitions);
 
     const description = registry.describe();
-    expect(description.groups).toHaveLength(12);
-    expect(description.definitions).toHaveLength(46);
+    expect(description.groups).toHaveLength(13);
+    expect(description.definitions).toHaveLength(52);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({
@@ -35,6 +35,13 @@ describe('SettingsRegistry', () => {
     expect(description.groups[9]?.id).toBe('logs');
     expect(description.groups[10]?.id).toBe('engine');
     expect(description.groups[11]?.id).toBe('knowledge');
+    expect(description.groups[12]?.id).toBe('assets');
+    expect(
+      description.definitions.find((definition) => definition.key === 'assets.pollIntervalSeconds'),
+    ).toMatchObject({ group: 'assets', default: 5, scopes: ['platform', 'project'] });
+    expect(
+      description.definitions.find((definition) => definition.key === 'assets.importDirectory'),
+    ).toMatchObject({ default: 'game/assets/generated', scopes: ['platform', 'project'] });
   });
 
   it('rejects duplicate keys', () => {

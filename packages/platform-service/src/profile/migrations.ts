@@ -235,4 +235,18 @@ export const profileMigrations: Migration[] = [
       CREATE INDEX engine_installations_family_idx ON engine_installations(family, source);
     `,
   },
+  {
+    id: 8,
+    name: 'create asset provider account registry',
+    up: `
+      CREATE TABLE asset_provider_accounts (
+        account_id TEXT PRIMARY KEY,
+        provider_kind TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        account_json TEXT NOT NULL
+      );
+      CREATE INDEX asset_provider_accounts_kind_enabled_idx
+        ON asset_provider_accounts(provider_kind, enabled);
+    `,
+  },
 ];

@@ -13,6 +13,16 @@ import {
   EngineOperationSchema,
 } from '../engines';
 import {
+  AssetFileEntrySchema,
+  AssetJobRequestSchema,
+  AssetJobSchema,
+  AssetJobStatusSchema,
+  AssetPreviewSchema,
+  AssetProviderAccountSchema,
+  AssetProviderCapabilitiesSchema,
+  AssetProviderKindSchema,
+} from '../assets';
+import {
   EffectiveSettingSchema,
   SettingDefinitionSchema,
   SettingGroupSchema,
@@ -269,6 +279,173 @@ export const RpcMethods = {
     ),
     result: Type.Object(
       { connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]) },
+      { additionalProperties: false },
+    ),
+  },
+  'asset/providers': {
+    params: EmptyParams,
+    result: Type.Object(
+      { providers: Type.Array(AssetProviderCapabilitiesSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'asset/accounts': {
+    params: EmptyParams,
+    result: Type.Object(
+      { accounts: Type.Array(AssetProviderAccountSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'asset/addAccount': {
+    params: Type.Object(
+      {
+        providerKind: AssetProviderKindSchema,
+        displayName: Type.String({ minLength: 1 }),
+        baseUrl: Type.Optional(Type.String({ format: 'uri' })),
+        apiKey: Type.String({ minLength: 1 }),
+        planTier: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: AssetProviderAccountSchema,
+  },
+  'asset/updateAccount': {
+    params: Type.Object(
+      {
+        accountId: Type.String({ format: 'uuid' }),
+        patch: Type.Object(
+          {
+            displayName: Type.Optional(Type.String({ minLength: 1 })),
+            baseUrl: Type.Optional(Type.String({ format: 'uri' })),
+            apiKey: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+            planTier: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+            enabled: Type.Optional(Type.Boolean()),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: AssetProviderAccountSchema,
+  },
+  'asset/removeAccount': {
+    params: Type.Object(
+      { accountId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'asset/testAccount': {
+    params: Type.Object(
+      { accountId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        ok: Type.Boolean(),
+        latencyMs: Type.Integer({ minimum: 0 }),
+        balance: Type.Union([Type.Number(), Type.Null()]),
+        error: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'asset/generate': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        accountId: Type.String({ format: 'uuid' }),
+        request: AssetJobRequestSchema,
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: AssetJobSchema,
+  },
+  'asset/jobs': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+        status: Type.Optional(AssetJobStatusSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ jobs: Type.Array(AssetJobSchema) }, { additionalProperties: false }),
+  },
+  'asset/job': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), jobId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: AssetJobSchema,
+  },
+  'asset/cancel': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), jobId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: AssetJobSchema,
+  },
+  'asset/review': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        jobId: Type.String({ format: 'uuid' }),
+        decision: Type.Union([Type.Literal('approved'), Type.Literal('rejected')]),
+        note: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: AssetJobSchema,
+  },
+  'asset/import': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        jobId: Type.String({ format: 'uuid' }),
+        artifactId: Type.String({ format: 'uuid' }),
+        destinationDir: Type.Optional(Type.String({ minLength: 1 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        job: AssetJobSchema,
+        importedPath: Type.String({ minLength: 1 }),
+        provenancePath: Type.String({ minLength: 1 }),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'asset/files': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), directory: Type.Optional(Type.String()) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { files: Type.Array(AssetFileEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'asset/preview': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        path: Type.String({ minLength: 1 }),
+        refresh: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: AssetPreviewSchema,
+  },
+  'asset/openInAuthoringTool': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), path: Type.String({ minLength: 1 }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { launched: Type.Boolean(), command: Type.String() },
       { additionalProperties: false },
     ),
   },
@@ -1463,6 +1640,12 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'asset/jobChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), job: AssetJobSchema },
+      { additionalProperties: false },
+    ),
+  },
   'knowledge/indexChanged': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }), status: KnowledgeIndexStateSchema },
@@ -1570,17 +1753,24 @@ export const RpcErrorCode = {
   PluginWorkerFailed: -32086,
   PluginDependencyMissing: -32087,
   PluginIncompatible: -32088,
+  AssetProviderAccountNotFound: -32089,
   EngineInstallationNotFound: -32090,
   EngineOperationUnavailable: -32091,
   EngineRunFailed: -32092,
   EngineProjectIdentityUnproven: -32093,
   EngineFamilyMismatch: -32094,
+  AssetJobNotFound: -32095,
+  AssetJobInvalidTransition: -32096,
+  AssetProviderRequestFailed: -32097,
+  AssetDownloadTooLarge: -32098,
+  AssetPathOutsideProject: -32099,
   CanonRecordNotFound: -32100,
   CanonRecordInvalid: -32101,
   CanonDuplicateId: -32102,
   CanonStatusNotAllowed: -32103,
   VectorStoreUnavailable: -32104,
   EmbeddingProfileMissing: -32105,
+  AssetPreviewUnavailable: -32106,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

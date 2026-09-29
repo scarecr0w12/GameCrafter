@@ -377,11 +377,6 @@ export class KnowledgeIndexer {
       for (const file of walkFiles(gameRoot, 'game')) {
         const extension = path.extname(file.path).slice(1).toLowerCase();
         if (extension === 'meta' || extension === 'import' || isIgnoredPath(file.path)) continue;
-        if (extensions.has(extension) && indexCode) {
-          const text = readSafeText(file.absolutePath);
-          if (text !== null) files.push(diskSource(file.path, file.absolutePath, 'code', text));
-          continue;
-        }
         if (isAssetPath(file.path) || binaryExtensions.has(extension)) {
           const metadata = assetMetadata(file.path, file.absolutePath, file.stats.size);
           files.push({
@@ -393,6 +388,11 @@ export class KnowledgeIndexer {
             mtimeMs: file.stats.mtimeMs,
             size: file.stats.size,
           });
+          continue;
+        }
+        if (extensions.has(extension) && indexCode) {
+          const text = readSafeText(file.absolutePath);
+          if (text !== null) files.push(diskSource(file.path, file.absolutePath, 'code', text));
         }
       }
     }
@@ -705,7 +705,11 @@ function readSafeText(filePath: string): string | null {
 
 function assetMetadata(relativePath: string, absolutePath: string, size: number): string {
   const extension = path.extname(relativePath).slice(1).toLowerCase() || 'none';
-  const sidecars = [`${absolutePath}.meta`, `${absolutePath}.import`];
+  const sidecars = [
+    `${absolutePath}.meta`,
+    `${absolutePath}.import`,
+    `${absolutePath}.gamecrafter-provenance.json`,
+  ];
   const summaries = sidecars.flatMap((sidecar) => {
     const text = readSafeText(sidecar);
     return text ? [`${path.basename(sidecar)}: ${text.slice(0, maxSidecarBytes)}`] : [];

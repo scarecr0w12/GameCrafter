@@ -1,6 +1,7 @@
 export * from './ids';
 export * from './board';
 export * from './engines';
+export * from './assets';
 export * from './models';
 export * from './knowledge';
 export * from './mcp';
