@@ -6,6 +6,7 @@ import type { WorkerCommand, WorkerMessage, WorkerRunPayload } from './types';
 
 const localRequire = createRequire(__filename);
 const checkpointAcks = new Map<string, () => void>();
+let finalResultAck: (() => void) | undefined;
 const pendingAnswers = new Map<string, (answer: unknown) => void>();
 const pendingToolCalls = new Map<
   string,
@@ -23,6 +24,9 @@ process.on('message', (message: WorkerCommand) => {
   } else if (message.type === 'checkpoint-ack') {
     checkpointAcks.get(message.requestId)?.();
     checkpointAcks.delete(message.requestId);
+  } else if (message.type === 'result-ack') {
+    finalResultAck?.();
+    finalResultAck = undefined;
   } else if (message.type === 'answer') {
     const resolve = pendingAnswers.get(message.questionId);
     if (resolve) {
@@ -188,8 +192,44 @@ let askIndex = 0;
 
 async function finish(message: WorkerMessage): Promise<void> {
   if (heartbeat) clearInterval(heartbeat);
-  await send(message);
+  let acknowledgedBySupervisor = false;
+  let resolveAcknowledged: () => void = () => undefined;
+  const acknowledged = new Promise<void>((resolve) => {
+    resolveAcknowledged = resolve;
+  });
+  const onDisconnect = () => {
+    finalResultAck = undefined;
+    resolveAcknowledged();
+  };
+  process.once('disconnect', onDisconnect);
+  finalResultAck = () => {
+    acknowledgedBySupervisor = true;
+    resolveAcknowledged();
+  };
+  const timeout = setTimeout(() => {
+    finalResultAck = undefined;
+    if (process.connected) process.disconnect();
+    resolveAcknowledged();
+  }, 5_000);
+  timeout.unref();
+
+  try {
+    await send(message);
+  } catch {
+    clearTimeout(timeout);
+    process.removeListener('disconnect', onDisconnect);
+    finalResultAck = undefined;
+    if (process.connected) process.disconnect();
+    process.exit(0);
+    return;
+  }
+
+  await acknowledged;
+  clearTimeout(timeout);
+  process.removeListener('disconnect', onDisconnect);
+  finalResultAck = undefined;
   if (process.connected) process.disconnect();
+  if (!acknowledgedBySupervisor) process.exit(0);
 }
 
 function send(message: WorkerMessage): Promise<void> {

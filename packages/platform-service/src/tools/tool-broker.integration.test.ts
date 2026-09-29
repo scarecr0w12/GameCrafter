@@ -52,7 +52,7 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(34);
+    expect(result.tools).toHaveLength(42);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
       'asset/files',
       'asset/generate',
@@ -67,6 +67,14 @@ describe('Tool broker integration', () => {
       'canon/propose-status',
       'canon/read',
       'canon/write',
+      'dcc/convert',
+      'dcc/discover',
+      'dcc/export',
+      'dcc/import',
+      'dcc/inspect',
+      'dcc/render-preview',
+      'dcc/run-script',
+      'dcc/validate',
       'engine/build',
       'engine/check',
       'engine/console',
@@ -113,6 +121,12 @@ describe('Tool broker integration', () => {
     expect(result.tools.find((tool) => tool.toolId === 'engine/console')).toMatchObject({
       executionMode: 'live-editor',
       sideEffects: 'destructive',
+      source: 'builtin',
+    });
+    expect(result.tools.find((tool) => tool.toolId === 'dcc/run-script')).toMatchObject({
+      executionMode: 'headless-process',
+      sideEffects: 'destructive',
+      capabilities: ['dcc:run-script'],
       source: 'builtin',
     });
   }, 60_000);

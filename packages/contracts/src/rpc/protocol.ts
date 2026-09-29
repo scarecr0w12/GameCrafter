@@ -38,6 +38,14 @@ import {
   BackupVerifyResultSchema,
 } from '../backup';
 import {
+  DccCapabilityReportSchema,
+  DccInstallationKindSchema,
+  DccInstallationSchema,
+  DccOperationSchema,
+  DccRunSchema,
+  DccToolSchema,
+} from '../dcc';
+import {
   EffectiveSettingSchema,
   SettingDefinitionSchema,
   SettingGroupSchema,
@@ -288,6 +296,87 @@ export const RpcMethods = {
     params: Type.Object(
       {
         projectId: Type.String({ format: 'uuid' }),
+        connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]) },
+      { additionalProperties: false },
+    ),
+  },
+  'dcc/installations': {
+    params: Type.Object({ tool: Type.Optional(DccToolSchema) }, { additionalProperties: false }),
+    result: Type.Object(
+      { installations: Type.Array(DccInstallationSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'dcc/addInstallation': {
+    params: Type.Object(
+      {
+        tool: DccToolSchema,
+        executable: Type.String({ minLength: 1 }),
+        kind: DccInstallationKindSchema,
+      },
+      { additionalProperties: false },
+    ),
+    result: DccInstallationSchema,
+  },
+  'dcc/removeInstallation': {
+    params: Type.Object(
+      { installationId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'dcc/capabilities': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        tool: DccToolSchema,
+        refresh: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: DccCapabilityReportSchema,
+  },
+  'dcc/run': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        tool: DccToolSchema,
+        operation: DccOperationSchema,
+        params: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: DccRunSchema,
+  },
+  'dcc/runs': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        tool: Type.Optional(DccToolSchema),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ runs: Type.Array(DccRunSchema) }, { additionalProperties: false }),
+  },
+  'dcc/run/get': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), runId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: DccRunSchema,
+  },
+  'dcc/setLiveBridge': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        tool: DccToolSchema,
         connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
       },
       { additionalProperties: false },
@@ -1856,6 +1945,22 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'dcc/capabilitiesChanged': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        tool: DccToolSchema,
+        report: DccCapabilityReportSchema,
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'dcc/runChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), tool: DccToolSchema, run: DccRunSchema },
+      { additionalProperties: false },
+    ),
+  },
   'asset/jobChanged': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }), job: AssetJobSchema },
@@ -1999,6 +2104,11 @@ export const RpcErrorCode = {
   BackupArchiveCorrupt: -32113,
   BackupDestinationFailed: -32114,
   BackupTargetNotEmpty: -32115,
+  DccInstallationNotFound: -32116,
+  DccToolUnsupportedOnHost: -32117,
+  DccOperationUnavailable: -32118,
+  DccRunNotFound: -32119,
+  DccScriptRejected: -32120,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

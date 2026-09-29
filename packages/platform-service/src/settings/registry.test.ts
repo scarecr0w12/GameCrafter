@@ -9,8 +9,8 @@ describe('SettingsRegistry', () => {
     registry.register('builtin', builtins.groups, builtins.definitions);
 
     const description = registry.describe();
-    expect(description.groups).toHaveLength(14);
-    expect(description.definitions).toHaveLength(59);
+    expect(description.groups).toHaveLength(15);
+    expect(description.definitions).toHaveLength(64);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({
@@ -37,6 +37,7 @@ describe('SettingsRegistry', () => {
     expect(description.groups[11]?.id).toBe('knowledge');
     expect(description.groups[12]?.id).toBe('assets');
     expect(description.groups[13]?.id).toBe('backup');
+    expect(description.groups[14]?.id).toBe('dcc');
     expect(
       description.definitions.find((definition) => definition.key === 'assets.pollIntervalSeconds'),
     ).toMatchObject({ group: 'assets', default: 5, scopes: ['platform', 'project'] });
@@ -52,6 +53,16 @@ describe('SettingsRegistry', () => {
     expect(
       description.definitions.find((definition) => definition.key === 'backup.maxArchiveMb'),
     ).toMatchObject({ group: 'backup', default: 0, scopes: ['platform'] });
+    expect(
+      description.definitions.find(
+        (definition) => definition.key === 'dcc.operationTimeoutSeconds',
+      ),
+    ).toMatchObject({ group: 'dcc', default: 600, scopes: ['platform', 'project'] });
+    expect(
+      description.definitions.find(
+        (definition) => definition.key === 'dcc.allowUnrestrictedScripts',
+      ),
+    ).toMatchObject({ group: 'dcc', default: false, scopes: ['platform'] });
   });
 
   it('rejects duplicate keys', () => {

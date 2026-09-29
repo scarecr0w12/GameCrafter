@@ -45,6 +45,10 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly engineRunChangedEmitter = new Emitter<
     RpcNotificationParams<'engine/runChanged'>
   >();
+  private readonly dccCapabilitiesChangedEmitter = new Emitter<
+    RpcNotificationParams<'dcc/capabilitiesChanged'>
+  >();
+  private readonly dccRunChangedEmitter = new Emitter<RpcNotificationParams<'dcc/runChanged'>>();
   private readonly assetJobChangedEmitter = new Emitter<
     RpcNotificationParams<'asset/jobChanged'>
   >();
@@ -78,6 +82,8 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly pluginChanged = this.pluginChangedEmitter.event;
   readonly engineCapabilitiesChanged = this.engineCapabilitiesChangedEmitter.event;
   readonly engineRunChanged = this.engineRunChangedEmitter.event;
+  readonly dccCapabilitiesChanged = this.dccCapabilitiesChangedEmitter.event;
+  readonly dccRunChanged = this.dccRunChangedEmitter.event;
   readonly assetJobChanged = this.assetJobChangedEmitter.event;
   readonly backupRunChanged = this.backupRunChangedEmitter.event;
   readonly knowledgeIndexChanged = this.knowledgeIndexChangedEmitter.event;
@@ -146,6 +152,14 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onEngineRunChanged(event: RpcNotificationParams<'engine/runChanged'>): void {
     this.engineRunChangedEmitter.fire(event);
+  }
+
+  onDccCapabilitiesChanged(event: RpcNotificationParams<'dcc/capabilitiesChanged'>): void {
+    this.dccCapabilitiesChangedEmitter.fire(event);
+  }
+
+  onDccRunChanged(event: RpcNotificationParams<'dcc/runChanged'>): void {
+    this.dccRunChangedEmitter.fire(event);
   }
 
   onAssetJobChanged(event: RpcNotificationParams<'asset/jobChanged'>): void {

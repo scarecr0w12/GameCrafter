@@ -20,6 +20,10 @@ import type {
   EngineFamily,
   EngineInstallation,
   EngineOperationRun,
+  DccCapabilityReport,
+  DccInstallation,
+  DccRun,
+  DccTool,
   McpConnectionConfig,
   McpConnectionInput,
   McpConnectionListEntry,
@@ -229,6 +233,22 @@ export interface ControlRoomService {
   listEngineRuns(projectId: string, limit?: number): Promise<EngineOperationRun[]>;
   getEngineRun(projectId: string, runId: string): Promise<EngineOperationRun>;
   setEngineLiveBridge(projectId: string, connectionId: string | null): Promise<string | null>;
+  listDccInstallations(tool?: DccTool): Promise<DccInstallation[]>;
+  addDccInstallation(input: RpcParams<'dcc/addInstallation'>): Promise<DccInstallation>;
+  removeDccInstallation(installationId: string): Promise<void>;
+  getDccCapabilities(
+    projectId: string,
+    tool: DccTool,
+    refresh?: boolean,
+  ): Promise<DccCapabilityReport>;
+  runDcc(input: RpcParams<'dcc/run'>): Promise<DccRun>;
+  listDccRuns(projectId: string, tool?: DccTool, limit?: number): Promise<DccRun[]>;
+  getDccRun(projectId: string, runId: string): Promise<DccRun>;
+  setDccLiveBridge(
+    projectId: string,
+    tool: DccTool,
+    connectionId: string | null,
+  ): Promise<string | null>;
   getProject(projectId: string): Promise<ProjectSummary>;
   listAssetProviders(): Promise<AssetProviderCapabilities[]>;
   listAssetAccounts(): Promise<AssetProviderAccount[]>;
@@ -378,6 +398,8 @@ export interface ControlRoomClient {
   onPluginChanged(event: RpcNotificationParams<'plugin/changed'>): void;
   onEngineCapabilitiesChanged(event: RpcNotificationParams<'engine/capabilitiesChanged'>): void;
   onEngineRunChanged(event: RpcNotificationParams<'engine/runChanged'>): void;
+  onDccCapabilitiesChanged(event: RpcNotificationParams<'dcc/capabilitiesChanged'>): void;
+  onDccRunChanged(event: RpcNotificationParams<'dcc/runChanged'>): void;
   onAssetJobChanged(event: RpcNotificationParams<'asset/jobChanged'>): void;
   onBackupRunChanged(event: RpcNotificationParams<'backup/runChanged'>): void;
   onKnowledgeIndexChanged(event: RpcNotificationParams<'knowledge/indexChanged'>): void;

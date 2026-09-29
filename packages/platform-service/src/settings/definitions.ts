@@ -94,6 +94,12 @@ export function createBuiltinSettings(): BuiltinSettings {
       description: 'Encrypted Project and profile backup, verification, restore, and retention.',
       order: 13,
     },
+    {
+      id: 'dcc',
+      title: 'DCC tools',
+      description: 'DCC installation detection, scripted operations, and preview rendering.',
+      order: 14,
+    },
   ];
   const definitions: SettingDefinition[] = [
     setting(
@@ -661,6 +667,51 @@ export function createBuiltinSettings(): BuiltinSettings {
       { type: 'integer', minimum: 0, maximum: 1048576 },
       0,
       ['platform'],
+    ),
+    setting(
+      'dcc.searchPaths',
+      'DCC executable search paths',
+      'Additional directories to scan for DCC executables.',
+      'dcc',
+      { type: 'array', items: { type: 'string' } },
+      [],
+      ['platform'],
+    ),
+    setting(
+      'dcc.operationTimeoutSeconds',
+      'DCC operation timeout (seconds)',
+      'Maximum time a headless DCC operation may run before termination.',
+      'dcc',
+      { type: 'integer', minimum: 1, maximum: 86400 },
+      600,
+      ['platform', 'project'],
+    ),
+    setting(
+      'dcc.autoDetectInstallations',
+      'Automatically detect DCC installations',
+      'Detect DCC executables from PATH, common locations, and supported WSL interop paths.',
+      'dcc',
+      { type: 'boolean' },
+      true,
+      ['platform'],
+    ),
+    setting(
+      'dcc.allowUnrestrictedScripts',
+      'Allow unrestricted DCC scripts',
+      'Allow DCC run-script calls containing subprocess or destructive filesystem operations.',
+      'dcc',
+      { type: 'boolean' },
+      false,
+      ['platform'],
+    ),
+    setting(
+      'dcc.renderPreviewResolution',
+      'DCC render preview resolution',
+      'Resolution in pixels for generated DCC preview renders.',
+      'dcc',
+      { type: 'integer', minimum: 64, maximum: 4096 },
+      512,
+      ['platform', 'project'],
     ),
   ];
 

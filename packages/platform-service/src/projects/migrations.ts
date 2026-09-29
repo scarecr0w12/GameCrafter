@@ -414,4 +414,28 @@ export const projectMigrations: Migration[] = [
       CREATE INDEX asset_previews_created_idx ON asset_previews(created_at);
     `,
   },
+  {
+    id: 9,
+    name: 'create DCC capability and run tables',
+    up: `
+      CREATE TABLE dcc_capability_reports (
+        project_id TEXT NOT NULL,
+        tool TEXT NOT NULL,
+        generated_at TEXT NOT NULL,
+        report_json TEXT NOT NULL,
+        PRIMARY KEY(project_id, tool)
+      );
+      CREATE TABLE dcc_runs (
+        run_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        tool TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        run_json TEXT NOT NULL
+      );
+      CREATE INDEX dcc_runs_project_tool_started_idx ON dcc_runs(project_id, tool, started_at DESC);
+      CREATE INDEX dcc_runs_status_started_idx ON dcc_runs(status, started_at DESC);
+    `,
+  },
 ];

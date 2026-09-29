@@ -64,6 +64,12 @@ export class PlatformServiceConnection {
   private readonly engineRunChangedListeners = new Set<
     (event: RpcNotificationParams<'engine/runChanged'>) => void
   >();
+  private readonly dccCapabilitiesChangedListeners = new Set<
+    (event: RpcNotificationParams<'dcc/capabilitiesChanged'>) => void
+  >();
+  private readonly dccRunChangedListeners = new Set<
+    (event: RpcNotificationParams<'dcc/runChanged'>) => void
+  >();
   private readonly assetJobChangedListeners = new Set<
     (event: RpcNotificationParams<'asset/jobChanged'>) => void
   >();
@@ -194,6 +200,18 @@ export class PlatformServiceConnection {
     return () => this.engineRunChangedListeners.delete(listener);
   }
 
+  onDccCapabilitiesChanged(
+    listener: (event: RpcNotificationParams<'dcc/capabilitiesChanged'>) => void,
+  ): () => void {
+    this.dccCapabilitiesChangedListeners.add(listener);
+    return () => this.dccCapabilitiesChangedListeners.delete(listener);
+  }
+
+  onDccRunChanged(listener: (event: RpcNotificationParams<'dcc/runChanged'>) => void): () => void {
+    this.dccRunChangedListeners.add(listener);
+    return () => this.dccRunChangedListeners.delete(listener);
+  }
+
   onAssetJobChanged(
     listener: (event: RpcNotificationParams<'asset/jobChanged'>) => void,
   ): () => void {
@@ -291,6 +309,12 @@ export class PlatformServiceConnection {
         });
         client.onNotification('engine/runChanged', (event) => {
           for (const listener of this.engineRunChangedListeners) listener(event);
+        });
+        client.onNotification('dcc/capabilitiesChanged', (event) => {
+          for (const listener of this.dccCapabilitiesChangedListeners) listener(event);
+        });
+        client.onNotification('dcc/runChanged', (event) => {
+          for (const listener of this.dccRunChangedListeners) listener(event);
         });
         client.onNotification('asset/jobChanged', (event) => {
           for (const listener of this.assetJobChangedListeners) listener(event);

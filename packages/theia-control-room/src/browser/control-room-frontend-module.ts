@@ -21,6 +21,8 @@ import { PluginsCatalogWidget } from './plugins-catalog-widget';
 import { PluginsCatalogViewContribution } from './plugins-catalog-view-contribution';
 import { EngineWidget } from './engine-widget';
 import { EngineViewContribution } from './engine-view-contribution';
+import { DccWidget } from './dcc-widget';
+import { DccViewContribution } from './dcc-view-contribution';
 import { AssetsWidget } from './assets-widget';
 import { AssetsViewContribution } from './assets-view-contribution';
 import { BackupsWidget } from './backups-widget';
@@ -54,6 +56,7 @@ export default new ContainerModule((bind) => {
   bind(DiscussionBoardWidget).toSelf().inSingletonScope();
   bind(PluginsCatalogWidget).toSelf().inSingletonScope();
   bind(EngineWidget).toSelf().inSingletonScope();
+  bind(DccWidget).toSelf().inSingletonScope();
   bind(AssetsWidget).toSelf().inSingletonScope();
   bind(BackupsWidget).toSelf().inSingletonScope();
   bind(KnowledgeWidget).toSelf().inSingletonScope();
@@ -107,6 +110,12 @@ export default new ContainerModule((bind) => {
     .inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
+      id: DccWidget.ID,
+      createWidget: () => context.container.get(DccWidget),
+    }))
+    .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
       id: AssetsWidget.ID,
       createWidget: () => context.container.get(AssetsWidget),
     }))
@@ -132,6 +141,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, DiscussionBoardViewContribution);
   bindViewContribution(bind, PluginsCatalogViewContribution);
   bindViewContribution(bind, EngineViewContribution);
+  bindViewContribution(bind, DccViewContribution);
   bindViewContribution(bind, AssetsViewContribution);
   bindViewContribution(bind, BackupsViewContribution);
   bindViewContribution(bind, KnowledgeViewContribution);

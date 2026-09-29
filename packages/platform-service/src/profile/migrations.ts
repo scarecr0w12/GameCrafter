@@ -299,4 +299,23 @@ export const profileMigrations: Migration[] = [
       CREATE INDEX backup_runs_plan_started_idx ON backup_runs(plan_id, started_at DESC);
     `,
   },
+  {
+    id: 10,
+    name: 'create DCC installation registry',
+    up: `
+      CREATE TABLE dcc_installations (
+        installation_id TEXT PRIMARY KEY,
+        tool TEXT NOT NULL,
+        executable TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        host_os TEXT NOT NULL,
+        via_wsl_interop INTEGER NOT NULL,
+        version TEXT,
+        source TEXT NOT NULL,
+        detected_at TEXT NOT NULL,
+        installation_json TEXT NOT NULL
+      );
+      CREATE INDEX dcc_installations_tool_source_idx ON dcc_installations(tool, source);
+    `,
+  },
 ];

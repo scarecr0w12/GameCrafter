@@ -6,6 +6,7 @@ import { uuidv7, type TaskRecord } from '@gamecrafter/contracts';
 import { connect, type ServiceClient } from '@gamecrafter/service-client';
 import { isProcessAlive } from '../lock';
 import { resolvePaths, type ServicePaths } from '../paths';
+import type { WorkerScheduleSnapshot } from '../workers/supervisor';
 import { PlatformService } from '../service';
 
 const temporaryDirectories: string[] = [];
@@ -14,6 +15,21 @@ let client: ServiceClient | undefined;
 let projectId: string;
 let projectsDirectory: string;
 let workerPids: Map<string, number>;
+let workerStarts: Array<{ taskId: string; workerId: string; pid: number }>;
+let workerFinalMessages: Array<{
+  taskId: string;
+  workerId: string;
+  messageType: 'result' | 'failed';
+}>;
+let workerScheduleSnapshots: WorkerScheduleSnapshot[];
+let workerLifecycleEvents: Array<{
+  type: 'started' | 'final-message' | 'exited';
+  taskId: string;
+  workerId: string;
+  at: number;
+  pid?: number;
+  messageType?: 'result' | 'failed';
+}>;
 let stopRequested: Promise<void>;
 let resolveStopRequested: () => void = () => undefined;
 let pathsForLastProfile: ServicePaths;
@@ -25,6 +41,10 @@ beforeEach(async () => {
   projectsDirectory = path.join(root, 'projects');
   mkdirSync(projectsDirectory, { recursive: true });
   workerPids = new Map();
+  workerStarts = [];
+  workerFinalMessages = [];
+  workerScheduleSnapshots = [];
+  workerLifecycleEvents = [];
   stopRequested = new Promise<void>((resolve) => {
     resolveStopRequested = resolve;
   });
@@ -346,7 +366,26 @@ async function startService(paths: ServicePaths): Promise<PlatformService> {
   return PlatformService.start({
     paths,
     platformVersion: '0.1.0',
-    onWorkerStarted: (taskId, pid) => workerPids.set(taskId, pid),
+    onWorkerStarted: (taskId, workerId, pid) => {
+      workerPids.set(taskId, pid);
+      workerStarts.push({ taskId, workerId, pid });
+      workerLifecycleEvents.push({ type: 'started', taskId, workerId, pid, at: Date.now() });
+    },
+    onWorkerFinalMessage: (taskId, workerId, messageType) => {
+      workerFinalMessages.push({ taskId, workerId, messageType });
+      workerLifecycleEvents.push({
+        type: 'final-message',
+        taskId,
+        workerId,
+        messageType,
+        at: Date.now(),
+      });
+    },
+    onWorkerExited: (taskId, workerId) => {
+      workerPids.delete(taskId);
+      workerLifecycleEvents.push({ type: 'exited', taskId, workerId, at: Date.now() });
+    },
+    onWorkerScheduleSnapshot: (snapshot) => workerScheduleSnapshots.push(snapshot),
     onStopRequested: async (checkpoint) => {
       await service?.stop(checkpoint);
       resolveStopRequested();
@@ -389,10 +428,36 @@ async function waitForTask(
     if (predicate(lastTask)) return lastTask;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  const events = await client!.call('task/events', { projectId, taskId });
-  const workerPid = workerPids.get(taskId);
+  const [events, projectTasks] = await Promise.all([
+    client!.call('task/events', { projectId, taskId }),
+    client!.call('task/list', { projectId, limit: 500 }),
+  ]);
+  const workers = [...workerPids].map(([activeTaskId, pid]) => ({
+    taskId: activeTaskId,
+    pid,
+    alive: isProcessAlive(pid),
+  }));
+  const activeWorkerTaskIds = workers
+    .filter((worker) => worker.alive)
+    .map((worker) => worker.taskId);
   throw new Error(
-    `Task ${taskId} did not reach the expected state; last task=${JSON.stringify(lastTask)}; worker=${workerPid ?? 'none'} alive=${workerPid ? isProcessAlive(workerPid) : false}; events=${JSON.stringify(events.events)}`,
+    `Task ${taskId} did not reach the expected state. Diagnostics:\n${JSON.stringify(
+      {
+        lastTask,
+        projectTasks: projectTasks.tasks,
+        activeWorkerTaskIds,
+        trackedWorkers: workers,
+        workerStarts: workerStarts.slice(-20),
+        finalMessages: workerFinalMessages,
+        workerLifecycleEvents: workerLifecycleEvents.slice(-40),
+        recentSupervisorSnapshots: workerScheduleSnapshots
+          .filter((snapshot) => snapshot.projectId === projectId)
+          .slice(-10),
+        events: events.events,
+      },
+      null,
+      2,
+    )}`,
   );
 }
 

@@ -23,6 +23,10 @@ import {
   type EngineFamily,
   type EngineInstallation,
   type EngineOperationRun,
+  type DccCapabilityReport,
+  type DccInstallation,
+  type DccRun,
+  type DccTool,
   type McpConnectionConfig,
   type McpConnectionInput,
   type McpConnectionListEntry,
@@ -91,6 +95,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removePluginChangedListener?: () => void;
   private removeEngineCapabilitiesChangedListener?: () => void;
   private removeEngineRunChangedListener?: () => void;
+  private removeDccCapabilitiesChangedListener?: () => void;
+  private removeDccRunChangedListener?: () => void;
   private removeAssetJobChangedListener?: () => void;
   private removeBackupRunChangedListener?: () => void;
   private removeKnowledgeIndexChangedListener?: () => void;
@@ -119,6 +125,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removePluginChangedListener?.();
     this.removeEngineCapabilitiesChangedListener?.();
     this.removeEngineRunChangedListener?.();
+    this.removeDccCapabilitiesChangedListener?.();
+    this.removeDccRunChangedListener?.();
     this.removeAssetJobChangedListener?.();
     this.removeBackupRunChangedListener?.();
     this.removeKnowledgeIndexChangedListener?.();
@@ -179,6 +187,12 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       );
     this.removeEngineRunChangedListener = this.platformConnection.onEngineRunChanged((event) =>
       this.client?.onEngineRunChanged(event),
+    );
+    this.removeDccCapabilitiesChangedListener = this.platformConnection.onDccCapabilitiesChanged(
+      (event) => this.client?.onDccCapabilitiesChanged(event),
+    );
+    this.removeDccRunChangedListener = this.platformConnection.onDccRunChanged((event) =>
+      this.client?.onDccRunChanged(event),
     );
     this.removeAssetJobChangedListener = this.platformConnection.onAssetJobChanged((event) =>
       this.client?.onAssetJobChanged(event),
@@ -562,6 +576,52 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   ): Promise<string | null> {
     return (await this.getPlatformClient())
       .call('engine/setLiveBridge', { projectId, connectionId })
+      .then((result) => result.connectionId);
+  }
+
+  async listDccInstallations(tool?: DccTool): Promise<DccInstallation[]> {
+    return (await this.getPlatformClient())
+      .call('dcc/installations', { tool })
+      .then((result) => result.installations);
+  }
+
+  async addDccInstallation(input: RpcParams<'dcc/addInstallation'>): Promise<DccInstallation> {
+    return (await this.getPlatformClient()).call('dcc/addInstallation', input);
+  }
+
+  async removeDccInstallation(installationId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('dcc/removeInstallation', { installationId });
+  }
+
+  async getDccCapabilities(
+    projectId: string,
+    tool: DccTool,
+    refresh?: boolean,
+  ): Promise<DccCapabilityReport> {
+    return (await this.getPlatformClient()).call('dcc/capabilities', { projectId, tool, refresh });
+  }
+
+  async runDcc(input: RpcParams<'dcc/run'>): Promise<DccRun> {
+    return (await this.getPlatformClient()).call('dcc/run', input);
+  }
+
+  async listDccRuns(projectId: string, tool?: DccTool, limit?: number): Promise<DccRun[]> {
+    return (await this.getPlatformClient())
+      .call('dcc/runs', { projectId, tool, limit })
+      .then((result) => result.runs);
+  }
+
+  async getDccRun(projectId: string, runId: string): Promise<DccRun> {
+    return (await this.getPlatformClient()).call('dcc/run/get', { projectId, runId });
+  }
+
+  async setDccLiveBridge(
+    projectId: string,
+    tool: DccTool,
+    connectionId: string | null,
+  ): Promise<string | null> {
+    return (await this.getPlatformClient())
+      .call('dcc/setLiveBridge', { projectId, tool, connectionId })
       .then((result) => result.connectionId);
   }
 

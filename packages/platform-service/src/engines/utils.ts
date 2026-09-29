@@ -62,12 +62,13 @@ export async function probeCommand(
   executable: string,
   args: string[],
   timeoutMs = 10_000,
+  extraEnv: NodeJS.ProcessEnv = {},
 ): Promise<string> {
   const { stdout, stderr } = await execFileAsync(executable, args, {
     encoding: 'utf8',
     timeout: timeoutMs,
     maxBuffer: 1024 * 1024,
-    env: { PATH: process.env.PATH },
+    env: { PATH: process.env.PATH, ...extraEnv },
   });
   return `${stdout}\n${stderr}`.trim();
 }

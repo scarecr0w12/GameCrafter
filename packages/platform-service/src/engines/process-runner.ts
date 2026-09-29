@@ -12,6 +12,8 @@ export interface EngineProcessOptions {
   cwd: string;
   projectPath: string;
   runDirectory: string;
+  artifactRoot?: string;
+  extraEnv?: NodeJS.ProcessEnv;
   timeoutMs: number;
   signal: AbortSignal;
   redactCommand(command: string, args: string[]): string[];
@@ -27,9 +29,11 @@ export async function runEngineProcess(
   if (!existsSync(stderrPath)) writeFileSync(stderrPath, '');
   const started = Date.now();
   const commandForDisplay = options.redactCommand(options.command, options.args);
+  const artifactRoot =
+    options.artifactRoot ?? `.gamecrafter/engine-runs/${path.basename(options.runDirectory)}`;
   const artifacts: EngineRunArtifact[] = [
-    { kind: 'log', path: artifactPath(options.runDirectory, stdoutPath) },
-    { kind: 'log', path: artifactPath(options.runDirectory, stderrPath) },
+    { kind: 'log', path: artifactPath(options.runDirectory, stdoutPath, artifactRoot) },
+    { kind: 'log', path: artifactPath(options.runDirectory, stderrPath, artifactRoot) },
   ];
   if (options.signal.aborted) {
     return {
@@ -46,6 +50,7 @@ export async function runEngineProcess(
 
   return new Promise<EngineProcessResult>((resolve, reject) => {
     const childEnv: NodeJS.ProcessEnv = {
+      ...options.extraEnv,
       PATH: process.env.PATH ?? '',
       HOME: options.projectPath,
       TMPDIR: options.runDirectory,
@@ -132,7 +137,7 @@ export async function runEngineProcess(
   });
 }
 
-function artifactPath(runDirectory: string, filePath: string): string {
+function artifactPath(runDirectory: string, filePath: string, artifactRoot: string): string {
   const relative = path.relative(runDirectory, filePath).split(path.sep).join('/');
-  return `.gamecrafter/engine-runs/${path.basename(runDirectory)}/${relative}`;
+  return `${artifactRoot}/${relative}`;
 }

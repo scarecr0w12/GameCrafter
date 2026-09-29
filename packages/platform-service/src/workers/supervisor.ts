@@ -25,6 +25,23 @@ interface RunningWorker {
   cancelTimer?: NodeJS.Timeout;
 }
 
+export interface WorkerScheduleSnapshot {
+  at: string;
+  projectId: string;
+  maxConcurrent: number;
+  activeWorkerTaskIds: string[];
+  readyTaskIds: string[];
+  expiredReadyTaskIds: string[];
+  delayedReadyTaskIds: string[];
+  workers: Array<{
+    taskId: string;
+    workerId: string;
+    finalMessage: boolean;
+    stopRequested: boolean;
+    childAlive: boolean;
+  }>;
+}
+
 export interface WorkerSupervisorOptions {
   tasks: TaskService;
   settings: SettingsService;
@@ -34,7 +51,14 @@ export interface WorkerSupervisorOptions {
   leaseTtlMs?: number;
   tickIntervalMs?: number;
   workerMainPath?: string;
-  onWorkerStarted?: (taskId: string, pid: number) => void;
+  onWorkerStarted?: (taskId: string, workerId: string, pid: number) => void;
+  onWorkerFinalMessage?: (
+    taskId: string,
+    workerId: string,
+    messageType: 'result' | 'failed',
+  ) => void;
+  onWorkerExited?: (taskId: string, workerId: string) => void;
+  onScheduleSnapshot?: (snapshot: WorkerScheduleSnapshot) => void;
 }
 
 export class WorkerSupervisor implements TaskSupervisorPort {
@@ -154,19 +178,45 @@ export class WorkerSupervisor implements TaskSupervisorPort {
         maxConcurrent = 8;
       }
       maxConcurrent = Math.max(1, Math.floor(maxConcurrent) || 8);
-      let active = [...this.workers.values()].filter(
-        (worker) => worker.projectId === projectId && !worker.stopRequested,
-      ).length;
+      const projectWorkers = [...this.workers.values()].filter(
+        (worker) => worker.projectId === projectId,
+      );
+      const activeWorkers = projectWorkers.filter(
+        (worker) => !worker.stopRequested && !worker.finalMessage,
+      );
+      let active = activeWorkers.length;
+      const tasks = runtime.store.list({ states: ['ready', 'running'], limit: 1_000 });
+      const readyTasks = tasks.filter((task) => task.state === 'ready');
+      const now = this.now().getTime();
+      this.options.onScheduleSnapshot?.({
+        at: this.now().toISOString(),
+        projectId,
+        maxConcurrent,
+        activeWorkerTaskIds: activeWorkers.map((worker) => worker.taskId),
+        readyTaskIds: readyTasks.map((task) => task.taskId),
+        expiredReadyTaskIds: readyTasks
+          .filter((task) => expiredLeases.has(task.taskId))
+          .map((task) => task.taskId),
+        delayedReadyTaskIds: readyTasks
+          .filter((task) => (this.retryAfter.get(task.taskId) ?? 0) > now)
+          .map((task) => task.taskId),
+        workers: projectWorkers.map((worker) => ({
+          taskId: worker.taskId,
+          workerId: worker.workerId,
+          finalMessage: worker.finalMessage,
+          stopRequested: worker.stopRequested,
+          childAlive: worker.child.exitCode === null && worker.child.signalCode === null,
+        })),
+      });
       if (active >= maxConcurrent) continue;
 
-      const candidates = runtime.store
-        .list({ states: ['ready', 'running'], limit: 1_000 })
+      const candidates = tasks
         .filter(
           (task) =>
             (task.state === 'ready' ||
               (task.state === 'running' && !this.workers.has(task.taskId))) &&
             !expiredLeases.has(task.taskId) &&
-            (this.retryAfter.get(task.taskId) ?? 0) <= this.now().getTime(),
+            (this.retryAfter.get(task.taskId) ?? 0) <= now,
         )
         .sort(
           (left, right) =>
@@ -284,7 +334,8 @@ export class WorkerSupervisor implements TaskSupervisorPort {
         startedAt: task.startedAt ?? this.now().toISOString(),
       });
     }
-    if (child.pid !== undefined) this.options.onWorkerStarted?.(task.taskId, child.pid);
+    if (child.pid !== undefined)
+      this.options.onWorkerStarted?.(task.taskId, worker.workerId, child.pid);
     const command: WorkerCommand = {
       type: 'run',
       task,
@@ -300,6 +351,22 @@ export class WorkerSupervisor implements TaskSupervisorPort {
     worker: RunningWorker,
     message: WorkerMessage,
   ): Promise<void> {
+    const isCurrentWorker = this.workers.get(worker.taskId) === worker;
+    if (message.type === 'result' || message.type === 'failed' || message.type === 'stopped') {
+      if (message.type !== 'stopped')
+        this.options.onWorkerFinalMessage?.(worker.taskId, worker.workerId, message.type);
+      if (isCurrentWorker && !worker.stopRequested && !this.disposed) {
+        const task = runtime.store.get(worker.taskId);
+        if (task?.state === 'running') {
+          worker.finalMessage = true;
+          if (message.type === 'result') runtime.graph.complete(worker.taskId, message.result);
+          else if (message.type === 'failed') runtime.graph.fail(worker.taskId, message.error);
+        }
+      }
+      this.send(worker.child, { type: 'result-ack' });
+      return;
+    }
+    if (!isCurrentWorker) return;
     if (message.type === 'heartbeat') {
       if (worker.stopRequested) return;
       const task = runtime.store.get(worker.taskId);
@@ -334,10 +401,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       return;
     }
 
-    if (worker.stopRequested || this.disposed) {
-      if (message.type === 'stopped') return;
-      return;
-    }
+    if (worker.stopRequested || this.disposed) return;
 
     if (message.type === 'tool-call') {
       const task = runtime.store.get(worker.taskId);
@@ -377,21 +441,6 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       if (!task || task.state !== 'running') return;
       runtime.graph.addQuestion(worker.taskId, message.prompt, message.options);
       return;
-    }
-
-    if (message.type === 'result') {
-      const task = runtime.store.get(worker.taskId);
-      if (!task || task.state !== 'running') return;
-      worker.finalMessage = true;
-      runtime.graph.complete(worker.taskId, message.result);
-      return;
-    }
-
-    if (message.type === 'failed') {
-      const task = runtime.store.get(worker.taskId);
-      if (!task || task.state !== 'running') return;
-      worker.finalMessage = true;
-      runtime.graph.fail(worker.taskId, message.error);
     }
   }
 
@@ -451,7 +500,8 @@ export class WorkerSupervisor implements TaskSupervisorPort {
     worker: RunningWorker,
     error: Error,
   ): Promise<void> {
-    if (worker.stopRequested || worker.finalMessage) return;
+    if (this.workers.get(worker.taskId) !== worker || worker.stopRequested || worker.finalMessage)
+      return;
     worker.finalMessage = true;
     this.handleUnexpectedExit(runtime, worker, error.message);
   }
@@ -463,7 +513,11 @@ export class WorkerSupervisor implements TaskSupervisorPort {
     signal: NodeJS.Signals | null,
   ): Promise<void> {
     if (worker.cancelTimer) clearTimeout(worker.cancelTimer);
-    if (this.workers.get(worker.taskId) === worker) this.workers.delete(worker.taskId);
+    const isCurrentWorker = this.workers.get(worker.taskId) === worker;
+    if (isCurrentWorker) {
+      this.workers.delete(worker.taskId);
+      this.options.onWorkerExited?.(worker.taskId, worker.workerId);
+    }
     for (const controller of worker.toolCalls.values()) controller.abort('worker_exit');
     worker.toolCalls.clear();
     for (const resolveAcknowledgement of worker.answerAcks.values()) {
@@ -471,7 +525,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
     }
     worker.answerAcks.clear();
     worker.resolveExit();
-    if (!worker.stopRequested && !worker.finalMessage) {
+    if (isCurrentWorker && !worker.stopRequested && !worker.finalMessage) {
       this.handleUnexpectedExit(
         runtime,
         worker,

@@ -1,8 +1,9 @@
+import { fork } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { projectManifest, uuidv7 } from '@gamecrafter/contracts';
+import { projectManifest, uuidv7, type TaskRecord } from '@gamecrafter/contracts';
 import { Database } from '../db/database';
 import { migrate } from '../db/migrator';
 import { profileMigrations } from '../profile/migrations';
@@ -10,12 +11,14 @@ import { ProfileStore } from '../profile/profile-store';
 import { ProjectDatabases } from '../projects/project-databases';
 import { projectMigrations } from '../projects/migrations';
 import { summaryFromManifest } from '../projects/workspace';
+import { isProcessAlive } from '../lock';
 import { createBuiltinSettings } from '../settings/definitions';
 import { SettingsRegistry } from '../settings/registry';
 import { SettingsService } from '../settings/settings-service';
 import { TaskService } from '../tasks/task-service';
 import { HandlerRegistry, registerBuiltinHandlers } from './handler-registry';
 import { WorkerSupervisor } from './supervisor';
+import type { WorkerCommand, WorkerMessage } from './types';
 
 describe('WorkerSupervisor', () => {
   it('expires a worker lease using the injected clock', async () => {
@@ -106,7 +109,211 @@ describe('WorkerSupervisor', () => {
       rmSync(root, { recursive: true, force: true });
     }
   }, 30_000);
+
+  it('frees the Project concurrency slot after a worker returns a result', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-completed-worker-test-'));
+    const projectId = uuidv7();
+    const projectPath = path.join(root, 'project');
+    const statePath = path.join(projectPath, '.gamecrafter');
+    mkdirSync(statePath, { recursive: true });
+    const manifest = projectManifest.assert({
+      schemaVersion: 1,
+      projectId,
+      name: 'Completed Worker Test',
+      description: '',
+      engine: { family: 'godot' },
+      genres: [],
+      modules: [],
+      createdAt: new Date().toISOString(),
+      createdByPlatformVersion: '0.1.0',
+    });
+    writeFileSync(path.join(projectPath, 'gamecrafter.project.json'), JSON.stringify(manifest));
+
+    const profileDatabase = Database.open(':memory:');
+    let projectDatabases: ProjectDatabases | undefined;
+    let supervisor: WorkerSupervisor | undefined;
+    let lingeringPid: number | undefined;
+    let lingeringWorkerId: string | undefined;
+    try {
+      migrate(profileDatabase, profileMigrations);
+      const profile = new ProfileStore(profileDatabase);
+      profile.register(summaryFromManifest(manifest, projectPath, null));
+      const localProjectDatabase = Database.open(path.join(statePath, 'project.sqlite'));
+      migrate(localProjectDatabase, projectMigrations);
+      localProjectDatabase.close();
+      projectDatabases = new ProjectDatabases(profile);
+
+      const settingsRegistry = new SettingsRegistry();
+      const builtins = createBuiltinSettings();
+      settingsRegistry.register('builtin', builtins.groups, builtins.definitions);
+      const settings = new SettingsService(settingsRegistry, profileDatabase, projectDatabases);
+      settings.set('agents.maxConcurrentPerProject', 'project', 1, { projectId });
+      const handlers = new HandlerRegistry();
+      registerBuiltinHandlers(
+        handlers,
+        path.join(__dirname, '..', '..', 'lib', 'workers', 'builtin-handlers.js'),
+      );
+      handlers.register('test.linger', {
+        module: path.join(__dirname, 'supervisor-linger-fixture.cjs'),
+        export: 'linger',
+      });
+      const taskService = new TaskService(profile, projectDatabases, settings, handlers, {
+        taskChanged: () => undefined,
+        taskEvent: () => undefined,
+        taskQuestion: () => undefined,
+      });
+      const first = taskService.create({
+        projectId,
+        kind: 'test.linger',
+        title: 'Complete but keep process alive',
+        goal: 'Verify completed workers do not hold a task slot',
+        input: {},
+      }).task;
+      const firstTaskId = first.taskId;
+      supervisor = new WorkerSupervisor({
+        tasks: taskService,
+        settings,
+        handlers,
+        onWorkerStarted: (taskId, workerId, pid) => {
+          if (taskId === firstTaskId) {
+            lingeringWorkerId = workerId;
+            lingeringPid = pid;
+          }
+        },
+        tickIntervalMs: 60_000,
+      });
+      taskService.setSupervisor(supervisor);
+
+      await supervisor.schedule();
+      await waitForTaskState(
+        taskService,
+        projectId,
+        first.taskId,
+        (task) => task.state === 'succeeded',
+      );
+      expect(lingeringWorkerId).toBeDefined();
+      expect(lingeringPid).toBeDefined();
+      expect(isProcessAlive(lingeringPid!)).toBe(true);
+
+      const next = taskService.create({
+        projectId,
+        kind: 'noop.echo',
+        title: 'Use the released slot',
+        goal: 'Start after the previous handler completed',
+        input: { message: 'next task' },
+      }).task;
+      await supervisor.schedule();
+      const completed = await waitForTaskState(
+        taskService,
+        projectId,
+        next.taskId,
+        (task) => task.state === 'succeeded',
+        2_000,
+      );
+      expect(completed.state).toBe('succeeded');
+      expect(isProcessAlive(lingeringPid!)).toBe(true);
+    } finally {
+      if (lingeringPid && isProcessAlive(lingeringPid)) process.kill(lingeringPid, 'SIGTERM');
+      await supervisor?.stopAll({ checkpoint: false });
+      projectDatabases?.close();
+      profileDatabase.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it('exits when the supervisor disconnects before acknowledging a worker result', async () => {
+    const worker = await runWorkerWithoutFinalAck(true);
+    expect(worker.resultReceived).toBe(true);
+    expect(worker.exitCode).toBe(0);
+    expect(worker.elapsedMs).toBeLessThan(6_000);
+  }, 8_000);
+
+  it('exits when the supervisor never acknowledges a worker result', async () => {
+    const worker = await runWorkerWithoutFinalAck(false);
+    expect(worker.resultReceived).toBe(true);
+    expect(worker.exitCode).toBe(0);
+    expect(worker.elapsedMs).toBeLessThan(6_000);
+  }, 8_000);
 });
+
+async function runWorkerWithoutFinalAck(
+  disconnectAfterResult: boolean,
+): Promise<{ resultReceived: boolean; exitCode: number | null; elapsedMs: number }> {
+  const child = fork(path.join(__dirname, '..', '..', 'lib', 'workers', 'worker-main.js'), [], {
+    env: process.env,
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  });
+  let resultReceived = false;
+  let disconnectedAt: number | undefined;
+  let resultTimeout: NodeJS.Timeout | undefined;
+  let exitTimeout: NodeJS.Timeout | undefined;
+  const exited = new Promise<{ code: number | null }>((resolve) => {
+    child.once('exit', (code) => resolve({ code }));
+  });
+  const result = new Promise<void>((resolve, reject) => {
+    resultTimeout = setTimeout(() => reject(new Error('Worker did not return a result')), 2_000);
+    child.on('message', (message: WorkerMessage) => {
+      if (message.type === 'result') {
+        resultReceived = true;
+        if (disconnectAfterResult && child.connected) {
+          disconnectedAt = Date.now();
+          child.disconnect();
+        }
+        resolve();
+      } else if (message.type === 'failed') {
+        reject(new Error(`Worker failed: ${message.error.message}`));
+      }
+    });
+  });
+
+  const command: WorkerCommand = {
+    type: 'run',
+    task: { taskId: uuidv7() } as TaskRecord,
+    handler: { module: path.join(__dirname, 'supervisor-linger-fixture.cjs'), export: 'linger' },
+    input: {},
+    checkpoint: null,
+  };
+
+  try {
+    child.send(command);
+    await result;
+    const startedAt = disconnectedAt ?? Date.now();
+    const timeout = new Promise<never>((_resolve, reject) => {
+      exitTimeout = setTimeout(
+        () => reject(new Error('Worker did not exit after final IPC')),
+        6_000,
+      );
+      exitTimeout.unref();
+    });
+    const exit = await Promise.race([exited, timeout]);
+    return { resultReceived, exitCode: exit.code, elapsedMs: Date.now() - startedAt };
+  } finally {
+    if (resultTimeout) clearTimeout(resultTimeout);
+    if (exitTimeout) clearTimeout(exitTimeout);
+    if (child.exitCode === null && child.signalCode === null && child.pid !== undefined) {
+      if (child.connected) child.disconnect();
+      if (isProcessAlive(child.pid)) process.kill(child.pid, 'SIGTERM');
+    }
+  }
+}
+
+async function waitForTaskState(
+  service: TaskService,
+  projectId: string,
+  taskId: string,
+  predicate: (task: TaskRecord) => boolean,
+  timeoutMs = 5_000,
+): Promise<TaskRecord> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const task = service.get(projectId, taskId);
+    if (predicate(task)) return task;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(
+    `Task did not reach the expected state: ${JSON.stringify(service.get(projectId, taskId))}`,
+  );
+}
 
 async function waitForRunning(
   service: TaskService,

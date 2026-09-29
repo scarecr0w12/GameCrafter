@@ -27,7 +27,7 @@ import {
   registerBuiltinHandlers,
   registerKnowledgeHandlers,
 } from './workers/handler-registry';
-import { WorkerSupervisor } from './workers/supervisor';
+import { WorkerSupervisor, type WorkerScheduleSnapshot } from './workers/supervisor';
 import { log } from './logger';
 import { CompletionService } from './models/completion-service';
 import { ModelRegistry } from './models/model-registry';
@@ -54,6 +54,7 @@ import { PluginRegistry } from './plugins/plugin-registry';
 import { PluginService } from './plugins/plugin-service';
 import type { IsolationLauncher } from './plugins/isolation/types';
 import { EngineConnectorService } from './engines/engine-connector-service';
+import { DccConnectorService } from './dcc/dcc-connector-service';
 import { AssetService } from './assets/asset-service';
 import { BackupService } from './backup/backup-service';
 import { KnowledgeService } from './knowledge/knowledge-service';
@@ -64,7 +65,14 @@ export interface PlatformServiceOptions {
   platformVersion: string;
   onClientEvent?: (event: 'connected' | 'closed') => void;
   onStopRequested?: (checkpoint: boolean) => Promise<void> | void;
-  onWorkerStarted?: (taskId: string, pid: number) => void;
+  onWorkerStarted?: (taskId: string, workerId: string, pid: number) => void;
+  onWorkerFinalMessage?: (
+    taskId: string,
+    workerId: string,
+    messageType: 'result' | 'failed',
+  ) => void;
+  onWorkerExited?: (taskId: string, workerId: string) => void;
+  onWorkerScheduleSnapshot?: (snapshot: WorkerScheduleSnapshot) => void;
   approvalTimeoutOverrideMs?: number;
   backupNow?: () => Date;
   pluginLaunchers?: {
@@ -207,6 +215,9 @@ export class PlatformService {
       handlers: handlerRegistry,
       tools: toolBroker,
       onWorkerStarted: options.onWorkerStarted,
+      onWorkerFinalMessage: options.onWorkerFinalMessage,
+      onWorkerExited: options.onWorkerExited,
+      onScheduleSnapshot: options.onWorkerScheduleSnapshot,
     });
     taskService.setSupervisor(workerSupervisor);
     const startedAt = new Date().toISOString();
@@ -229,6 +240,11 @@ export class PlatformService {
     const engines = (): EngineConnectorService => {
       if (!engineRef.service) throw new Error('Engine connector service is not initialized');
       return engineRef.service;
+    };
+    const dccRef: { service?: DccConnectorService } = {};
+    const dcc = (): DccConnectorService => {
+      if (!dccRef.service) throw new Error('DCC connector service is not initialized');
+      return dccRef.service;
     };
     const assetRef: { service?: AssetService } = {};
     const assets = (): AssetService => {
@@ -293,6 +309,25 @@ export class PlatformService {
       'engine/setLiveBridge': ({ projectId, connectionId }) =>
         engines()
           .setLiveBridge(projectId, connectionId)
+          .then((boundConnectionId) => ({ connectionId: boundConnectionId })),
+      'dcc/installations': ({ tool }) =>
+        dcc()
+          .installations(tool)
+          .then((installations) => ({ installations })),
+      'dcc/addInstallation': (input) => dcc().addInstallation(input),
+      'dcc/removeInstallation': async ({ installationId }) => {
+        await dcc().removeInstallation(installationId);
+        return { removed: true };
+      },
+      'dcc/capabilities': ({ projectId, tool, refresh }) =>
+        dcc().capabilities(projectId, tool, refresh),
+      'dcc/run': ({ projectId, tool, operation, params, taskId }) =>
+        dcc().run(projectId, tool, operation, params ?? {}, taskId),
+      'dcc/runs': ({ projectId, tool, limit }) => ({ runs: dcc().runs(projectId, tool, limit) }),
+      'dcc/run/get': ({ projectId, runId }) => dcc().getRun(projectId, runId),
+      'dcc/setLiveBridge': ({ projectId, tool, connectionId }) =>
+        dcc()
+          .setLiveBridge(projectId, tool, connectionId)
           .then((boundConnectionId) => ({ connectionId: boundConnectionId })),
       'asset/providers': () => ({ providers: assets().providersList() }),
       'asset/accounts': () => ({ accounts: assets().accounts() }),
@@ -693,6 +728,7 @@ export class PlatformService {
         stateChanged: (state) => {
           server.broadcast('mcp/stateChanged', { state });
           void engineRef.service?.onMcpStateChanged(state.connectionId).catch(() => undefined);
+          void dccRef.service?.onMcpStateChanged(state.connectionId).catch(() => undefined);
         },
         inputRequired: (params) => server.broadcast('mcp/inputRequired', params),
       },
@@ -736,6 +772,21 @@ export class PlatformService {
         capabilitiesChanged: (projectId, report) =>
           server.broadcast('engine/capabilitiesChanged', { projectId, report }),
         runChanged: (projectId, run) => server.broadcast('engine/runChanged', { projectId, run }),
+      },
+    });
+    dccRef.service = new DccConnectorService({
+      database,
+      projects: profile,
+      projectDatabases,
+      settings: settingsService,
+      toolRegistry,
+      toolBroker,
+      mcpConnections,
+      events: {
+        capabilitiesChanged: (projectId, tool, report) =>
+          server.broadcast('dcc/capabilitiesChanged', { projectId, tool, report }),
+        runChanged: (projectId, tool, run) =>
+          server.broadcast('dcc/runChanged', { projectId, tool, run }),
       },
     });
     assetRef.service = new AssetService({
@@ -789,6 +840,7 @@ export class PlatformService {
     });
     settingsService.onChanged((event) => {
       if (event.key.startsWith('engine.')) void engines().onSettingChanged(event);
+      if (event.key.startsWith('dcc.')) void dcc().onSettingChanged(event);
       if (event.key.startsWith('assets.')) assets().onSettingChanged(event);
       if (event.key.startsWith('backup.')) backups().onSettingChanged(event.key);
       if (event.key.startsWith('knowledge.')) knowledge().onSettingChanged(event);

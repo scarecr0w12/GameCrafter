@@ -8,9 +8,9 @@ Evidence levels used below follow the plan's rule: **Implemented** means behavio
 
 ## 1. Snapshot
 
-- Seventeen of twenty work packages (WP0–WP15, WP17) are **Implemented (unit/integration-tested)**; three (WP16, WP18, WP19) are **Not started**.
+- Eighteen of twenty work packages (WP0–WP17) are **Implemented (unit/integration-tested)**; two (WP18, WP19) are **Not started**.
 - The last full gate (`npx turbo run build typecheck lint test` plus `npm run format:check`) passed on commit `1a3286f`: 85 test files, 278 tests across `@gamecrafter/contracts` (51), `@gamecrafter/platform-service` (215), `@gamecrafter/theia-control-room` (9), `@gamecrafter/service-client`, `@gamecrafter/plugin-sdk`, and the sample plugin (1 each). Electron build and typecheck/lint/test for `@gamecrafter/control-room` are configured as skipped in Turbo.
-- **No component has reached Verified (live)** except the Godot headless layer (real Godot 4.7.2 binary) and the Qdrant adapter (Docker-run Qdrant when `docker` is available). Everything that talks to a model provider, generation provider, Unity, Unreal, a live editor bridge, or a community MCP server is fake-tested only.
+- **No component has reached Verified (live)** except the Godot headless layer (real Godot 4.7.2 binary), the Blender headless layer (real Blender 5.2.2 LTS via WSL interop), and the Qdrant adapter (Docker-run Qdrant when `docker` is available). Everything that talks to a model provider, generation provider, Unity, Unreal, a live editor bridge, or a community MCP server is fake-tested only.
 - Windows has never been exercised: named-pipe transport, AppContainer isolation, and installers are unit-tested, stubbed, or absent respectively.
 - The CI workflow (`.github/workflows/ci.yml`) exists but has not run on a hosted runner.
 
@@ -34,7 +34,7 @@ Evidence levels used below follow the plan's rule: **Implemented** means behavio
 | WP13 | Engine connectors | Implemented | Godot live (headless); Unity/Unreal fake executables | No live editor bridge tested; C04 matrix unverified |
 | WP14 | Knowledge layer | Implemented | Integration; Qdrant via Docker; fake embeddings | No live embedding provider; only Qdrant as vector store |
 | WP15 | Asset pipeline and inspection | Implemented | Fake Meshy/Tripo3D servers; browser smoke of viewer | No live provider; adapter fields marked `unverified against live API`; no DCC-format conversion; no automated UI test |
-| WP16 | DCC connectors | Not started | — | Blender/Maya/3ds Max/Cinema 4D/ZBrush headless adapters, live bridges as plugins, OS matrix |
+| WP16 | DCC connectors | Implemented | Blender live (headless, via WSL interop); Maya/3ds Max/C4D/ZBrush fake executables | No live DCC bridge; four tools unverified against real apps; C05 stays Verify |
 | WP17 | Backup and restore | Implemented | Local destination real; S3/FTP/Drive fake servers | No live remote destination; no in-place restore; no plugin destinations; no Windows drill |
 | WP18 | Change graph and swarm coordinator | Not started | — | Impact graph, worktrees, locks, completion contract, conflict detection |
 | WP19 | Packaging and release | Not started | — | Windows/Linux installers, signing, update/rollback |
@@ -53,7 +53,6 @@ Grouped by area, not ordered. Each item names the work package or register entry
 
 ### 4.1 Not-started work packages
 
-- **DCC connectors (WP16, C05):** headless adapters for Blender, Maya, 3ds Max, Cinema 4D, and ZBrush where a documented CLI exists; live bridges as connector plugins; per-tool OS support matrix; code-execution tools labelled `destructive`. Done only when each capability report is verified against the real application. This also unblocks headless preview conversion of DCC formats deferred from WP15.
 - **Change graph and swarm coordinator (WP18, K05, A04, A06, A07):** cross-discipline impact graph, Git worktree allocation, resource locks and leases for live engine/DCC sessions, validation and completion contract, conflict detection and revalidation, user feedback propagation. Several implemented packages defer pieces here: real task handlers for the agent runtime (WP6), central role allowlist enforcement in the broker (WP11), dynamic skill activation enum and compaction protection (WP9), task-relevance weighting and token budgeting in retrieval (WP14).
 - **Packaging and release (WP19, P03, P04, Q03):** Windows and Linux installers, checksums and signing, update checking with user-controlled installation and rollback, tested distribution matrix.
 
@@ -64,6 +63,7 @@ Everything below is Implemented against fakes and needs a run against the real s
 - Model providers: at least one live OpenAI-compatible endpoint and one Anthropic endpoint, including streaming and embeddings (WP8, WP14).
 - Generation providers: Meshy and Tripo3D end to end, including the fields marked `unverified against live API` (Tripo v3 route shapes, data-URI image input, `negative_prompt`), and a refresh of the Tripo3D section of [research/dcc-and-asset-tools.md](research/dcc-and-asset-tools.md) (WP15, C06).
 - Engines: Unity and Unreal headless layers against real installations; at least one live editor bridge per engine; the C04 capability matrix (WP13).
+- DCC tools: Maya, 3ds Max, Cinema 4D, and ZBrush headless adapters against real installations, and at least one live DCC MCP bridge (WP16, C05).
 - MCP: at least one community engine or DCC MCP server per supported protocol revision; Docker HTTP port mapping (WP10).
 - Windows: named-pipe transport, AppContainer isolation, engine detection, installers (WP2, WP12, WP13, WP19, S02).
 - CI: a green run of `.github/workflows/ci.yml` on a hosted runner (WP0).

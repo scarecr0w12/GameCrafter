@@ -27,6 +27,7 @@ export type WorkerCommand =
   | { type: 'answer'; questionId: string; answer: unknown }
   | { type: 'tool-result'; requestId: string; output?: unknown; error?: TaskError }
   | { type: 'checkpoint-ack'; requestId: string }
+  | { type: 'result-ack' }
   | { type: 'cancel' }
   | { type: 'checkpoint-and-stop' };
 
