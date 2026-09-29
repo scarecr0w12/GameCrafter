@@ -9,8 +9,8 @@ describe('SettingsRegistry', () => {
     registry.register('builtin', builtins.groups, builtins.definitions);
 
     const description = registry.describe();
-    expect(description.groups).toHaveLength(11);
-    expect(description.definitions).toHaveLength(36);
+    expect(description.groups).toHaveLength(12);
+    expect(description.definitions).toHaveLength(46);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({
@@ -34,6 +34,7 @@ describe('SettingsRegistry', () => {
     expect(description.groups[0]?.id).toBe('general');
     expect(description.groups[9]?.id).toBe('logs');
     expect(description.groups[10]?.id).toBe('engine');
+    expect(description.groups[11]?.id).toBe('knowledge');
   });
 
   it('rejects duplicate keys', () => {

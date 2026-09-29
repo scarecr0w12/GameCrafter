@@ -64,6 +64,12 @@ export class PlatformServiceConnection {
   private readonly engineRunChangedListeners = new Set<
     (event: RpcNotificationParams<'engine/runChanged'>) => void
   >();
+  private readonly knowledgeIndexChangedListeners = new Set<
+    (event: RpcNotificationParams<'knowledge/indexChanged'>) => void
+  >();
+  private readonly knowledgeRecordChangedListeners = new Set<
+    (event: RpcNotificationParams<'knowledge/recordChanged'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -182,6 +188,20 @@ export class PlatformServiceConnection {
     return () => this.engineRunChangedListeners.delete(listener);
   }
 
+  onKnowledgeIndexChanged(
+    listener: (event: RpcNotificationParams<'knowledge/indexChanged'>) => void,
+  ): () => void {
+    this.knowledgeIndexChangedListeners.add(listener);
+    return () => this.knowledgeIndexChangedListeners.delete(listener);
+  }
+
+  onKnowledgeRecordChanged(
+    listener: (event: RpcNotificationParams<'knowledge/recordChanged'>) => void,
+  ): () => void {
+    this.knowledgeRecordChangedListeners.add(listener);
+    return () => this.knowledgeRecordChangedListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -251,6 +271,12 @@ export class PlatformServiceConnection {
         });
         client.onNotification('engine/runChanged', (event) => {
           for (const listener of this.engineRunChangedListeners) listener(event);
+        });
+        client.onNotification('knowledge/indexChanged', (event) => {
+          for (const listener of this.knowledgeIndexChangedListeners) listener(event);
+        });
+        client.onNotification('knowledge/recordChanged', (event) => {
+          for (const listener of this.knowledgeRecordChangedListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

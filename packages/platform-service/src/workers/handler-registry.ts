@@ -61,6 +61,21 @@ export function registerBoardMaintenanceHandlers(
   }
 }
 
+export function registerKnowledgeHandlers(
+  registry: HandlerRegistry,
+  module = resolveKnowledgeHandlerModule(),
+): void {
+  registry.register('knowledge.reindex', { module, export: 'knowledgeReindex' });
+  registry.register('knowledge.reconcile', { module, export: 'knowledgeReconcile' });
+}
+
+function resolveKnowledgeHandlerModule(): string {
+  const local = path.join(__dirname, 'knowledge-handlers.js');
+  return existsSync(local)
+    ? local
+    : path.resolve(__dirname, '..', '..', 'lib', 'workers', 'knowledge-handlers.js');
+}
+
 function resolveBuiltinHandlerModule(): string {
   const local = path.join(__dirname, 'builtin-handlers.js');
   return existsSync(local)

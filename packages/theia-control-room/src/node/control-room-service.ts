@@ -78,6 +78,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removePluginChangedListener?: () => void;
   private removeEngineCapabilitiesChangedListener?: () => void;
   private removeEngineRunChangedListener?: () => void;
+  private removeKnowledgeIndexChangedListener?: () => void;
+  private removeKnowledgeRecordChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -102,6 +104,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removePluginChangedListener?.();
     this.removeEngineCapabilitiesChangedListener?.();
     this.removeEngineRunChangedListener?.();
+    this.removeKnowledgeIndexChangedListener?.();
+    this.removeKnowledgeRecordChangedListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -158,6 +162,12 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       );
     this.removeEngineRunChangedListener = this.platformConnection.onEngineRunChanged((event) =>
       this.client?.onEngineRunChanged(event),
+    );
+    this.removeKnowledgeIndexChangedListener = this.platformConnection.onKnowledgeIndexChanged(
+      (event) => this.client?.onKnowledgeIndexChanged(event),
+    );
+    this.removeKnowledgeRecordChangedListener = this.platformConnection.onKnowledgeRecordChanged(
+      (event) => this.client?.onKnowledgeRecordChanged(event),
     );
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -771,6 +781,72 @@ export class ControlRoomServiceImpl implements ControlRoomService {
 
   async deleteBoardThread(params: RpcParams<'board/delete'>): Promise<RpcResult<'board/delete'>> {
     return (await this.getPlatformClient()).call('board/delete', params);
+  }
+
+  async listKnowledgeRecords(
+    params: RpcParams<'knowledge/records'>,
+  ): Promise<RpcResult<'knowledge/records'>> {
+    return (await this.getPlatformClient()).call('knowledge/records', params);
+  }
+
+  async getKnowledgeRecord(
+    params: RpcParams<'knowledge/record'>,
+  ): Promise<RpcResult<'knowledge/record'>> {
+    return (await this.getPlatformClient()).call('knowledge/record', params);
+  }
+
+  async writeKnowledgeRecord(
+    params: RpcParams<'knowledge/write'>,
+  ): Promise<RpcResult<'knowledge/write'>> {
+    return (await this.getPlatformClient()).call('knowledge/write', params);
+  }
+
+  async setCanonStatus(
+    params: RpcParams<'knowledge/setStatus'>,
+  ): Promise<RpcResult<'knowledge/setStatus'>> {
+    return (await this.getPlatformClient()).call('knowledge/setStatus', params);
+  }
+
+  async searchKnowledge(
+    params: RpcParams<'knowledge/search'>,
+  ): Promise<RpcResult<'knowledge/search'>> {
+    return (await this.getPlatformClient()).call('knowledge/search', params);
+  }
+
+  async getKnowledgeIndexStatus(
+    params: RpcParams<'knowledge/index/status'>,
+  ): Promise<RpcResult<'knowledge/index/status'>> {
+    return (await this.getPlatformClient()).call('knowledge/index/status', params);
+  }
+
+  async rebuildKnowledgeIndex(
+    params: RpcParams<'knowledge/index/rebuild'>,
+  ): Promise<RpcResult<'knowledge/index/rebuild'>> {
+    return (await this.getPlatformClient()).call('knowledge/index/rebuild', params);
+  }
+
+  async reconcileKnowledgeIndex(
+    params: RpcParams<'knowledge/index/reconcile'>,
+  ): Promise<RpcResult<'knowledge/index/reconcile'>> {
+    return (await this.getPlatformClient()).call('knowledge/index/reconcile', params);
+  }
+
+  async setKnowledgeEmbeddingProfile(
+    params: RpcParams<'knowledge/embeddingProfile/set'>,
+  ): Promise<RpcResult<'knowledge/embeddingProfile/set'>> {
+    return (await this.getPlatformClient()).call('knowledge/embeddingProfile/set', params);
+  }
+
+  async getKnowledgeGraph(
+    params: RpcParams<'knowledge/graph'>,
+  ): Promise<RpcResult<'knowledge/graph'>> {
+    return (await this.getPlatformClient()).call('knowledge/graph', params);
+  }
+
+  async testKnowledgeVectorStore(
+    params: RpcParams<'knowledge/vectorStore/test'>,
+  ): Promise<RpcResult<'knowledge/vectorStore/test'>> {
+    return (await this.getPlatformClient()).call('knowledge/vectorStore/test', params);
   }
 
   async stopServiceOnWindowClose(): Promise<void> {

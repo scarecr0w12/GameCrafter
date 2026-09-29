@@ -281,4 +281,114 @@ export const projectMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 7,
+    name: 'create Project knowledge index tables',
+    up: `
+      CREATE TABLE canon_records (
+        path TEXT PRIMARY KEY,
+        record_id TEXT NOT NULL,
+        record_type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        module TEXT,
+        active INTEGER NOT NULL,
+        revision TEXT NOT NULL,
+        record_json TEXT NOT NULL,
+        body TEXT NOT NULL,
+        indexed_at TEXT NOT NULL
+      );
+      CREATE INDEX canon_records_id_idx ON canon_records(record_id);
+      CREATE INDEX canon_records_filter_idx ON canon_records(record_type, status, active, module);
+      CREATE TABLE canon_references (
+        source_record_id TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        rel TEXT NOT NULL,
+        target_record_id TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        source TEXT NOT NULL,
+        PRIMARY KEY(source_path, rel, target_record_id)
+      );
+      CREATE INDEX canon_references_target_idx ON canon_references(target_record_id);
+      CREATE TABLE knowledge_chunks (
+        chunk_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        path TEXT NOT NULL,
+        record_id TEXT,
+        record_type TEXT,
+        record_title TEXT,
+        record_status TEXT,
+        active INTEGER NOT NULL,
+        revision TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        tokens_estimate INTEGER NOT NULL
+      );
+      CREATE INDEX knowledge_chunks_path_idx ON knowledge_chunks(path);
+      CREATE INDEX knowledge_chunks_filter_idx ON knowledge_chunks(source, record_type, record_status, active);
+      CREATE VIRTUAL TABLE knowledge_chunks_fts USING fts5(
+        text,
+        content='knowledge_chunks',
+        content_rowid='rowid',
+        tokenize='porter unicode61'
+      );
+      CREATE TRIGGER knowledge_chunks_fts_insert AFTER INSERT ON knowledge_chunks BEGIN
+        INSERT INTO knowledge_chunks_fts(rowid, text) VALUES (new.rowid, new.text);
+      END;
+      CREATE TRIGGER knowledge_chunks_fts_delete AFTER DELETE ON knowledge_chunks BEGIN
+        INSERT INTO knowledge_chunks_fts(knowledge_chunks_fts, rowid, text)
+        VALUES ('delete', old.rowid, old.text);
+      END;
+      CREATE TRIGGER knowledge_chunks_fts_update AFTER UPDATE OF text ON knowledge_chunks BEGIN
+        INSERT INTO knowledge_chunks_fts(knowledge_chunks_fts, rowid, text)
+        VALUES ('delete', old.rowid, old.text);
+        INSERT INTO knowledge_chunks_fts(rowid, text) VALUES (new.rowid, new.text);
+      END;
+      CREATE TABLE knowledge_index_state (
+        path TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        revision TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        mtime_ms INTEGER NOT NULL,
+        size INTEGER NOT NULL,
+        chunk_count INTEGER NOT NULL,
+        indexed_at TEXT NOT NULL
+      );
+      CREATE TABLE knowledge_index_meta (
+        project_id TEXT PRIMARY KEY,
+        last_full_reconcile_at TEXT,
+        last_incremental_at TEXT,
+        degraded TEXT
+      );
+      CREATE TABLE embedding_profiles (
+        profile_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        provider_account_id TEXT NOT NULL,
+        dimensions INTEGER NOT NULL,
+        version INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        active INTEGER NOT NULL
+      );
+      CREATE UNIQUE INDEX embedding_profiles_active_project_idx
+        ON embedding_profiles(project_id) WHERE active = 1;
+      CREATE TABLE knowledge_vectors (
+        chunk_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        profile_version INTEGER NOT NULL,
+        point_id TEXT NOT NULL,
+        collection TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY(chunk_id, profile_version)
+      );
+      CREATE INDEX knowledge_vectors_project_profile_idx
+        ON knowledge_vectors(project_id, profile_version);
+      CREATE TABLE knowledge_conflicts (
+        record_id TEXT PRIMARY KEY,
+        paths_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

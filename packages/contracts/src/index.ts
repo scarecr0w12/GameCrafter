@@ -2,6 +2,7 @@ export * from './ids';
 export * from './board';
 export * from './engines';
 export * from './models';
+export * from './knowledge';
 export * from './mcp';
 export * from './plugins';
 export * from './project/manifest';

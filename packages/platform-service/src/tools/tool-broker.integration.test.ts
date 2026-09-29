@@ -52,11 +52,15 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(23);
+    expect(result.tools).toHaveLength(28);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
       'board/post',
       'board/propose-decision',
       'board/read',
+      'canon/graph',
+      'canon/propose-status',
+      'canon/read',
+      'canon/write',
       'engine/build',
       'engine/check',
       'engine/console',
@@ -73,6 +77,7 @@ describe('Tool broker integration', () => {
       'fs/list',
       'fs/read-file',
       'fs/write-file',
+      'knowledge/search',
       'process/run',
       'project/manifest',
       'skills/activate',

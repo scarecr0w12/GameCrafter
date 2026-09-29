@@ -80,6 +80,21 @@ export const PluginGenreContributionSchema = Type.Object(
 );
 export type PluginGenreContribution = Static<typeof PluginGenreContributionSchema>;
 
+export const PluginRecordTypeContributionSchema = Type.Object(
+  {
+    type: Type.String({
+      minLength: 1,
+      maxLength: 80,
+      pattern: '^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$',
+    }),
+    name: Type.String({ minLength: 1 }),
+    description: Type.String(),
+    requiredFields: Type.Array(Type.String({ minLength: 1 }), { uniqueItems: true }),
+  },
+  { additionalProperties: false },
+);
+export type PluginRecordTypeContribution = Static<typeof PluginRecordTypeContributionSchema>;
+
 export const PluginPanelContributionSchema = Type.Object(
   {
     id: Type.String({ minLength: 1 }),
@@ -138,6 +153,7 @@ export const PluginManifestSchema = Type.Object(
         tools: Type.Array(PluginContributedToolSchema),
         modules: Type.Array(PluginModuleContributionSchema),
         genres: Type.Array(PluginGenreContributionSchema),
+        recordTypes: Type.Optional(Type.Array(PluginRecordTypeContributionSchema)),
         roles: Type.Array(RelativeEntrySchema),
         skills: Type.Array(RelativeEntrySchema),
         settings: Type.Array(SettingDefinitionSchema),

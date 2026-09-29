@@ -25,6 +25,7 @@ import {
   HandlerRegistry,
   registerBoardMaintenanceHandlers,
   registerBuiltinHandlers,
+  registerKnowledgeHandlers,
 } from './workers/handler-registry';
 import { WorkerSupervisor } from './workers/supervisor';
 import { log } from './logger';
@@ -53,6 +54,8 @@ import { PluginRegistry } from './plugins/plugin-registry';
 import { PluginService } from './plugins/plugin-service';
 import type { IsolationLauncher } from './plugins/isolation/types';
 import { EngineConnectorService } from './engines/engine-connector-service';
+import { KnowledgeService } from './knowledge/knowledge-service';
+import type { VectorStore } from './knowledge/vector-store';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -66,6 +69,7 @@ export interface PlatformServiceOptions {
     win32?: IsolationLauncher;
     unisolated?: IsolationLauncher;
   };
+  knowledgeVectorStoreFactory?: (projectId: string) => VectorStore;
 }
 
 export class PlatformService {
@@ -82,6 +86,7 @@ export class PlatformService {
     private readonly mcpConnections: McpConnectionManager,
     private readonly boardMaintenanceScheduler: BoardMaintenanceScheduler,
     private readonly pluginHost: PluginHost,
+    private readonly knowledgeService: KnowledgeService,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -123,6 +128,7 @@ export class PlatformService {
     const handlerRegistry = new HandlerRegistry();
     registerBuiltinHandlers(handlerRegistry);
     registerBoardMaintenanceHandlers(handlerRegistry);
+    registerKnowledgeHandlers(handlerRegistry);
     const taskService = new TaskService(
       profile,
       projectDatabases,
@@ -219,6 +225,11 @@ export class PlatformService {
       if (!engineRef.service) throw new Error('Engine connector service is not initialized');
       return engineRef.service;
     };
+    const knowledgeRef: { service?: KnowledgeService } = {};
+    const knowledge = (): KnowledgeService => {
+      if (!knowledgeRef.service) throw new Error('Knowledge service is not initialized');
+      return knowledgeRef.service;
+    };
     const handlers: RpcHandlers = {
       'service/info': () => ({
         serviceVersion: platformVersion,
@@ -231,17 +242,20 @@ export class PlatformService {
       'project/create': async (input: ProjectCreateInput) => {
         const project = await workspace.create(input);
         server.broadcast('project/changed', { kind: 'created', project });
+        knowledge().onProjectCreated(project.projectId);
         return project;
       },
       'project/clone': async (input: ProjectCloneInput) => {
         const project = await workspace.clone(input);
         server.broadcast('project/changed', { kind: 'cloned', project });
+        knowledge().onProjectCreated(project.projectId);
         return project;
       },
       'project/list': () => ({ projects: workspace.list() }),
       'project/open': async ({ path: projectPath }) => {
         const project = workspace.open(projectPath);
         server.broadcast('project/changed', { kind: 'opened', project });
+        knowledge().onProjectOpened(project.projectId);
         await mcpConnections.onProjectOpened(project.projectId);
         await plugins().autoStartProject(project.projectId);
         return project;
@@ -265,6 +279,26 @@ export class PlatformService {
         engines()
           .setLiveBridge(projectId, connectionId)
           .then((boundConnectionId) => ({ connectionId: boundConnectionId })),
+      'knowledge/records': ({ projectId, type, status, module, includeInactive, search }) =>
+        knowledge().records(projectId, { type, status, module, includeInactive, search }),
+      'knowledge/record': ({ projectId, recordId }) => knowledge().record(projectId, recordId),
+      'knowledge/write': ({ projectId, record, body, path: recordPath }) =>
+        knowledge().write(projectId, record, body, recordPath),
+      'knowledge/setStatus': ({ projectId, recordId, status, justification }) =>
+        knowledge().setStatus(projectId, recordId, status, justification),
+      'knowledge/search': (request) => knowledge().search(request),
+      'knowledge/index/status': ({ projectId }) => knowledge().indexStatus(projectId),
+      'knowledge/index/rebuild': ({ projectId, full }) => ({
+        taskId: knowledge().rebuild(projectId, full ?? true),
+      }),
+      'knowledge/index/reconcile': ({ projectId }) => ({
+        taskId: knowledge().reconcile(projectId),
+      }),
+      'knowledge/embeddingProfile/set': ({ projectId, modelId, providerAccountId }) =>
+        knowledge().setEmbeddingProfile(projectId, modelId, providerAccountId),
+      'knowledge/graph': ({ projectId, recordId, depth }) =>
+        knowledge().graph(projectId, recordId, depth ?? 1),
+      'knowledge/vectorStore/test': ({ projectId }) => knowledge().testVectorStore(projectId),
       'settings/describe': () => settingsService.describe(),
       'settings/get': (params, context) =>
         settingsService.resolve(params.key, {
@@ -520,10 +554,14 @@ export class PlatformService {
       projectDatabases,
       settings: settingsService,
       events: {
-        threadChanged: (projectId, thread) =>
-          server.broadcast('board/threadChanged', { projectId, thread }),
-        messagePosted: (projectId, message) =>
-          server.broadcast('board/messagePosted', { projectId, message }),
+        threadChanged: (projectId, thread) => {
+          server.broadcast('board/threadChanged', { projectId, thread });
+          knowledgeRef.service?.onBoardChanged(projectId);
+        },
+        messagePosted: (projectId, message) => {
+          server.broadcast('board/messagePosted', { projectId, message });
+          knowledgeRef.service?.onBoardChanged(projectId);
+        },
         decisionChanged: (projectId, decision) =>
           server.broadcast('board/decisionChanged', { projectId, decision }),
       },
@@ -541,6 +579,13 @@ export class PlatformService {
       projects: profile,
       tasks: taskService,
       tools: toolBroker,
+      onFilesWritten: (projectId, files) =>
+        knowledgeRef.service?.onCanonFilesWritten(projectId, files).catch((error: unknown) => {
+          log('warn', 'Knowledge index update after canon sync failed', {
+            projectId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }),
     });
     const boardMaintenanceService = new BoardMaintenanceService({
       board: board(),
@@ -610,8 +655,29 @@ export class PlatformService {
         runChanged: (projectId, run) => server.broadcast('engine/runChanged', { projectId, run }),
       },
     });
+    knowledgeRef.service = new KnowledgeService({
+      projects: profile,
+      projectDatabases,
+      settings: settingsService,
+      tasks: taskService,
+      completion: completionService,
+      models: modelRegistry,
+      credentials,
+      plugins: pluginRegistry,
+      board: board(),
+      toolBroker,
+      toolRegistry,
+      events: {
+        indexChanged: (projectId, status) =>
+          server.broadcast('knowledge/indexChanged', { projectId, status }),
+        recordChanged: (projectId, record) =>
+          server.broadcast('knowledge/recordChanged', { projectId, record }),
+      },
+      vectorStoreFactory: options.knowledgeVectorStoreFactory,
+    });
     settingsService.onChanged((event) => {
       if (event.key.startsWith('engine.')) void engines().onSettingChanged(event);
+      if (event.key.startsWith('knowledge.')) knowledge().onSettingChanged(event);
       server.broadcast('settings/changed', event);
       void plugins()
         .settingsChanged(event)
@@ -630,6 +696,7 @@ export class PlatformService {
       mcpConnections,
       boardMaintenance(),
       pluginHost,
+      knowledge(),
       paths,
       startedAt,
     );
@@ -648,12 +715,14 @@ export class PlatformService {
     workerSupervisor.start();
     boardMaintenance().start();
     await plugins().autoStartRegisteredProjects();
+    await knowledge().start();
     return platformService;
   }
 
   async stop(checkpoint = true): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
+    this.knowledgeService.stop();
     this.boardMaintenanceScheduler.stop();
     await this.pluginHost.stopAll();
     await this.workerSupervisor.stopAll({ checkpoint });

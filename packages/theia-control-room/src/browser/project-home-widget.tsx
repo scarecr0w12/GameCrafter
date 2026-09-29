@@ -17,6 +17,7 @@ import { CONNECTIONS_OPEN_COMMAND_ID } from './connections-view-contribution';
 import { DISCUSSION_BOARD_OPEN_COMMAND_ID } from './discussion-board-view-contribution';
 import { PLUGINS_OPEN_COMMAND_ID } from './plugins-catalog-view-contribution';
 import { ENGINE_OPEN_COMMAND_ID } from './engine-view-contribution';
+import { KNOWLEDGE_OPEN_COMMAND_ID } from './knowledge-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ReactWidget {
@@ -129,6 +130,13 @@ export class ProjectHomeWidget extends ReactWidget {
             onClick={() => void this.commandService.executeCommand(ENGINE_OPEN_COMMAND_ID)}
           >
             Engine
+          </button>
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(KNOWLEDGE_OPEN_COMMAND_ID)}
+          >
+            Knowledge
           </button>
         </div>
         {this.projects.length === 0 ? (

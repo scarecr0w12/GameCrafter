@@ -68,7 +68,12 @@ describe('plugin worker isolation', () => {
     mkdirSync(scratchDirectory);
     const projectFile = path.join(projectDirectory, 'private.txt');
     writeFileSync(projectFile, 'project secret');
-    const server = createServer((socket) => socket.end('accepted'));
+    const server = createServer((socket) => {
+      socket.on('error', (error) => {
+        if ((error as NodeJS.ErrnoException).code !== 'ECONNRESET') server.emit('error', error);
+      });
+      socket.end('accepted');
+    });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('TCP fixture did not bind');

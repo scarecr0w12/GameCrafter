@@ -21,6 +21,7 @@ export interface CanonSyncWorkflowOptions {
   projects: ProfileStore;
   tasks: TaskService;
   tools: ToolBroker;
+  onFilesWritten?: (projectId: string, paths: string[]) => void | Promise<void>;
   now?: () => Date;
 }
 
@@ -111,6 +112,10 @@ export class CanonSyncWorkflow {
         decisionId,
         appliedAt,
         commit,
+      );
+      await this.options.onFilesWritten?.(
+        synchronizing.projectId,
+        resolvedChanges.map((change) => change.path),
       );
       const synchronized: BindingDecision = {
         ...synchronizing,

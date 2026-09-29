@@ -284,6 +284,31 @@ export interface ControlRoomService {
     params: RpcParams<'board/maintenance/status'>,
   ): Promise<RpcResult<'board/maintenance/status'>>;
   deleteBoardThread(params: RpcParams<'board/delete'>): Promise<RpcResult<'board/delete'>>;
+  listKnowledgeRecords(
+    params: RpcParams<'knowledge/records'>,
+  ): Promise<RpcResult<'knowledge/records'>>;
+  getKnowledgeRecord(params: RpcParams<'knowledge/record'>): Promise<RpcResult<'knowledge/record'>>;
+  writeKnowledgeRecord(params: RpcParams<'knowledge/write'>): Promise<RpcResult<'knowledge/write'>>;
+  setCanonStatus(
+    params: RpcParams<'knowledge/setStatus'>,
+  ): Promise<RpcResult<'knowledge/setStatus'>>;
+  searchKnowledge(params: RpcParams<'knowledge/search'>): Promise<RpcResult<'knowledge/search'>>;
+  getKnowledgeIndexStatus(
+    params: RpcParams<'knowledge/index/status'>,
+  ): Promise<RpcResult<'knowledge/index/status'>>;
+  rebuildKnowledgeIndex(
+    params: RpcParams<'knowledge/index/rebuild'>,
+  ): Promise<RpcResult<'knowledge/index/rebuild'>>;
+  reconcileKnowledgeIndex(
+    params: RpcParams<'knowledge/index/reconcile'>,
+  ): Promise<RpcResult<'knowledge/index/reconcile'>>;
+  setKnowledgeEmbeddingProfile(
+    params: RpcParams<'knowledge/embeddingProfile/set'>,
+  ): Promise<RpcResult<'knowledge/embeddingProfile/set'>>;
+  getKnowledgeGraph(params: RpcParams<'knowledge/graph'>): Promise<RpcResult<'knowledge/graph'>>;
+  testKnowledgeVectorStore(
+    params: RpcParams<'knowledge/vectorStore/test'>,
+  ): Promise<RpcResult<'knowledge/vectorStore/test'>>;
 }
 
 export interface ControlRoomClient {
@@ -303,5 +328,7 @@ export interface ControlRoomClient {
   onPluginChanged(event: RpcNotificationParams<'plugin/changed'>): void;
   onEngineCapabilitiesChanged(event: RpcNotificationParams<'engine/capabilitiesChanged'>): void;
   onEngineRunChanged(event: RpcNotificationParams<'engine/runChanged'>): void;
+  onKnowledgeIndexChanged(event: RpcNotificationParams<'knowledge/indexChanged'>): void;
+  onKnowledgeRecordChanged(event: RpcNotificationParams<'knowledge/recordChanged'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

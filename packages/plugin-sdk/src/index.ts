@@ -77,7 +77,10 @@ export function definePlugin(
     callTool: (toolId, input) => callHost('host/tool/call', { toolId, input }),
     log: (level, message) => callHost('host/log', { level, message }).then(() => undefined),
     complete: (request) => callHost('host/model/complete', { request }),
-    getSecret: (name) => callHost('host/secret/get', { name }) as Promise<string | undefined>,
+    getSecret: async (name) => {
+      const value = await callHost('host/secret/get', { name });
+      return typeof value === 'string' ? value : undefined;
+    },
     board: {
       read: (input) => callHost('host/board/read', input),
       post: (input) => callHost('host/board/post', input),

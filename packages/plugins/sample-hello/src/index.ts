@@ -8,9 +8,14 @@ void definePlugin({
       async handler(input, host) {
         const parameters = asRecord(input);
         const name = typeof parameters.name === 'string' ? parameters.name : 'there';
-        const output: { greeting: string; readContent?: string; readErrorCode?: number } = {
-          greeting: `${greetingPrefix}, ${name}!`,
-        };
+        const output: {
+          greeting: string;
+          readContent?: string;
+          readErrorCode?: number;
+          secretValue?: string;
+          secretFound?: boolean;
+          secretErrorCode?: number;
+        } = { greeting: `${greetingPrefix}, ${name}!` };
         if (typeof parameters.readPath === 'string') {
           try {
             const result = await host.callTool('fs/read-file', { path: parameters.readPath });
@@ -23,6 +28,18 @@ void definePlugin({
             }
           } catch (error) {
             output.readErrorCode = error instanceof PluginSdkError ? error.code : -32603;
+          }
+        }
+        if (typeof parameters.secretName === 'string') {
+          try {
+            const secret = await host.getSecret(parameters.secretName);
+            output.secretFound = typeof secret === 'string';
+            if (typeof secret === 'string') {
+              output.secretValue = secret;
+              await host.log('info', `Retrieved plugin secret: ${secret}`);
+            }
+          } catch (error) {
+            output.secretErrorCode = error instanceof PluginSdkError ? error.code : -32603;
           }
         }
         return {

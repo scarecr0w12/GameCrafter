@@ -107,6 +107,26 @@ describe('board decision synchronization', () => {
       appliedAt: expect.any(String),
       commit: synchronized.canonCommit,
     });
+    const knowledgeRecord = await client.call('knowledge/record', {
+      projectId: project.projectId,
+      recordId: `decision.${decision.decisionId}`,
+    });
+    expect(knowledgeRecord.record).toMatchObject({
+      type: 'decision',
+      status: 'accepted',
+      path: synchronized.canonRecordPath,
+    });
+    expect(knowledgeRecord.body).toContain(
+      'Every combat room must preserve a visible escape route.',
+    );
+
+    const decisionSearch = await client.call('knowledge/search', {
+      projectId: project.projectId,
+      query: 'combat escape route',
+      sources: ['decisions'],
+      mode: 'lexical',
+    });
+    expect(decisionSearch.hits[0]?.recordId).toBe(`decision.${decision.decisionId}`);
 
     const commitCountBeforeRetry = execFileSync('git', ['rev-list', '--count', 'HEAD'], {
       cwd: project.path,
@@ -384,7 +404,9 @@ describe('board decision synchronization', () => {
       confirmedByUser: true,
     });
     expect(
-      (await client.call('task/list', { projectId: project.projectId, limit: 500 })).tasks,
+      (await client.call('task/list', { projectId: project.projectId, limit: 500 })).tasks.filter(
+        (task) => task.kind.startsWith('board-maintenance.'),
+      ),
     ).toHaveLength(0);
 
     const firstRun = await client.call('board/maintenance/run', {

@@ -54,6 +54,7 @@ const sampleManifest = {
         roles: [],
       },
     ],
+    recordTypes: [],
     roles: [],
     skills: [],
     settings: [
@@ -108,6 +109,24 @@ describe('plugin contracts', () => {
         checks: [{ name: 'userns', ok: true, detail: 'user namespaces available' }],
       }),
     ).toBe(true);
+  });
+
+  it('accepts contributed record type declarations', () => {
+    const manifest = {
+      ...sampleManifest,
+      contributes: {
+        ...sampleManifest.contributes,
+        recordTypes: [
+          {
+            type: 'creature',
+            name: 'Creature',
+            description: 'A plugin-specific world entity.',
+            requiredFields: ['species'],
+          },
+        ],
+      },
+    };
+    expect(compile(PluginManifestSchema).check(manifest)).toBe(true);
   });
 
   it('accepts tool namespaces that match dotted plugin ids', () => {

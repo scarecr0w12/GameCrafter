@@ -84,7 +84,7 @@ export class ToolBroker {
   listTools(projectId?: string): ToolDefinition[] {
     if (projectId) this.requireProject(projectId);
     return this.options.registry.list().filter((tool) => {
-      if (tool.source === 'board-internal') return false;
+      if (tool.source.endsWith('-internal')) return false;
       if (tool.source.startsWith('plugin:')) {
         return Boolean(projectId && (this.options.isToolAvailable?.(tool, projectId) ?? false));
       }

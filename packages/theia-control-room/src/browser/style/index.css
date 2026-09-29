@@ -950,3 +950,186 @@
 .gamecrafter-plugins-result {
   color: var(--theia-successForeground);
 }
+
+.gamecrafter-knowledge {
+  color: var(--theia-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.gamecrafter-knowledge-header,
+.gamecrafter-knowledge-section-header,
+.gamecrafter-knowledge-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gamecrafter-knowledge-header {
+  justify-content: space-between;
+}
+
+.gamecrafter-knowledge-header h1,
+.gamecrafter-knowledge-section h2 {
+  margin: 0 0 6px;
+}
+
+.gamecrafter-knowledge-header p,
+.gamecrafter-knowledge-section p {
+  color: var(--theia-descriptionForeground);
+}
+
+.gamecrafter-knowledge-section {
+  background: var(--theia-sideBar-background);
+  border: 1px solid var(--theia-widget-border);
+  border-radius: 4px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.gamecrafter-knowledge-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.gamecrafter-knowledge-status-grid {
+  display: grid;
+  gap: 6px 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 8px;
+}
+
+.gamecrafter-knowledge-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.gamecrafter-knowledge-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 10rem;
+}
+
+.gamecrafter-knowledge-form input,
+.gamecrafter-knowledge-form select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 8rem;
+}
+
+.gamecrafter-knowledge-query {
+  flex: 1;
+}
+
+.gamecrafter-knowledge-query input {
+  min-width: 16rem;
+  width: 100%;
+}
+
+.gamecrafter-knowledge-checkbox {
+  align-items: center;
+  flex-direction: row !important;
+}
+
+.gamecrafter-knowledge-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(15rem, 23rem) minmax(0, 1fr);
+  min-height: 20rem;
+}
+
+.gamecrafter-knowledge-record-list ul,
+.gamecrafter-knowledge-hits {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.gamecrafter-knowledge-record-list li + li,
+.gamecrafter-knowledge-hits li + li {
+  margin-top: 8px;
+}
+
+.gamecrafter-knowledge-record-list button,
+.gamecrafter-knowledge-hit {
+  align-items: flex-start;
+  background: transparent;
+  border: 1px solid var(--theia-widget-border);
+  color: var(--theia-foreground);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.gamecrafter-knowledge-record-list button.is-active,
+.gamecrafter-knowledge-record-list button:hover,
+.gamecrafter-knowledge-hit:hover {
+  border-color: var(--theia-focusBorder);
+}
+
+.gamecrafter-knowledge-record-list span,
+.gamecrafter-knowledge-hit-meta {
+  color: var(--theia-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.gamecrafter-knowledge-detail-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gamecrafter-knowledge-hit blockquote,
+.gamecrafter-knowledge-record-body {
+  background: var(--theia-editor-background);
+  border-left: 3px solid var(--theia-focusBorder);
+  margin: 4px 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+.gamecrafter-knowledge-hit code,
+.gamecrafter-knowledge-section code {
+  overflow-wrap: anywhere;
+}
+
+.gamecrafter-knowledge-reference-columns {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.gamecrafter-knowledge-error {
+  color: var(--theia-errorForeground) !important;
+}
+
+.gamecrafter-knowledge-warning {
+  color: var(--theia-editorWarning-foreground) !important;
+}
+
+.gamecrafter-knowledge-result {
+  color: var(--theia-successForeground);
+}
+
+@media (max-width: 900px) {
+  .gamecrafter-knowledge-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

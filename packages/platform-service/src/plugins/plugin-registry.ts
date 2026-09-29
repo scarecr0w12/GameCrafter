@@ -1,5 +1,10 @@
 import path from 'node:path';
-import { RpcError, RpcErrorCode, type PluginModulesResult } from '@gamecrafter/contracts';
+import {
+  RpcError,
+  RpcErrorCode,
+  type PluginModulesResult,
+  type PluginRecordTypeContribution,
+} from '@gamecrafter/contracts';
 import type { Database } from '../db/database';
 import type { ProfileStore } from '../profile/profile-store';
 import type { PluginInstaller } from './plugin-installer';
@@ -86,6 +91,15 @@ export class PluginRegistry {
       plugin.manifest.contributes.skills.map((relative) => ({
         pluginId: plugin.pluginId,
         directory: path.join(plugin.installPath, relative),
+      })),
+    );
+  }
+
+  recordTypes(): Array<{ pluginId: string; recordType: PluginRecordTypeContribution }> {
+    return this.options.installer.list().flatMap((plugin) =>
+      (plugin.manifest.contributes.recordTypes ?? []).map((recordType) => ({
+        pluginId: plugin.pluginId,
+        recordType,
       })),
     );
   }

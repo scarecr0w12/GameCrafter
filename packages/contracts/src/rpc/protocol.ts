@@ -94,6 +94,22 @@ import {
   McpToolClassifySchema,
   McpToolsResultSchema,
 } from '../mcp';
+import {
+  CanonIdSchema,
+  CanonRecordInputSchema,
+  CanonRecordSchema,
+  CanonStatusSchema,
+  EmbeddingProfileSchema,
+  KnowledgeGraphSchema,
+  KnowledgeIndexStateSchema,
+  KnowledgeRecordListResultSchema,
+  KnowledgeRecordResultSchema,
+  KnowledgeSearchResultSchema,
+  KnowledgeTaskResultSchema,
+  KnowledgeVectorStoreTestResultSchema,
+  RecordTypeSchema,
+  SearchRequestSchema,
+} from '../knowledge';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -255,6 +271,108 @@ export const RpcMethods = {
       { connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]) },
       { additionalProperties: false },
     ),
+  },
+  'knowledge/records': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        type: Type.Optional(RecordTypeSchema),
+        status: Type.Optional(CanonStatusSchema),
+        module: Type.Optional(Type.String()),
+        includeInactive: Type.Optional(Type.Boolean()),
+        search: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeRecordListResultSchema,
+  },
+  'knowledge/record': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), recordId: CanonIdSchema },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeRecordResultSchema,
+  },
+  'knowledge/write': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        record: CanonRecordInputSchema,
+        body: Type.String(),
+        path: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: CanonRecordSchema,
+  },
+  'knowledge/setStatus': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        recordId: CanonIdSchema,
+        status: CanonStatusSchema,
+        justification: Type.Object(
+          {
+            kind: Type.Union([Type.Literal('decision'), Type.Literal('user')]),
+            ref: Type.String({ minLength: 1 }),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: CanonRecordSchema,
+  },
+  'knowledge/search': { params: SearchRequestSchema, result: KnowledgeSearchResultSchema },
+  'knowledge/index/status': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeIndexStateSchema,
+  },
+  'knowledge/index/rebuild': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), full: Type.Optional(Type.Boolean()) },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeTaskResultSchema,
+  },
+  'knowledge/index/reconcile': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeTaskResultSchema,
+  },
+  'knowledge/embeddingProfile/set': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        modelId: Type.String({ minLength: 1 }),
+        providerAccountId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: EmbeddingProfileSchema,
+  },
+  'knowledge/graph': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        recordId: Type.Optional(CanonIdSchema),
+        depth: Type.Optional(Type.Integer({ minimum: 1, maximum: 5, default: 1 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeGraphSchema,
+  },
+  'knowledge/vectorStore/test': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: KnowledgeVectorStoreTestResultSchema,
   },
   'settings/describe': {
     params: EmptyParams,
@@ -1345,6 +1463,18 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'knowledge/indexChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), status: KnowledgeIndexStateSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'knowledge/recordChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), record: CanonRecordSchema },
+      { additionalProperties: false },
+    ),
+  },
   'board/threadChanged': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }), thread: BoardThreadSchema },
@@ -1445,6 +1575,12 @@ export const RpcErrorCode = {
   EngineRunFailed: -32092,
   EngineProjectIdentityUnproven: -32093,
   EngineFamilyMismatch: -32094,
+  CanonRecordNotFound: -32100,
+  CanonRecordInvalid: -32101,
+  CanonDuplicateId: -32102,
+  CanonStatusNotAllowed: -32103,
+  VectorStoreUnavailable: -32104,
+  EmbeddingProfileMissing: -32105,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

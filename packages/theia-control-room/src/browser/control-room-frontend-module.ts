@@ -21,6 +21,8 @@ import { PluginsCatalogWidget } from './plugins-catalog-widget';
 import { PluginsCatalogViewContribution } from './plugins-catalog-view-contribution';
 import { EngineWidget } from './engine-widget';
 import { EngineViewContribution } from './engine-view-contribution';
+import { KnowledgeWidget } from './knowledge-widget';
+import { KnowledgeViewContribution } from './knowledge-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -48,6 +50,7 @@ export default new ContainerModule((bind) => {
   bind(DiscussionBoardWidget).toSelf().inSingletonScope();
   bind(PluginsCatalogWidget).toSelf().inSingletonScope();
   bind(EngineWidget).toSelf().inSingletonScope();
+  bind(KnowledgeWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -96,6 +99,12 @@ export default new ContainerModule((bind) => {
       createWidget: () => context.container.get(EngineWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: KnowledgeWidget.ID,
+      createWidget: () => context.container.get(KnowledgeWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
@@ -105,6 +114,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, DiscussionBoardViewContribution);
   bindViewContribution(bind, PluginsCatalogViewContribution);
   bindViewContribution(bind, EngineViewContribution);
+  bindViewContribution(bind, KnowledgeViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();

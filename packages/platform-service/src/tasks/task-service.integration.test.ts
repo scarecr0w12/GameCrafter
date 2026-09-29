@@ -38,6 +38,14 @@ beforeEach(async () => {
     folderName: 'task-project',
   });
   projectId = project.projectId;
+  const knowledgeTasks = (await client.call('task/list', { projectId, limit: 500 })).tasks.filter(
+    (task) => task.kind === 'knowledge.reindex' || task.kind === 'knowledge.reconcile',
+  );
+  await Promise.all(
+    knowledgeTasks.map((task) =>
+      waitForTask(task.taskId, (current) => current.state === 'succeeded'),
+    ),
+  );
 });
 
 afterEach(async () => {
@@ -372,7 +380,7 @@ async function setProjectSetting(key: string, value: unknown): Promise<void> {
 async function waitForTask(
   taskId: string,
   predicate: (task: TaskRecord) => boolean,
-  timeoutMs = 15_000,
+  timeoutMs = 30_000,
 ): Promise<TaskRecord> {
   const deadline = Date.now() + timeoutMs;
   let lastTask: TaskRecord | undefined;

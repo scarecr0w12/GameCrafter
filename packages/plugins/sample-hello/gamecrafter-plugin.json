@@ -28,7 +28,8 @@
           "type": "object",
           "properties": {
             "name": { "type": "string", "minLength": 1 },
-            "readPath": { "type": "string" }
+            "readPath": { "type": "string" },
+            "secretName": { "type": "string" }
           },
           "required": ["name"],
           "additionalProperties": false
@@ -38,7 +39,10 @@
           "properties": {
             "greeting": { "type": "string" },
             "readContent": { "type": "string" },
-            "readErrorCode": { "type": "integer" }
+            "readErrorCode": { "type": "integer" },
+            "secretValue": { "type": "string" },
+            "secretFound": { "type": "boolean" },
+            "secretErrorCode": { "type": "integer" }
           },
           "required": ["greeting"],
           "additionalProperties": false
@@ -59,6 +63,7 @@
       }
     ],
     "genres": [],
+    "recordTypes": [],
     "roles": [],
     "skills": [],
     "settings": [
