@@ -19,6 +19,8 @@ import { DiscussionBoardWidget } from './discussion-board-widget';
 import { DiscussionBoardViewContribution } from './discussion-board-view-contribution';
 import { PluginsCatalogWidget } from './plugins-catalog-widget';
 import { PluginsCatalogViewContribution } from './plugins-catalog-view-contribution';
+import { EngineWidget } from './engine-widget';
+import { EngineViewContribution } from './engine-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -45,6 +47,7 @@ export default new ContainerModule((bind) => {
   bind(ConnectionsWidget).toSelf().inSingletonScope();
   bind(DiscussionBoardWidget).toSelf().inSingletonScope();
   bind(PluginsCatalogWidget).toSelf().inSingletonScope();
+  bind(EngineWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -87,6 +90,12 @@ export default new ContainerModule((bind) => {
       createWidget: () => context.container.get(PluginsCatalogWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: EngineWidget.ID,
+      createWidget: () => context.container.get(EngineWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
@@ -95,6 +104,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, ConnectionsViewContribution);
   bindViewContribution(bind, DiscussionBoardViewContribution);
   bindViewContribution(bind, PluginsCatalogViewContribution);
+  bindViewContribution(bind, EngineViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();

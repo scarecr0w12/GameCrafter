@@ -3,6 +3,10 @@ import type {
   ApprovalRequest,
   EffectiveSetting,
   ExecutionMode,
+  EngineCapabilityReport,
+  EngineFamily,
+  EngineInstallation,
+  EngineOperationRun,
   McpConnectionConfig,
   McpConnectionInput,
   McpConnectionListEntry,
@@ -204,6 +208,14 @@ export interface ControlRoomService {
   listRoles(projectId?: string): Promise<RoleRecord[]>;
   getRole(name: string, projectId?: string): Promise<RoleRecord>;
   trustProject(projectId: string, trusted: boolean): Promise<ProjectSummary>;
+  listEngineInstallations(family?: EngineFamily): Promise<EngineInstallation[]>;
+  addEngineInstallation(input: RpcParams<'engine/addInstallation'>): Promise<EngineInstallation>;
+  removeEngineInstallation(installationId: string): Promise<void>;
+  getEngineCapabilities(projectId: string, refresh?: boolean): Promise<EngineCapabilityReport>;
+  runEngine(params: RpcParams<'engine/run'>): Promise<EngineOperationRun>;
+  listEngineRuns(projectId: string, limit?: number): Promise<EngineOperationRun[]>;
+  getEngineRun(projectId: string, runId: string): Promise<EngineOperationRun>;
+  setEngineLiveBridge(projectId: string, connectionId: string | null): Promise<string | null>;
   listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]>;
   addMcpConnection(
     config: McpConnectionInput,
@@ -289,5 +301,7 @@ export interface ControlRoomClient {
   onBoardDecisionChanged(event: RpcNotificationParams<'board/decisionChanged'>): void;
   onPluginWorkerChanged(event: RpcNotificationParams<'plugin/workerChanged'>): void;
   onPluginChanged(event: RpcNotificationParams<'plugin/changed'>): void;
+  onEngineCapabilitiesChanged(event: RpcNotificationParams<'engine/capabilitiesChanged'>): void;
+  onEngineRunChanged(event: RpcNotificationParams<'engine/runChanged'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

@@ -52,6 +52,7 @@ import { PluginInstaller } from './plugins/plugin-installer';
 import { PluginRegistry } from './plugins/plugin-registry';
 import { PluginService } from './plugins/plugin-service';
 import type { IsolationLauncher } from './plugins/isolation/types';
+import { EngineConnectorService } from './engines/engine-connector-service';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -213,6 +214,11 @@ export class PlatformService {
       if (!pluginRef.service) throw new Error('Plugin service is not initialized');
       return pluginRef.service;
     };
+    const engineRef: { service?: EngineConnectorService } = {};
+    const engines = (): EngineConnectorService => {
+      if (!engineRef.service) throw new Error('Engine connector service is not initialized');
+      return engineRef.service;
+    };
     const handlers: RpcHandlers = {
       'service/info': () => ({
         serviceVersion: platformVersion,
@@ -242,6 +248,23 @@ export class PlatformService {
       },
       'project/get': ({ projectId }) => workspace.get(projectId),
       'project/trust': ({ projectId, trusted }) => workspace.trust(projectId, trusted),
+      'engine/installations': async ({ family }) => ({
+        installations: await engines().installations(family),
+      }),
+      'engine/addInstallation': (input) => engines().addInstallation(input),
+      'engine/removeInstallation': ({ installationId }) => {
+        engines().removeInstallation(installationId);
+        return { removed: true };
+      },
+      'engine/capabilities': ({ projectId, refresh }) => engines().capabilities(projectId, refresh),
+      'engine/run': ({ projectId, operation, params, taskId }) =>
+        engines().run(projectId, operation, params ?? {}, taskId),
+      'engine/runs': ({ projectId, limit }) => ({ runs: engines().runs(projectId, limit) }),
+      'engine/run/get': ({ projectId, runId }) => engines().getRun(projectId, runId),
+      'engine/setLiveBridge': ({ projectId, connectionId }) =>
+        engines()
+          .setLiveBridge(projectId, connectionId)
+          .then((boundConnectionId) => ({ connectionId: boundConnectionId })),
       'settings/describe': () => settingsService.describe(),
       'settings/get': (params, context) =>
         settingsService.resolve(params.key, {
@@ -539,7 +562,10 @@ export class PlatformService {
       completion: completionService,
       tools: toolRegistry,
       events: {
-        stateChanged: (state) => server.broadcast('mcp/stateChanged', { state }),
+        stateChanged: (state) => {
+          server.broadcast('mcp/stateChanged', { state });
+          void engineRef.service?.onMcpStateChanged(state.connectionId).catch(() => undefined);
+        },
         inputRequired: (params) => server.broadcast('mcp/inputRequired', params),
       },
       clientInfo: { name: 'gamecrafter-platform-service', version: platformVersion },
@@ -569,7 +595,23 @@ export class PlatformService {
       credentials,
       onChanged: (pluginId) => server.broadcast('plugin/changed', { pluginId }),
     });
+    engineRef.service = new EngineConnectorService({
+      database,
+      projects: profile,
+      projectDatabases,
+      settings: settingsService,
+      toolRegistry,
+      toolBroker,
+      mcpConnections,
+      board: board(),
+      events: {
+        capabilitiesChanged: (projectId, report) =>
+          server.broadcast('engine/capabilitiesChanged', { projectId, report }),
+        runChanged: (projectId, run) => server.broadcast('engine/runChanged', { projectId, run }),
+      },
+    });
     settingsService.onChanged((event) => {
+      if (event.key.startsWith('engine.')) void engines().onSettingChanged(event);
       server.broadcast('settings/changed', event);
       void plugins()
         .settingsChanged(event)

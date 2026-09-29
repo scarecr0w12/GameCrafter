@@ -140,7 +140,7 @@ export class ProjectWorkspace {
       );
       writeFileSync(
         path.join(projectPath, '.gitignore'),
-        '.gamecrafter/cache/\n.gamecrafter/logs/\n.gamecrafter/*.sqlite\n*.sqlite-wal\n*.sqlite-shm\n*.sqlite-journal\n',
+        '.gamecrafter/cache/\n.gamecrafter/logs/\n.gamecrafter/engine-runs/\n.gamecrafter/*.sqlite\n*.sqlite-wal\n*.sqlite-shm\n*.sqlite-journal\n',
         'utf8',
       );
       mkdirSync(path.join(projectPath, 'docs'), { recursive: true });
@@ -344,6 +344,7 @@ export class ProjectWorkspace {
   open(projectPath: string): ProjectSummary {
     const absolutePath = path.resolve(projectPath);
     const manifest = this.readManifest(absolutePath);
+    ensureProjectOperationalGitignore(absolutePath);
     const previous = this.options.profile.getById(manifest.projectId);
     const unopened = summaryFromManifest(
       manifest,
@@ -426,6 +427,7 @@ function ensureProjectOperationalGitignore(projectPath: string): void {
   const required = [
     '.gamecrafter/cache/',
     '.gamecrafter/logs/',
+    '.gamecrafter/engine-runs/',
     '.gamecrafter/*.sqlite',
     '*.sqlite-wal',
     '*.sqlite-shm',

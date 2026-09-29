@@ -255,4 +255,30 @@ export const projectMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 6,
+    name: 'create engine connector tables',
+    up: `
+      CREATE TABLE engine_runs (
+        run_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        family TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        run_json TEXT NOT NULL
+      );
+      CREATE INDEX engine_runs_project_started_idx ON engine_runs(project_id, started_at DESC);
+      CREATE TABLE engine_capability_reports (
+        project_id TEXT PRIMARY KEY,
+        report_json TEXT NOT NULL,
+        generated_at TEXT NOT NULL
+      );
+      CREATE TABLE engine_live_bridges (
+        project_id TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

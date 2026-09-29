@@ -52,11 +52,23 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(11);
+    expect(result.tools).toHaveLength(23);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
       'board/post',
       'board/propose-decision',
       'board/read',
+      'engine/build',
+      'engine/check',
+      'engine/console',
+      'engine/discover',
+      'engine/edit-scene',
+      'engine/export',
+      'engine/import',
+      'engine/inspect',
+      'engine/run',
+      'engine/screenshot',
+      'engine/test',
+      'engine/validate',
       'fs/delete',
       'fs/list',
       'fs/read-file',
@@ -70,6 +82,16 @@ describe('Tool broker integration', () => {
       executionMode: 'headless-process',
       sideEffects: 'destructive',
       capabilities: ['process.spawn'],
+      source: 'builtin',
+    });
+    expect(result.tools.find((tool) => tool.toolId === 'engine/check')).toMatchObject({
+      executionMode: 'headless-process',
+      sideEffects: 'none',
+      source: 'builtin',
+    });
+    expect(result.tools.find((tool) => tool.toolId === 'engine/console')).toMatchObject({
+      executionMode: 'live-editor',
+      sideEffects: 'destructive',
       source: 'builtin',
     });
   }, 60_000);

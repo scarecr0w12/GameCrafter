@@ -6,6 +6,10 @@ import {
   type ApprovalRequest,
   type EffectiveSetting,
   type ExecutionMode,
+  type EngineCapabilityReport,
+  type EngineFamily,
+  type EngineInstallation,
+  type EngineOperationRun,
   type McpConnectionConfig,
   type McpConnectionInput,
   type McpConnectionListEntry,
@@ -72,6 +76,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeBoardDecisionChangedListener?: () => void;
   private removePluginWorkerChangedListener?: () => void;
   private removePluginChangedListener?: () => void;
+  private removeEngineCapabilitiesChangedListener?: () => void;
+  private removeEngineRunChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -94,6 +100,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeBoardDecisionChangedListener?.();
     this.removePluginWorkerChangedListener?.();
     this.removePluginChangedListener?.();
+    this.removeEngineCapabilitiesChangedListener?.();
+    this.removeEngineRunChangedListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -143,6 +151,13 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     );
     this.removePluginChangedListener = this.platformConnection.onPluginChanged((event) =>
       this.client?.onPluginChanged(event),
+    );
+    this.removeEngineCapabilitiesChangedListener =
+      this.platformConnection.onEngineCapabilitiesChanged((event) =>
+        this.client?.onEngineCapabilitiesChanged(event),
+      );
+    this.removeEngineRunChangedListener = this.platformConnection.onEngineRunChanged((event) =>
+      this.client?.onEngineRunChanged(event),
     );
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -473,6 +488,48 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   async trustProject(projectId: string, trusted: boolean): Promise<ProjectSummary> {
     const client = await this.getPlatformClient();
     return client.call('project/trust', { projectId, trusted });
+  }
+
+  async listEngineInstallations(family?: EngineFamily): Promise<EngineInstallation[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('engine/installations', { family })).installations;
+  }
+
+  async addEngineInstallation(
+    input: RpcParams<'engine/addInstallation'>,
+  ): Promise<EngineInstallation> {
+    return (await this.getPlatformClient()).call('engine/addInstallation', input);
+  }
+
+  async removeEngineInstallation(installationId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('engine/removeInstallation', { installationId });
+  }
+
+  async getEngineCapabilities(projectId: string, refresh = false): Promise<EngineCapabilityReport> {
+    return (await this.getPlatformClient()).call('engine/capabilities', { projectId, refresh });
+  }
+
+  async runEngine(params: RpcParams<'engine/run'>): Promise<EngineOperationRun> {
+    return (await this.getPlatformClient()).call('engine/run', params);
+  }
+
+  async listEngineRuns(projectId: string, limit = 100): Promise<EngineOperationRun[]> {
+    return (await this.getPlatformClient())
+      .call('engine/runs', { projectId, limit })
+      .then((result) => result.runs);
+  }
+
+  async getEngineRun(projectId: string, runId: string): Promise<EngineOperationRun> {
+    return (await this.getPlatformClient()).call('engine/run/get', { projectId, runId });
+  }
+
+  async setEngineLiveBridge(
+    projectId: string,
+    connectionId: string | null,
+  ): Promise<string | null> {
+    return (await this.getPlatformClient())
+      .call('engine/setLiveBridge', { projectId, connectionId })
+      .then((result) => result.connectionId);
   }
 
   async listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]> {

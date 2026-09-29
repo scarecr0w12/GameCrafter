@@ -1,9 +1,17 @@
 import { Static, Type, type TSchema } from '@sinclair/typebox';
 import {
+  EngineFamily,
   ProjectCloneInputSchema,
   ProjectCreateInputSchema,
   ProjectSummarySchema,
 } from '../project/manifest';
+import {
+  EngineCapabilityReportSchema,
+  EngineInstallationKindSchema,
+  EngineInstallationSchema,
+  EngineOperationRunSchema,
+  EngineOperationSchema,
+} from '../engines';
 import {
   EffectiveSettingSchema,
   SettingDefinitionSchema,
@@ -170,6 +178,83 @@ export const RpcMethods = {
       { additionalProperties: false },
     ),
     result: ProjectSummarySchema,
+  },
+  'engine/installations': {
+    params: Type.Object({ family: Type.Optional(EngineFamily) }, { additionalProperties: false }),
+    result: Type.Object(
+      { installations: Type.Array(EngineInstallationSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'engine/addInstallation': {
+    params: Type.Object(
+      {
+        family: EngineFamily,
+        executable: Type.String({ minLength: 1 }),
+        kind: EngineInstallationKindSchema,
+      },
+      { additionalProperties: false },
+    ),
+    result: EngineInstallationSchema,
+  },
+  'engine/removeInstallation': {
+    params: Type.Object(
+      { installationId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'engine/capabilities': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), refresh: Type.Optional(Type.Boolean()) },
+      { additionalProperties: false },
+    ),
+    result: EngineCapabilityReportSchema,
+  },
+  'engine/run': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        operation: EngineOperationSchema,
+        params: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+        taskId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: EngineOperationRunSchema,
+  },
+  'engine/runs': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { runs: Type.Array(EngineOperationRunSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'engine/run/get': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), runId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: EngineOperationRunSchema,
+  },
+  'engine/setLiveBridge': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { connectionId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]) },
+      { additionalProperties: false },
+    ),
   },
   'settings/describe': {
     params: EmptyParams,
@@ -1248,6 +1333,18 @@ export const RpcNotifications = {
   },
   'mcp/stateChanged': { params: McpConnectionStateChangedSchema },
   'mcp/inputRequired': { params: McpInputRequiredSchema },
+  'engine/capabilitiesChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), report: EngineCapabilityReportSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'engine/runChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), run: EngineOperationRunSchema },
+      { additionalProperties: false },
+    ),
+  },
   'board/threadChanged': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }), thread: BoardThreadSchema },
@@ -1343,6 +1440,11 @@ export const RpcErrorCode = {
   PluginWorkerFailed: -32086,
   PluginDependencyMissing: -32087,
   PluginIncompatible: -32088,
+  EngineInstallationNotFound: -32090,
+  EngineOperationUnavailable: -32091,
+  EngineRunFailed: -32092,
+  EngineProjectIdentityUnproven: -32093,
+  EngineFamilyMismatch: -32094,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

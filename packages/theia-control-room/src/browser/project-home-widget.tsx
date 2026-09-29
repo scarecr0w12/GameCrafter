@@ -3,7 +3,7 @@ import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandService } from '@theia/core/lib/common/command';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
-import type { ProjectSummary } from '@gamecrafter/contracts';
+import type { EngineCapabilityReport, ProjectSummary } from '@gamecrafter/contracts';
 import {
   ControlRoomService,
   type ControlRoomService as ControlRoomServiceApi,
@@ -16,12 +16,14 @@ import { SKILLS_OPEN_COMMAND_ID } from './skills-view-contribution';
 import { CONNECTIONS_OPEN_COMMAND_ID } from './connections-view-contribution';
 import { DISCUSSION_BOARD_OPEN_COMMAND_ID } from './discussion-board-view-contribution';
 import { PLUGINS_OPEN_COMMAND_ID } from './plugins-catalog-view-contribution';
+import { ENGINE_OPEN_COMMAND_ID } from './engine-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ReactWidget {
   static readonly ID = 'gamecrafter.projectHome';
 
   private projects: ProjectSummary[] = [];
+  private readonly engineReports = new Map<string, EngineCapabilityReport>();
   private serviceStatus = 'Connecting…';
 
   constructor(
@@ -40,6 +42,12 @@ export class ProjectHomeWidget extends ReactWidget {
     this.toDispose.push(
       this.clientEvents.projectChanged(() => {
         void this.refresh();
+      }),
+    );
+    this.toDispose.push(
+      this.clientEvents.engineCapabilitiesChanged(({ projectId, report }) => {
+        this.engineReports.set(projectId, report);
+        this.update();
       }),
     );
     this.toDispose.push(
@@ -115,6 +123,13 @@ export class ProjectHomeWidget extends ReactWidget {
           >
             Plugins
           </button>
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(ENGINE_OPEN_COMMAND_ID)}
+          >
+            Engine
+          </button>
         </div>
         {this.projects.length === 0 ? (
           <p className="gamecrafter-project-home-empty">
@@ -126,6 +141,7 @@ export class ProjectHomeWidget extends ReactWidget {
               <tr>
                 <th>Name</th>
                 <th>Engine</th>
+                <th>Engine layers</th>
                 <th>Genres</th>
                 <th>Path</th>
                 <th>Created</th>
@@ -136,6 +152,7 @@ export class ProjectHomeWidget extends ReactWidget {
                 <tr key={project.projectId}>
                   <td>{project.name}</td>
                   <td>{project.engine.family}</td>
+                  <td>{this.renderEngineStatus(project.projectId)}</td>
                   <td>{project.genres.join(', ')}</td>
                   <td>{project.path}</td>
                   <td>{new Date(project.createdAt).toLocaleString()}</td>
@@ -148,10 +165,48 @@ export class ProjectHomeWidget extends ReactWidget {
     );
   }
 
+  private renderEngineStatus(projectId: string): React.ReactNode {
+    const report = this.engineReports.get(projectId);
+    if (!report)
+      return (
+        <span className="gamecrafter-engine-status gamecrafter-engine-status-unverified">
+          Checking layers…
+        </span>
+      );
+    return (
+      <div className="gamecrafter-project-engine-layers">
+        {(['project-file', 'headless-process', 'live-editor'] as const).map((layer) => (
+          <span
+            className={`gamecrafter-engine-status gamecrafter-engine-status-${report.layers[layer].status}`}
+            key={layer}
+            title={`${layer}: ${report.layers[layer].detail}`}
+          >
+            {layer}: {report.layers[layer].status}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
   private async refresh(): Promise<void> {
     try {
       const info = await this.controlRoomService.getServiceInfo();
       this.projects = await this.controlRoomService.listProjects();
+      const reports = await Promise.all(
+        this.projects.map(async (project) => {
+          try {
+            return [
+              project.projectId,
+              await this.controlRoomService.getEngineCapabilities(project.projectId),
+            ] as const;
+          } catch {
+            return [project.projectId, null] as const;
+          }
+        }),
+      );
+      this.engineReports.clear();
+      for (const [projectId, report] of reports)
+        if (report) this.engineReports.set(projectId, report);
       this.serviceStatus = `Connected to platform service v${info.serviceVersion}`;
     } catch (error) {
       this.serviceStatus = `Unavailable: ${error instanceof Error ? error.message : String(error)}`;

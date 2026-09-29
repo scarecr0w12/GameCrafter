@@ -58,6 +58,12 @@ export class PlatformServiceConnection {
   private readonly pluginChangedListeners = new Set<
     (event: RpcNotificationParams<'plugin/changed'>) => void
   >();
+  private readonly engineCapabilitiesChangedListeners = new Set<
+    (event: RpcNotificationParams<'engine/capabilitiesChanged'>) => void
+  >();
+  private readonly engineRunChangedListeners = new Set<
+    (event: RpcNotificationParams<'engine/runChanged'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -162,6 +168,20 @@ export class PlatformServiceConnection {
     return () => this.pluginChangedListeners.delete(listener);
   }
 
+  onEngineCapabilitiesChanged(
+    listener: (event: RpcNotificationParams<'engine/capabilitiesChanged'>) => void,
+  ): () => void {
+    this.engineCapabilitiesChangedListeners.add(listener);
+    return () => this.engineCapabilitiesChangedListeners.delete(listener);
+  }
+
+  onEngineRunChanged(
+    listener: (event: RpcNotificationParams<'engine/runChanged'>) => void,
+  ): () => void {
+    this.engineRunChangedListeners.add(listener);
+    return () => this.engineRunChangedListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -225,6 +245,12 @@ export class PlatformServiceConnection {
         });
         client.onNotification('plugin/changed', (event) => {
           for (const listener of this.pluginChangedListeners) listener(event);
+        });
+        client.onNotification('engine/capabilitiesChanged', (event) => {
+          for (const listener of this.engineCapabilitiesChangedListeners) listener(event);
+        });
+        client.onNotification('engine/runChanged', (event) => {
+          for (const listener of this.engineRunChangedListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

@@ -61,8 +61,8 @@ describe('platform service integration', () => {
     expect(client.sessionId).toMatch(/^[0-9a-f-]{36}$/i);
 
     const settingsDescription = await client.call('settings/describe', {});
-    expect(settingsDescription.groups).toHaveLength(10);
-    expect(settingsDescription.definitions).toHaveLength(33);
+    expect(settingsDescription.groups).toHaveLength(11);
+    expect(settingsDescription.definitions).toHaveLength(36);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
     let resolveCloned: (value: unknown) => void = () => undefined;
@@ -107,7 +107,7 @@ describe('platform service integration', () => {
       path.join(project.path, '.gamecrafter', 'project.sqlite'),
     );
     try {
-      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(5);
+      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(6);
       expect(
         projectDatabase.prepare('SELECT kind FROM events WHERE kind = ?').all('project.created'),
       ).toHaveLength(1);

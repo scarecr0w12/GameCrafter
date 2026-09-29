@@ -70,6 +70,12 @@ export function createBuiltinSettings(): BuiltinSettings {
       description: 'Logging and audit retention.',
       order: 9,
     },
+    {
+      id: 'engine',
+      title: 'Engine connectors',
+      description: 'Engine detection, capability reporting, and operation behavior.',
+      order: 10,
+    },
   ];
   const definitions: SettingDefinition[] = [
     setting(
@@ -382,6 +388,33 @@ export function createBuiltinSettings(): BuiltinSettings {
       { type: 'integer', minimum: 1 },
       30,
       ['platform'],
+    ),
+    setting(
+      'engine.operationTimeoutSeconds',
+      'Engine operation timeout (seconds)',
+      'Maximum time an engine process may run before it is terminated.',
+      'engine',
+      { type: 'integer', minimum: 1, maximum: 86400 },
+      1800,
+      ['platform', 'project'],
+    ),
+    setting(
+      'engine.autoDetectInstallations',
+      'Automatically detect engine installations',
+      'Detect engine executables from environment paths and common installation directories.',
+      'engine',
+      { type: 'boolean' },
+      true,
+      ['platform'],
+    ),
+    setting(
+      'engine.postVersionMismatchToBoard',
+      'Post engine version mismatches to the board',
+      'Post one finding to the Engine board thread when the detected version changes out of compatibility.',
+      'engine',
+      { type: 'boolean' },
+      true,
+      ['project'],
     ),
   ];
 

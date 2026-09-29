@@ -155,7 +155,7 @@ flowchart TD
 - **Depends on:** WP10, WP12.
 - **Scope:** capability report separating `project-file`, `headless-process`, and `live-editor` readiness; Unity, Unreal, and Godot headless/CLI layers; live MCP bridges as connector plugins; per-engine capability matrix tests.
 - **Done when:** each connector's contract tests pass and live operations are recorded against a verified editor session per engine and OS.
-- **Status:** Not started.
+- **Status:** Implemented (Godot headless layer tested against a real Godot 4.7.2 binary in this repository; Unity and Unreal adapters tested with fake executables only; no live editor bridge tested): C03 capability report with separate `project-file`/`headless-process`/`live-editor` layer statuses, file-based Project identity proof (`project.godot`, `ProjectVersion.txt`, `.uproject`), installation detection plus manual registration, per-operation availability with reasons, brokered `engine/*` operations with persisted runs and log artifacts under `.gamecrafter/engine-runs/`, preferred-version mismatch reporting to the board, live bridge binding to a WP10 MCP connection tagged `live-editor` whose readiness requires a connected session and a read-only identity probe matching the Project, and the Engine view. C04 stays Verify: the matrix for Unity and Unreal versions and Windows is unverified.
 
 ### WP14 — Knowledge layer
 

@@ -219,4 +219,20 @@ export const profileMigrations: Migration[] = [
       CREATE INDEX plugin_host_calls_plugin_time_idx ON plugin_host_calls(plugin_id, started_at);
     `,
   },
+  {
+    id: 7,
+    name: 'create engine installation registry',
+    up: `
+      CREATE TABLE engine_installations (
+        installation_id TEXT PRIMARY KEY,
+        family TEXT NOT NULL,
+        version TEXT,
+        executable TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        source TEXT NOT NULL,
+        detected_at TEXT NOT NULL
+      );
+      CREATE INDEX engine_installations_family_idx ON engine_installations(family, source);
+    `,
+  },
 ];

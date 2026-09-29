@@ -1,4 +1,4 @@
-import { mkdtempSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -43,6 +43,9 @@ describe('Project instructions template', () => {
         parentDirectory,
       });
       expect(created.trusted).toBe(true);
+      expect(readFileSync(path.join(created.path, '.gitignore'), 'utf8')).toContain(
+        '.gamecrafter/engine-runs/',
+      );
 
       const importedPath = path.join(parentDirectory, 'imported-folder');
       mkdirSync(importedPath);
@@ -59,6 +62,9 @@ describe('Project instructions template', () => {
       };
       writeFileSync(path.join(importedPath, 'gamecrafter.project.json'), JSON.stringify(manifest));
       const imported = workspace.open(importedPath);
+      expect(readFileSync(path.join(importedPath, '.gitignore'), 'utf8')).toContain(
+        '.gamecrafter/engine-runs/',
+      );
       expect(imported.trusted).toBe(false);
       expect(workspace.trust(imported.projectId, true).trusted).toBe(true);
       expect(workspace.get(imported.projectId).trusted).toBe(true);

@@ -42,6 +42,37 @@ export const mcp2026Tools = [
     inputSchema: { type: 'object', properties: {} },
     annotations: { readOnlyHint: true },
   },
+  {
+    name: 'project_identity',
+    description: 'Reports the fixture live-editor project identity.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'screenshot',
+    description: 'Returns a fixture screenshot image.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+  },
+  {
+    name: 'edit_scene',
+    description: 'Edits a fixture scene through the live editor.',
+    inputSchema: {
+      type: 'object',
+      properties: { scene: { type: 'string' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'console',
+    description: 'Runs a destructive fixture editor console command.',
+    inputSchema: {
+      type: 'object',
+      properties: { command: { type: 'string' } },
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
+  },
 ];
 
 export interface Mcp2026HttpFixture {
@@ -50,7 +81,10 @@ export interface Mcp2026HttpFixture {
   close(): Promise<void>;
 }
 
-export async function startMcp2026HttpFixture(port = 0): Promise<Mcp2026HttpFixture> {
+export async function startMcp2026HttpFixture(
+  port = 0,
+  projectId = '',
+): Promise<Mcp2026HttpFixture> {
   const requests: Mcp2026HttpFixture['requests'] = [];
   const server = createServer((request, response) => {
     requests.push({ method: request.method ?? '', headers: { ...request.headers } });
@@ -59,7 +93,7 @@ export async function startMcp2026HttpFixture(port = 0): Promise<Mcp2026HttpFixt
       return;
     }
     void readJsonBody(request)
-      .then((message) => respondHttp(message, response))
+      .then((message) => respondHttp(message, response, projectId))
       .catch((error: unknown) => {
         response.writeHead(400, { 'content-type': 'text/plain' });
         response.end(error instanceof Error ? error.message : String(error));
@@ -122,7 +156,10 @@ interface JsonRpcMessage {
   params?: unknown;
 }
 
-function handleMessage(message: JsonRpcMessage): Record<string, unknown> | undefined {
+function handleMessage(
+  message: JsonRpcMessage,
+  projectId = process.env.GAMECRAFTER_TEST_PROJECT_ID ?? '',
+): Record<string, unknown> | undefined {
   if (!message.method || message.id === undefined) return undefined;
   const params = isRecord(message.params) ? message.params : {};
   const metadata = isRecord(params._meta) ? params._meta : {};
@@ -186,6 +223,30 @@ function handleMessage(message: JsonRpcMessage): Record<string, unknown> | undef
         content: [{ type: 'text', text: process.env.MCP_FIXTURE_SECRET ?? '' }],
       });
     }
+    if (name === 'project_identity') {
+      return rpcResult(message.id, {
+        resultType: 'complete',
+        content: [{ type: 'text', text: JSON.stringify({ projectId }) }],
+      });
+    }
+    if (name === 'screenshot') {
+      return rpcResult(message.id, {
+        resultType: 'complete',
+        content: [
+          {
+            type: 'image',
+            mimeType: 'image/png',
+            data: Buffer.from('fixture-image').toString('base64'),
+          },
+        ],
+      });
+    }
+    if (name === 'edit_scene' || name === 'console') {
+      return rpcResult(message.id, {
+        resultType: 'complete',
+        content: [{ type: 'text', text: JSON.stringify(input) }],
+      });
+    }
     return rpcResult(message.id, {
       resultType: 'complete',
       content: [{ type: 'text', text: String(name ?? 'unknown') }],
@@ -194,15 +255,21 @@ function handleMessage(message: JsonRpcMessage): Record<string, unknown> | undef
   return rpcError(message.id, -32601, `Method not found: ${message.method}`);
 }
 
-async function respondHttp(message: JsonRpcMessage, response: ServerResponse): Promise<void> {
+async function respondHttp(
+  message: JsonRpcMessage,
+  response: ServerResponse,
+  projectId: string,
+): Promise<void> {
   if (message.method === 'subscriptions/listen' && message.id !== undefined) {
     response.writeHead(200, { 'content-type': 'text/event-stream', connection: 'keep-alive' });
-    response.write(`event: message\ndata: ${JSON.stringify(handleMessage(message))}\n\n`);
+    response.write(
+      `event: message\ndata: ${JSON.stringify(handleMessage(message, projectId))}\n\n`,
+    );
     const timer = setTimeout(() => response.end(), 50);
     timer.unref?.();
     return;
   }
-  const result = handleMessage(message);
+  const result = handleMessage(message, projectId);
   if (message.id === undefined) {
     response.writeHead(202).end();
     return;

@@ -1,5 +1,6 @@
 export * from './ids';
 export * from './board';
+export * from './engines';
 export * from './models';
 export * from './mcp';
 export * from './plugins';
