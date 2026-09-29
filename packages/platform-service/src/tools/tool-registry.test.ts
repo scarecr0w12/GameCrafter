@@ -50,6 +50,29 @@ describe('ToolRegistry', () => {
     ).toThrow();
   });
 
+  it('validates plugin tool schemas with JSON Schema 2020-12 references', () => {
+    const registry = new ToolRegistry();
+    registry.register(
+      {
+        ...definition,
+        toolId: 'com.example.plugin/echo',
+        source: 'plugin:com.example.plugin',
+        inputSchema: {
+          $schema: 'https://json-schema.org/draft/2020-12/schema',
+          $defs: { value: { type: 'string' } },
+          type: 'object',
+          properties: { value: { $ref: '#/$defs/value' } },
+          required: ['value'],
+          additionalProperties: false,
+        },
+      },
+      async (_context, input) => ({ output: input }),
+    );
+    const tool = registry.get('com.example.plugin/echo')!;
+    expect(registry.validateInput(tool, { value: 'ok' })).toEqual([]);
+    expect(registry.validateInput(tool, { value: 1 })).not.toEqual([]);
+  });
+
   it('unregisters all tools owned by a source', () => {
     const registry = new ToolRegistry();
     const handler: ToolHandler = async (_context: ToolContext, input: unknown) => ({

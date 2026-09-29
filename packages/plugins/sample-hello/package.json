@@ -1,0 +1,19 @@
+{
+  "name": "@gamecrafter/plugin-sample-hello",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "main": "dist/index.cjs",
+  "scripts": {
+    "build": "tsc -b && node scripts/build.cjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gamecrafter/plugin-sdk": "0.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

@@ -186,22 +186,8 @@ export class SkillInstaller {
     }
     if (source.kind === 'git') {
       const checkout = path.join(stagingRoot, gitDirectoryName(source.url));
-      const args = ['clone', '--depth', '1'];
-      if (source.ref) args.push('--branch', source.ref);
-      args.push(source.url, checkout);
-      try {
-        await execFileAsync('git', args, { timeout: 120_000, maxBuffer: 2 * 1024 * 1024 });
-        const { stdout } = await execFileAsync('git', ['-C', checkout, 'rev-parse', 'HEAD'], {
-          timeout: 15_000,
-          maxBuffer: 1024 * 1024,
-        });
-        return { root: checkout, subpath: source.subpath, resolvedRef: stdout.trim() };
-      } catch (error) {
-        throw new RpcError(
-          `Unable to clone skill source: ${errorMessage(error)}`,
-          RpcErrorCode.SkillInvalid,
-        );
-      }
+      const resolvedRef = await cloneGitRepository(source.url, source.ref, checkout);
+      return { root: checkout, subpath: source.subpath, resolvedRef };
     }
     if (source.kind === 'archive-url') {
       const archive = path.join(stagingRoot, 'skill-archive.tgz');
@@ -335,7 +321,34 @@ interface InstalledSkillDatabaseRow extends Omit<InstalledSkillRow, 'metadata'> 
   metadata: string;
 }
 
-async function downloadToFile(url: string, destination: string, maxBytes: number): Promise<void> {
+export async function cloneGitRepository(
+  url: string,
+  ref: string | undefined,
+  checkout: string,
+): Promise<string> {
+  const args = ['clone', '--depth', '1'];
+  if (ref) args.push('--branch', ref);
+  args.push(url, checkout);
+  try {
+    await execFileAsync('git', args, { timeout: 120_000, maxBuffer: 2 * 1024 * 1024 });
+    const { stdout } = await execFileAsync('git', ['-C', checkout, 'rev-parse', 'HEAD'], {
+      timeout: 15_000,
+      maxBuffer: 1024 * 1024,
+    });
+    return stdout.trim();
+  } catch (error) {
+    throw new RpcError(
+      `Unable to clone skill source: ${errorMessage(error)}`,
+      RpcErrorCode.SkillInvalid,
+    );
+  }
+}
+
+export async function downloadToFile(
+  url: string,
+  destination: string,
+  maxBytes: number,
+): Promise<void> {
   const bytes = await downloadBytes(url, maxBytes);
   writeFileSync(destination, bytes);
 }
@@ -383,7 +396,7 @@ async function downloadBytes(url: string, maxBytes: number): Promise<Buffer> {
   return Buffer.concat(chunks, total);
 }
 
-async function extractArchive(
+export async function extractArchive(
   archivePath: string,
   destination: string,
   maxExtractedBytes: number,

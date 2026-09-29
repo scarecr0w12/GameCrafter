@@ -92,4 +92,31 @@ describe('RoleRegistry', () => {
       database.close();
     }
   });
+
+  it('loads plugin roles through the restricted plugin role loader', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-role-registry-'));
+    directories.push(root);
+    const profileDir = path.join(root, 'profile');
+    mkdirSync(profileDir, { recursive: true });
+    const database = Database.open(':memory:');
+    try {
+      migrate(database, profileMigrations);
+      const profile = new ProfileStore(database);
+      const pluginRole = writeRole(
+        path.join(root, 'plugin'),
+        'plugin-designer',
+        'Plugin role.',
+        'full',
+      );
+      const registry = new RoleRegistry({
+        profile,
+        profileDir,
+        builtinRolesDir: path.join(root, 'missing-builtins'),
+        pluginRoleDirectories: () => [{ pluginId: 'example.plugin', directory: pluginRole }],
+      });
+      expect(() => registry.list()).toThrow('Plugin roles cannot set max-access: full.');
+    } finally {
+      database.close();
+    }
+  });
 });

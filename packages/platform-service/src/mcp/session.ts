@@ -7,8 +7,9 @@ import {
   type McpConnectionState,
   type McpRevision,
 } from '@gamecrafter/contracts';
-import { JsonRpcChannel } from './jsonrpc-channel';
-import { McpProtocolError, McpTransportError, type McpLogEntry, type McpTransport } from './types';
+import { JsonRpcChannel } from '../ipc/jsonrpc-channel';
+import { JsonRpcProtocolError, JsonRpcTransportError } from '../ipc/types';
+import { McpProtocolError, type McpLogEntry, type McpTransport } from './types';
 
 export interface McpToolDescriptor {
   name: string;
@@ -303,7 +304,7 @@ export class McpSession {
         throw new RpcError(error.message, RpcErrorCode.McpUnsupportedProtocolVersion);
       }
       const httpStatus =
-        error instanceof McpProtocolError || error instanceof McpTransportError
+        error instanceof JsonRpcProtocolError || error instanceof JsonRpcTransportError
           ? error.httpStatus
           : undefined;
       const shouldFallback =
@@ -313,7 +314,7 @@ export class McpSession {
         isProtocolError(error, -32602) ||
         (httpStatus !== undefined && [400, 404, 405, 406, 415].includes(httpStatus)) ||
         (this.options.transport.kind === 'stdio' &&
-          error instanceof McpTransportError &&
+          error instanceof JsonRpcTransportError &&
           httpStatus === undefined);
       if (!shouldFallback) throw error;
       const fallback = await this.initialize('2025-11-25');
@@ -479,13 +480,15 @@ export class McpSession {
 
   private connectionError(error: unknown): RpcError {
     if (error instanceof RpcError) return error;
-    if (error instanceof McpProtocolError && error.code === -32022) {
+    if (error instanceof JsonRpcProtocolError && error.code === -32022) {
       return new RpcError(error.message, RpcErrorCode.McpUnsupportedProtocolVersion);
     }
     return new RpcError(
       errorMessage(error),
       RpcErrorCode.McpConnectFailed,
-      error instanceof McpProtocolError ? { serverCode: error.code, data: error.data } : undefined,
+      error instanceof JsonRpcProtocolError
+        ? { serverCode: error.code, data: error.data }
+        : undefined,
     );
   }
 
@@ -514,8 +517,8 @@ function isSupportedRevision(value: string): value is McpRevision {
   return (MCP_SUPPORTED_REVISIONS as readonly string[]).includes(value);
 }
 
-function isProtocolError(error: unknown, code: number): error is McpProtocolError {
-  return error instanceof McpProtocolError && error.code === code;
+function isProtocolError(error: unknown, code: number): error is JsonRpcProtocolError {
+  return error instanceof JsonRpcProtocolError && error.code === code;
 }
 
 function elicitationInputRequests(params: unknown): unknown[] {

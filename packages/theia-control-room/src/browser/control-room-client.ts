@@ -35,6 +35,10 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly boardDecisionChangedEmitter = new Emitter<
     RpcNotificationParams<'board/decisionChanged'>
   >();
+  private readonly pluginWorkerChangedEmitter = new Emitter<
+    RpcNotificationParams<'plugin/workerChanged'>
+  >();
+  private readonly pluginChangedEmitter = new Emitter<RpcNotificationParams<'plugin/changed'>>();
   private readonly serviceStatusEmitter = new Emitter<{
     connected: boolean;
     message?: string;
@@ -52,6 +56,8 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly boardThreadChanged = this.boardThreadChangedEmitter.event;
   readonly boardMessagePosted = this.boardMessagePostedEmitter.event;
   readonly boardDecisionChanged = this.boardDecisionChangedEmitter.event;
+  readonly pluginWorkerChanged = this.pluginWorkerChangedEmitter.event;
+  readonly pluginChanged = this.pluginChangedEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
@@ -100,6 +106,14 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onBoardDecisionChanged(event: RpcNotificationParams<'board/decisionChanged'>): void {
     this.boardDecisionChangedEmitter.fire(event);
+  }
+
+  onPluginWorkerChanged(event: RpcNotificationParams<'plugin/workerChanged'>): void {
+    this.pluginWorkerChangedEmitter.fire(event);
+  }
+
+  onPluginChanged(event: RpcNotificationParams<'plugin/changed'>): void {
+    this.pluginChangedEmitter.fire(event);
   }
 
   onServiceStatus(status: { connected: boolean; message?: string }): void {

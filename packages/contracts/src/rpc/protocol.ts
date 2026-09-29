@@ -22,6 +22,7 @@ import {
   ApprovalRequestSchema,
   ToolCallRecordSchema,
   ToolDefinitionSchema,
+  ToolIdSchema,
 } from '../tools';
 import {
   ChatRequestSchema,
@@ -62,6 +63,17 @@ import {
   BoardThreadStatusSchema,
   CanonSyncProposalSchema,
 } from '../board';
+import {
+  DeclarativePanelSchema,
+  InstalledPluginSchema,
+  IsolationReportSchema,
+  PluginCapabilitySchema,
+  PluginInspectionSchema,
+  PluginListEntrySchema,
+  PluginLogEntrySchema,
+  PluginModulesResultSchema,
+  PluginWorkerStateSchema,
+} from '../plugins';
 import {
   McpConnectionConfigSchema,
   McpConnectionInputSchema,
@@ -309,7 +321,7 @@ export const RpcMethods = {
     params: Type.Object(
       {
         projectId: Type.String({ format: 'uuid' }),
-        toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
+        toolId: ToolIdSchema,
         input: Type.Unknown(),
         taskId: Type.Optional(Type.String({ format: 'uuid' })),
         agentId: Type.Optional(Type.String()),
@@ -324,7 +336,7 @@ export const RpcMethods = {
       {
         projectId: Type.String({ format: 'uuid' }),
         taskId: Type.Optional(Type.String({ format: 'uuid' })),
-        toolId: Type.Optional(Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' })),
+        toolId: Type.Optional(ToolIdSchema),
         limit: Type.Optional(Type.Integer({ minimum: 1, default: 200 })),
       },
       { additionalProperties: false },
@@ -1047,6 +1059,105 @@ export const RpcMethods = {
     ),
     result: Type.Object({ deleted: Type.Literal(true) }, { additionalProperties: false }),
   },
+  'plugin/list': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { plugins: Type.Array(PluginListEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'plugin/inspect': {
+    params: Type.Object({ source: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+    result: PluginInspectionSchema,
+  },
+  'plugin/install': {
+    params: Type.Object(
+      {
+        source: Type.String({ minLength: 1 }),
+        acceptCapabilities: Type.Array(PluginCapabilitySchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: InstalledPluginSchema,
+  },
+  'plugin/uninstall': {
+    params: Type.Object({ pluginId: Type.String() }, { additionalProperties: false }),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'plugin/enable': {
+    params: Type.Object(
+      { pluginId: Type.String(), projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ enabled: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'plugin/disable': {
+    params: Type.Object(
+      { pluginId: Type.String(), projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ enabled: Type.Literal(false) }, { additionalProperties: false }),
+  },
+  'plugin/start': {
+    params: Type.Object(
+      { pluginId: Type.String(), projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: PluginWorkerStateSchema,
+  },
+  'plugin/stop': {
+    params: Type.Object(
+      { pluginId: Type.String(), projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: PluginWorkerStateSchema,
+  },
+  'plugin/status': {
+    params: Type.Object(
+      { pluginId: Type.String(), projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: PluginWorkerStateSchema,
+  },
+  'plugin/isolationReport': {
+    params: EmptyParams,
+    result: IsolationReportSchema,
+  },
+  'plugin/log': {
+    params: Type.Object(
+      {
+        pluginId: Type.String(),
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { entries: Type.Array(PluginLogEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'plugin/setSecret': {
+    params: Type.Object(
+      { pluginId: Type.String(), name: Type.String(), value: Type.String() },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ stored: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'plugin/panel': {
+    params: Type.Object(
+      { pluginId: Type.String(), panelId: Type.String() },
+      { additionalProperties: false },
+    ),
+    result: DeclarativePanelSchema,
+  },
+  'plugin/modules': {
+    params: EmptyParams,
+    result: PluginModulesResultSchema,
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -1155,6 +1266,12 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'plugin/workerChanged': {
+    params: Type.Object({ state: PluginWorkerStateSchema }, { additionalProperties: false }),
+  },
+  'plugin/changed': {
+    params: Type.Object({ pluginId: Type.String() }, { additionalProperties: false }),
+  },
 } as const satisfies Record<string, { params: TSchema }>;
 
 export type RpcMethodName = keyof typeof RpcMethods;
@@ -1218,6 +1335,14 @@ export const RpcErrorCode = {
   BoardDecisionNotFound: -32074,
   BoardDeletionDisabled: -32075,
   BoardSyncConflict: -32076,
+  PluginNotFound: -32081,
+  PluginManifestInvalid: -32082,
+  PluginCapabilitiesNotAccepted: -32083,
+  PluginCapabilityDenied: -32084,
+  PluginIsolationUnavailable: -32085,
+  PluginWorkerFailed: -32086,
+  PluginDependencyMissing: -32087,
+  PluginIncompatible: -32088,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

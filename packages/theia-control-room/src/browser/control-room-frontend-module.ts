@@ -17,6 +17,8 @@ import { ConnectionsWidget } from './connections-widget';
 import { ConnectionsViewContribution } from './connections-view-contribution';
 import { DiscussionBoardWidget } from './discussion-board-widget';
 import { DiscussionBoardViewContribution } from './discussion-board-view-contribution';
+import { PluginsCatalogWidget } from './plugins-catalog-widget';
+import { PluginsCatalogViewContribution } from './plugins-catalog-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -42,6 +44,7 @@ export default new ContainerModule((bind) => {
   bind(SkillsWidget).toSelf().inSingletonScope();
   bind(ConnectionsWidget).toSelf().inSingletonScope();
   bind(DiscussionBoardWidget).toSelf().inSingletonScope();
+  bind(PluginsCatalogWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -78,6 +81,12 @@ export default new ContainerModule((bind) => {
       createWidget: () => context.container.get(DiscussionBoardWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: PluginsCatalogWidget.ID,
+      createWidget: () => context.container.get(PluginsCatalogWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
@@ -85,6 +94,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, SkillsViewContribution);
   bindViewContribution(bind, ConnectionsViewContribution);
   bindViewContribution(bind, DiscussionBoardViewContribution);
+  bindViewContribution(bind, PluginsCatalogViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();

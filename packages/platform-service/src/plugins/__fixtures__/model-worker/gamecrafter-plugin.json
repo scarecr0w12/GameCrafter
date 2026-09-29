@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "model-fixture",
+  "name": "Model Fixture",
+  "version": "1.0.0",
+  "description": "Exercises plugin model completion routing and usage accounting.",
+  "publisher": { "name": "GameCrafter tests" },
+  "license": "Apache-2.0",
+  "compatibility": { "platform": "^0.1.0", "protocol": 1 },
+  "runtime": { "kind": "python", "entry": "model_worker.py", "args": [], "interpreter": "python3" },
+  "capabilities": ["models.complete"],
+  "contributes": {
+    "tools": [
+      {
+        "toolId": "model-fixture/complete",
+        "title": "Complete via model router",
+        "description": "Runs a completion through the host's configured model router.",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "request": { "type": "object" } },
+          "required": ["request"],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "content": { "type": "string" },
+            "modelId": { "type": "string" }
+          },
+          "required": ["content", "modelId"],
+          "additionalProperties": false
+        },
+        "executionMode": "headless-process",
+        "sideEffects": "none",
+        "evidence": "Host-routed model completion."
+      }
+    ],
+    "modules": [],
+    "genres": [],
+    "roles": [],
+    "skills": [],
+    "settings": [],
+    "ui": { "panels": [], "commands": [] }
+  },
+  "dependencies": { "plugins": {} },
+  "migrations": []
+}

@@ -167,4 +167,56 @@ export const profileMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 6,
+    name: 'create plugin registry and host audit tables',
+    up: `
+      CREATE TABLE installed_plugins (
+        plugin_id TEXT PRIMARY KEY,
+        version TEXT NOT NULL,
+        manifest TEXT NOT NULL,
+        install_path TEXT NOT NULL UNIQUE,
+        source_kind TEXT NOT NULL,
+        source_ref TEXT NOT NULL,
+        sha256 TEXT NOT NULL,
+        signature TEXT NOT NULL,
+        installed_at TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        trust TEXT
+      );
+      CREATE TABLE plugin_project_enablement (
+        project_id TEXT NOT NULL,
+        plugin_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        PRIMARY KEY (project_id, plugin_id)
+      );
+      CREATE INDEX plugin_project_enablement_project_idx ON plugin_project_enablement(project_id);
+      CREATE TABLE plugin_usage (
+        usage_id TEXT PRIMARY KEY,
+        plugin_id TEXT NOT NULL,
+        project_id TEXT,
+        task_id TEXT,
+        decision_id TEXT,
+        model_id TEXT,
+        cost_usd REAL NOT NULL,
+        recorded_at TEXT NOT NULL
+      );
+      CREATE INDEX plugin_usage_plugin_time_idx ON plugin_usage(plugin_id, recorded_at);
+      CREATE TABLE plugin_host_calls (
+        call_id TEXT PRIMARY KEY,
+        plugin_id TEXT NOT NULL,
+        project_id TEXT,
+        task_id TEXT,
+        method TEXT NOT NULL,
+        capability TEXT,
+        tool_id TEXT,
+        input TEXT,
+        status TEXT NOT NULL,
+        error_code INTEGER,
+        started_at TEXT NOT NULL,
+        finished_at TEXT
+      );
+      CREATE INDEX plugin_host_calls_plugin_time_idx ON plugin_host_calls(plugin_id, started_at);
+    `,
+  },
 ];

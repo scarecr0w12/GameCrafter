@@ -39,6 +39,11 @@ interface SkillActivationRow {
   activatedAt: string;
 }
 
+export interface PluginSkillDirectory {
+  pluginId: string;
+  directory: string;
+}
+
 interface RegistryOptions {
   profile: ProfileStore;
   projectDatabases: ProjectDatabases;
@@ -46,6 +51,7 @@ interface RegistryOptions {
   settings: SettingsReader;
   homeDir?: string;
   now?: () => Date;
+  pluginSkillDirectories?: (projectId: string) => PluginSkillDirectory[];
 }
 
 const enablementColumns = `name, enabled, pinned_version AS pinnedVersion, pinned_hash AS pinnedHash,
@@ -90,6 +96,29 @@ export class SkillRegistry {
       enablement: enablements.get(record.name) ?? emptyEnablement(record.name),
       shadowedBy: null as string | null,
     }));
+    const pluginSkills = (this.options.pluginSkillDirectories?.(projectId) ?? []).flatMap(
+      ({ pluginId, directory }) => {
+        try {
+          const record = loadSkillDir(directory, 'platform', `plugin:${pluginId}`);
+          return [
+            {
+              ...record,
+              enablement: {
+                name: record.name,
+                enabled: true,
+                pinnedVersion: null,
+                pinnedHash: null,
+                roles: null,
+                workTypes: null,
+              },
+              shadowedBy: null,
+            },
+          ];
+        } catch {
+          return [];
+        }
+      },
+    );
     const localRoot = path.join(project.path, '.agents', 'skills');
     const projectSkills = scanSkillRoot(localRoot, 'project', project.trusted).map((record) => ({
       ...record,
@@ -116,6 +145,7 @@ export class SkillRegistry {
     const entries: ProjectSkillEntry[] = [
       ...projectSkills,
       ...platformSkills,
+      ...pluginSkills,
       ...compatibilitySkills,
     ];
     this.applyShadowing(projectId, entries);
@@ -257,7 +287,10 @@ export class SkillRegistry {
     const project = this.options.profile.getById(projectId);
     if (!project)
       throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
-    const roots = [this.options.installer.skillsDirectory];
+    const roots = [
+      this.options.installer.skillsDirectory,
+      ...(this.options.pluginSkillDirectories?.(projectId) ?? []).map((plugin) => plugin.directory),
+    ];
     if (
       project.trusted &&
       this.options.settings.resolve('skills.compatibilityScan.enabled', { projectId }).value

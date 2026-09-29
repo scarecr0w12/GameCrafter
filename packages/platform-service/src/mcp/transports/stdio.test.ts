@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JsonRpcChannel } from '../jsonrpc-channel';
+import { JsonRpcChannel } from '../../ipc/jsonrpc-channel';
 import { StdioTransport } from './stdio';
 
 const echoServer = `

@@ -20,6 +20,7 @@ interface Fixture {
   sessionId: string;
   database: Database;
   projectDatabases: ProjectDatabases;
+  registry: SettingsRegistry;
   service: SettingsService;
 }
 
@@ -101,6 +102,41 @@ describe('SettingsService', () => {
     );
   });
 
+  it('drops contributed values and definitions when a plugin is uninstalled', () => {
+    const fixture = createFixture();
+    const definition = {
+      key: 'plugin.sample.greeting',
+      title: 'Greeting',
+      description: 'Plugin setting.',
+      group: 'plugins',
+      schema: { type: 'string' },
+      default: 'Hello',
+      scopes: ['platform', 'project', 'session'] as Array<'platform' | 'project' | 'session'>,
+      source: 'plugin:sample',
+    };
+    fixture.registry.register('plugin:sample', [], [definition]);
+    fixture.service.set(definition.key, 'platform', 'Platform greeting');
+    fixture.service.set(definition.key, 'project', 'Project greeting', {
+      projectId: fixture.projectId,
+    });
+    fixture.service.set(definition.key, 'session', 'Session greeting', {
+      sessionId: fixture.sessionId,
+    });
+
+    expect(fixture.service.unregisterSource('plugin:sample', [fixture.projectId])).toEqual([
+      definition.key,
+    ]);
+    expect(fixture.registry.get(definition.key)).toBeUndefined();
+    fixture.registry.register('plugin:sample', [], [definition]);
+    expect(fixture.service.resolve(definition.key).value).toBe('Hello');
+    expect(fixture.service.resolve(definition.key, { projectId: fixture.projectId }).value).toBe(
+      'Hello',
+    );
+    expect(fixture.service.resolve(definition.key, { sessionId: fixture.sessionId }).value).toBe(
+      'Hello',
+    );
+  });
+
   it('drops session values when the session is closed', () => {
     const fixture = createFixture();
     fixture.service.set('access.mode', 'session', 'restricted', { sessionId: fixture.sessionId });
@@ -153,7 +189,15 @@ function createFixture(): Fixture {
   const sessionId = uuidv7();
   const service = new SettingsService(registry, database, projectDatabases);
   service.openSession(sessionId);
-  const fixture = { directory, projectId, sessionId, database, projectDatabases, service };
+  const fixture = {
+    directory,
+    projectId,
+    sessionId,
+    database,
+    projectDatabases,
+    registry,
+    service,
+  };
   fixtures.push(fixture);
   return fixture;
 }

@@ -61,12 +61,14 @@ function makeFixture(trusted: boolean) {
     },
   } as Pick<SettingsService, 'resolve'>;
   const installer = new SkillInstaller(profileDatabase, profileDir, settings);
+  const pluginSkillDirectories: Array<{ pluginId: string; directory: string }> = [];
   const registry = new SkillRegistry({
     profile,
     projectDatabases,
     installer,
     settings,
     homeDir,
+    pluginSkillDirectories: () => pluginSkillDirectories,
   });
   return {
     root,
@@ -80,6 +82,7 @@ function makeFixture(trusted: boolean) {
     profile,
     installer,
     registry,
+    pluginSkillDirectories,
     close() {
       projectDatabases.close();
       profileDatabase.close();
@@ -93,6 +96,34 @@ afterEach(() => {
 });
 
 describe('SkillRegistry', () => {
+  it('loads plugin skills only while their plugin is enabled for the Project', () => {
+    const fixture = makeFixture(true);
+    try {
+      const pluginSkill = writeSkill(path.join(fixture.root, 'plugin-skills'), 'plugin-guide');
+      fixture.pluginSkillDirectories.push({ pluginId: 'sample-plugin', directory: pluginSkill });
+      const entry = fixture.registry
+        .listForProject(fixture.projectId)
+        .find((skill) => skill.name === 'plugin-guide');
+      expect(entry).toMatchObject({
+        scope: 'platform',
+        source: 'plugin:sample-plugin',
+        enablement: { enabled: true },
+      });
+      expect(fixture.registry.activatableSkill(fixture.projectId, 'plugin-guide').location).toBe(
+        pluginSkill,
+      );
+      expect(fixture.registry.readableSkillRoots(fixture.projectId)).toContain(pluginSkill);
+      fixture.pluginSkillDirectories.splice(0);
+      expect(
+        fixture.registry
+          .listForProject(fixture.projectId)
+          .some((skill) => skill.name === 'plugin-guide'),
+      ).toBe(false);
+    } finally {
+      fixture.close();
+    }
+  });
+
   it('merges scope precedence, reports shadowing once, gates untrusted activation, and records activation', async () => {
     const fixture = makeFixture(false);
     try {

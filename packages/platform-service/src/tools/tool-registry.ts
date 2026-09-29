@@ -45,13 +45,13 @@ export class ToolRegistry {
       throw new Error(`Tool already registered: ${definition.toolId}`);
     }
     compile<ToolDefinition>(ToolDefinitionSchema).assert(definition);
-    const inputValidator = definition.source.startsWith('mcp:')
+    const inputValidator = usesJsonSchema2020(definition.source)
       ? compileJsonSchema2020<unknown>(
           definition.inputSchema as Parameters<typeof compileJsonSchema2020>[0],
         )
       : compile<unknown>(definition.inputSchema as Parameters<typeof compile>[0]);
     const outputValidator = definition.outputSchema
-      ? definition.source.startsWith('mcp:')
+      ? usesJsonSchema2020(definition.source)
         ? compileJsonSchema2020<unknown>(
             definition.outputSchema as Parameters<typeof compileJsonSchema2020>[0],
           )
@@ -110,4 +110,8 @@ export class ToolRegistry {
     }
     return [];
   }
+}
+
+function usesJsonSchema2020(source: string): boolean {
+  return source.startsWith('mcp:') || source.startsWith('plugin:');
 }

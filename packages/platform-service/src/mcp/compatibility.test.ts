@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { uuidv7, type McpConnectionConfig, type McpRevision } from '@gamecrafter/contracts';
 import { McpSession } from './session';
-import { JsonRpcChannel } from './jsonrpc-channel';
+import { JsonRpcChannel } from '../ipc/jsonrpc-channel';
 import { startMcp2026HttpFixture } from './__fixtures__/server-2026-07-28';
 import { StdioTransport } from './transports/stdio';
 import { StreamableHttpTransport } from './transports/streamable-http';

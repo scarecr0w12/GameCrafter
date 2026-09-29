@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "title": "Hello plugin",
+  "sections": [
+    {
+      "kind": "markdown",
+      "body": "The Sample Hello plugin demonstrates a language-neutral worker and a capability-gated tool."
+    },
+    {
+      "kind": "tool-form",
+      "toolId": "sample-hello/greet",
+      "submitLabel": "Greet"
+    }
+  ]
+}

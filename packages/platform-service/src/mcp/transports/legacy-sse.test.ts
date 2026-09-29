@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import { expect, it } from 'vitest';
-import { JsonRpcChannel } from '../jsonrpc-channel';
+import { JsonRpcChannel } from '../../ipc/jsonrpc-channel';
 import { LegacySseTransport } from './legacy-sse';
 
 it('uses the SSE endpoint event to POST legacy JSON-RPC messages', async () => {

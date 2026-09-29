@@ -15,6 +15,7 @@ import { MODELS_OPEN_COMMAND_ID } from './models-view-contribution';
 import { SKILLS_OPEN_COMMAND_ID } from './skills-view-contribution';
 import { CONNECTIONS_OPEN_COMMAND_ID } from './connections-view-contribution';
 import { DISCUSSION_BOARD_OPEN_COMMAND_ID } from './discussion-board-view-contribution';
+import { PLUGINS_OPEN_COMMAND_ID } from './plugins-catalog-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ReactWidget {
@@ -106,6 +107,13 @@ export class ProjectHomeWidget extends ReactWidget {
             }
           >
             Discussion Board
+          </button>
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(PLUGINS_OPEN_COMMAND_ID)}
+          >
+            Plugins
           </button>
         </div>
         {this.projects.length === 0 ? (

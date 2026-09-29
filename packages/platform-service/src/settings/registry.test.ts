@@ -10,7 +10,7 @@ describe('SettingsRegistry', () => {
 
     const description = registry.describe();
     expect(description.groups).toHaveLength(10);
-    expect(description.definitions).toHaveLength(29);
+    expect(description.definitions).toHaveLength(33);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({
@@ -23,6 +23,14 @@ describe('SettingsRegistry', () => {
         (definition) => definition.key === 'mcp.reconnectBackoffSeconds',
       ),
     ).toMatchObject({ group: 'connections', default: 10, scopes: ['platform'] });
+    expect(
+      description.definitions.find(
+        (definition) => definition.key === 'plugins.allowUnisolatedInFullAccess',
+      ),
+    ).toMatchObject({ group: 'plugins', default: false, scopes: ['platform'] });
+    expect(
+      description.definitions.find((definition) => definition.key === 'plugins.autoStart'),
+    ).toMatchObject({ group: 'plugins', default: true, scopes: ['platform', 'project'] });
     expect(description.groups[0]?.id).toBe('general');
     expect(description.groups[9]?.id).toBe('logs');
   });
@@ -35,6 +43,34 @@ describe('SettingsRegistry', () => {
     expect(() => registry.register('plugin.example', [], [builtins.definitions[0]!])).toThrow(
       'Duplicate setting key: window.closeBehavior',
     );
+  });
+
+  it('unregisters definitions contributed by one plugin', () => {
+    const registry = new SettingsRegistry();
+    const builtins = createBuiltinSettings();
+    registry.register('builtin', builtins.groups, builtins.definitions);
+    registry.register(
+      'plugin:sample-hello',
+      [],
+      [
+        {
+          key: 'plugin.sample-hello.greetingPrefix',
+          title: 'Greeting prefix',
+          description: 'Plugin setting.',
+          group: 'plugins',
+          schema: { type: 'string' },
+          default: 'Hello',
+          scopes: ['project'],
+          source: 'untrusted-input',
+        },
+      ],
+    );
+
+    expect(registry.unregisterSource('plugin:sample-hello')).toEqual([
+      'plugin.sample-hello.greetingPrefix',
+    ]);
+    expect(registry.get('plugin.sample-hello.greetingPrefix')).toBeUndefined();
+    expect(registry.get('plugins.autoStart')).toBeDefined();
   });
 
   it('validates defaults while registering definitions', () => {

@@ -47,6 +47,11 @@ import { BoardMaintenanceService } from './board/board-maintenance-service';
 import { CanonSyncWorkflow } from './board/canon-sync-workflow';
 import { registerBoardMaintenanceTool, registerBoardTools } from './board/board-tools';
 import { BoardMaintenanceScheduler } from './board/maintenance-scheduler';
+import { PluginHost } from './plugins/plugin-host';
+import { PluginInstaller } from './plugins/plugin-installer';
+import { PluginRegistry } from './plugins/plugin-registry';
+import { PluginService } from './plugins/plugin-service';
+import type { IsolationLauncher } from './plugins/isolation/types';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -55,6 +60,11 @@ export interface PlatformServiceOptions {
   onStopRequested?: (checkpoint: boolean) => Promise<void> | void;
   onWorkerStarted?: (taskId: string, pid: number) => void;
   approvalTimeoutOverrideMs?: number;
+  pluginLaunchers?: {
+    linux?: IsolationLauncher;
+    win32?: IsolationLauncher;
+    unisolated?: IsolationLauncher;
+  };
 }
 
 export class PlatformService {
@@ -70,6 +80,7 @@ export class PlatformService {
     private readonly toolBroker: ToolBroker,
     private readonly mcpConnections: McpConnectionManager,
     private readonly boardMaintenanceScheduler: BoardMaintenanceScheduler,
+    private readonly pluginHost: PluginHost,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -101,6 +112,13 @@ export class PlatformService {
       settings: settingsService,
     });
     const completionService = new CompletionService(modelRegistry, modelRouter);
+    const pluginInstaller = new PluginInstaller({
+      database,
+      profileDir: paths.profileDir,
+      platformVersion,
+      settings: settingsService,
+    });
+    const pluginRegistry = new PluginRegistry({ database, profile, installer: pluginInstaller });
     const handlerRegistry = new HandlerRegistry();
     registerBuiltinHandlers(handlerRegistry);
     registerBoardMaintenanceHandlers(handlerRegistry);
@@ -122,8 +140,13 @@ export class PlatformService {
       projectDatabases,
       installer: skillInstaller,
       settings: settingsService,
+      pluginSkillDirectories: (projectId) => pluginRegistry.skillDirectories(projectId),
     });
-    const roleRegistry = new RoleRegistry({ profile, profileDir: paths.profileDir });
+    const roleRegistry = new RoleRegistry({
+      profile,
+      profileDir: paths.profileDir,
+      pluginRoleDirectories: (projectId) => pluginRegistry.roleDirectories(projectId),
+    });
     const skillCatalog = new SkillCatalog({
       registry: skillRegistry,
       workspace,
@@ -156,6 +179,14 @@ export class PlatformService {
           server.broadcast('broker/approvalResolved', { projectId, approval }),
         toolCalled: (projectId, call) => server.broadcast('tool/called', { projectId, call }),
       },
+      isToolAvailable: (tool, projectId) => {
+        if (!tool.source.startsWith('plugin:')) return true;
+        try {
+          return pluginRegistry.isEnabledForProject(tool.source.slice('plugin:'.length), projectId);
+        } catch {
+          return false;
+        }
+      },
       approvalTimeoutOverrideMs: options.approvalTimeoutOverrideMs,
     });
     const workerSupervisor = new WorkerSupervisor({
@@ -177,6 +208,11 @@ export class PlatformService {
       if (!boardMaintenanceRef.scheduler) throw new Error('Board maintenance is not initialized');
       return boardMaintenanceRef.scheduler;
     };
+    const pluginRef: { service?: PluginService } = {};
+    const plugins = (): PluginService => {
+      if (!pluginRef.service) throw new Error('Plugin service is not initialized');
+      return pluginRef.service;
+    };
     const handlers: RpcHandlers = {
       'service/info': () => ({
         serviceVersion: platformVersion,
@@ -197,10 +233,11 @@ export class PlatformService {
         return project;
       },
       'project/list': () => ({ projects: workspace.list() }),
-      'project/open': ({ path: projectPath }) => {
+      'project/open': async ({ path: projectPath }) => {
         const project = workspace.open(projectPath);
         server.broadcast('project/changed', { kind: 'opened', project });
-        void mcpConnections.onProjectOpened(project.projectId);
+        await mcpConnections.onProjectOpened(project.projectId);
+        await plugins().autoStartProject(project.projectId);
         return project;
       },
       'project/get': ({ projectId }) => workspace.get(projectId),
@@ -418,12 +455,24 @@ export class PlatformService {
         board().deleteThread(projectId, threadId);
         return { deleted: true };
       },
+      'plugin/list': ({ projectId }) => ({ plugins: plugins().list(projectId) }),
+      'plugin/inspect': ({ source }) => plugins().inspect(source),
+      'plugin/install': ({ source, acceptCapabilities }) =>
+        plugins().install(source, acceptCapabilities),
+      'plugin/uninstall': ({ pluginId }) => plugins().uninstall(pluginId),
+      'plugin/enable': ({ pluginId, projectId }) => plugins().enable(pluginId, projectId),
+      'plugin/disable': ({ pluginId, projectId }) => plugins().disable(pluginId, projectId),
+      'plugin/start': ({ pluginId, projectId }) => plugins().start(pluginId, projectId),
+      'plugin/stop': ({ pluginId, projectId }) => plugins().stop(pluginId, projectId),
+      'plugin/status': ({ pluginId, projectId }) => plugins().status(pluginId, projectId),
+      'plugin/isolationReport': () => plugins().isolationReport(),
+      'plugin/log': ({ pluginId, projectId, limit }) => plugins().logs(pluginId, projectId, limit),
+      'plugin/setSecret': ({ pluginId, name, value }) => plugins().setSecret(pluginId, name, value),
+      'plugin/panel': ({ pluginId, panelId }) => plugins().panel(pluginId, panelId),
+      'plugin/modules': () => plugins().modules(),
       'service/stop': ({ checkpoint }) => {
         setTimeout(() => {
           void (async () => {
-            boardMaintenance().stop();
-            await workerSupervisor.stopAll({ checkpoint });
-            await toolBroker.stopAll();
             await platformService.stop(checkpoint);
             await options.onStopRequested?.(checkpoint);
           })().catch((error: unknown) => {
@@ -495,7 +544,41 @@ export class PlatformService {
       },
       clientInfo: { name: 'gamecrafter-platform-service', version: platformVersion },
     });
-    settingsService.onChanged((event) => server.broadcast('settings/changed', event));
+    const pluginHost = new PluginHost({
+      database,
+      profileDir: paths.profileDir,
+      installer: pluginInstaller,
+      plugins: pluginRegistry,
+      tools: toolRegistry,
+      broker: toolBroker,
+      settings: settingsService,
+      projects: profile,
+      credentials,
+      completion: completionService,
+      board,
+      launchers: options.pluginLaunchers,
+      onWorkerChanged: (state) => server.broadcast('plugin/workerChanged', { state }),
+    });
+    pluginRef.service = new PluginService({
+      installer: pluginInstaller,
+      registry: pluginRegistry,
+      host: pluginHost,
+      profile,
+      settingsRegistry,
+      settings: settingsService,
+      credentials,
+      onChanged: (pluginId) => server.broadcast('plugin/changed', { pluginId }),
+    });
+    settingsService.onChanged((event) => {
+      server.broadcast('settings/changed', event);
+      void plugins()
+        .settingsChanged(event)
+        .catch((error: unknown) => {
+          log('warn', 'Plugin settings update failed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    });
     const platformService = new PlatformService(
       server,
       database,
@@ -504,6 +587,7 @@ export class PlatformService {
       toolBroker,
       mcpConnections,
       boardMaintenance(),
+      pluginHost,
       paths,
       startedAt,
     );
@@ -521,6 +605,7 @@ export class PlatformService {
     await mcpConnections.start();
     workerSupervisor.start();
     boardMaintenance().start();
+    await plugins().autoStartRegisteredProjects();
     return platformService;
   }
 
@@ -528,6 +613,7 @@ export class PlatformService {
     if (this.stopped) return;
     this.stopped = true;
     this.boardMaintenanceScheduler.stop();
+    await this.pluginHost.stopAll();
     await this.workerSupervisor.stopAll({ checkpoint });
     await this.toolBroker.stopAll();
     await this.mcpConnections.stop();

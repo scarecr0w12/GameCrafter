@@ -4,10 +4,16 @@ import { RpcError, RpcErrorCode, type RoleRecord } from '@gamecrafter/contracts'
 import type { ProfileStore } from '../profile/profile-store';
 import { loadRoleDir } from './role-loader';
 
+export interface PluginRoleDirectory {
+  pluginId: string;
+  directory: string;
+}
+
 interface RoleRegistryOptions {
   profile: ProfileStore;
   profileDir: string;
   builtinRolesDir?: string;
+  pluginRoleDirectories?: (projectId?: string) => PluginRoleDirectory[];
 }
 
 export class RoleRegistry {
@@ -20,6 +26,10 @@ export class RoleRegistry {
   list(projectId?: string): RoleRecord[] {
     const roles = new Map<string, RoleRecord>();
     for (const role of loadRoleRoot(this.builtinRolesDir, 'builtin')) roles.set(role.name, role);
+    for (const plugin of this.options.pluginRoleDirectories?.(projectId) ?? []) {
+      const role = loadRoleDir(plugin.directory, 'platform', 'plugin');
+      roles.set(role.name, role);
+    }
     for (const role of loadRoleRoot(path.join(this.options.profileDir, 'roles'), 'platform')) {
       roles.set(role.name, role);
     }

@@ -9,7 +9,7 @@ export type SettingsScope = Static<typeof SettingsScope>;
 
 export const SettingDefinitionSchema = Type.Object(
   {
-    key: Type.String({ pattern: '^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)+$' }),
+    key: Type.String({ pattern: '^[a-z][a-zA-Z0-9-]*(\\.[a-z][a-zA-Z0-9-]*)+$' }),
     title: Type.String(),
     description: Type.String(),
     group: Type.String(),

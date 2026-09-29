@@ -165,6 +165,36 @@ export class SettingsService {
     return () => this.changedListeners.delete(listener);
   }
 
+  unregisterSource(source: string, projectIds: string[] = []): string[] {
+    const keys = this.registry.unregisterSource(source);
+    for (const key of keys) {
+      this.profileDatabase.prepare('DELETE FROM settings_values WHERE key = ?').run(key);
+      this.notifyChanged({ key, scope: 'platform' });
+      for (const projectId of projectIds) {
+        try {
+          this.projectDatabases
+            .get(projectId)
+            .prepare('DELETE FROM settings_overrides WHERE key = ?')
+            .run(key);
+          this.notifyChanged({ key, scope: 'project', projectId });
+        } catch (error) {
+          if (error instanceof ServiceRpcError && error.code === RpcErrorCode.ProjectNotFound)
+            continue;
+          throw error;
+        }
+      }
+      for (const [sessionId, session] of this.sessions) {
+        session.delete(key);
+        this.notifyChanged({ key, scope: 'session', sessionId });
+      }
+    }
+    return keys;
+  }
+
+  private notifyChanged(event: RpcNotificationParams<'settings/changed'>): void {
+    for (const listener of this.changedListeners) listener(event);
+  }
+
   private getDefinition(key: string) {
     const definition = this.registry.get(key);
     if (!definition) {

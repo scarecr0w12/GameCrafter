@@ -52,6 +52,12 @@ export class PlatformServiceConnection {
   private readonly boardDecisionChangedListeners = new Set<
     (event: RpcNotificationParams<'board/decisionChanged'>) => void
   >();
+  private readonly pluginWorkerChangedListeners = new Set<
+    (event: RpcNotificationParams<'plugin/workerChanged'>) => void
+  >();
+  private readonly pluginChangedListeners = new Set<
+    (event: RpcNotificationParams<'plugin/changed'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -144,6 +150,18 @@ export class PlatformServiceConnection {
     return () => this.boardDecisionChangedListeners.delete(listener);
   }
 
+  onPluginWorkerChanged(
+    listener: (event: RpcNotificationParams<'plugin/workerChanged'>) => void,
+  ): () => void {
+    this.pluginWorkerChangedListeners.add(listener);
+    return () => this.pluginWorkerChangedListeners.delete(listener);
+  }
+
+  onPluginChanged(listener: (event: RpcNotificationParams<'plugin/changed'>) => void): () => void {
+    this.pluginChangedListeners.add(listener);
+    return () => this.pluginChangedListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -201,6 +219,12 @@ export class PlatformServiceConnection {
         });
         client.onNotification('board/decisionChanged', (event) => {
           for (const listener of this.boardDecisionChangedListeners) listener(event);
+        });
+        client.onNotification('plugin/workerChanged', (event) => {
+          for (const listener of this.pluginWorkerChangedListeners) listener(event);
+        });
+        client.onNotification('plugin/changed', (event) => {
+          for (const listener of this.pluginChangedListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

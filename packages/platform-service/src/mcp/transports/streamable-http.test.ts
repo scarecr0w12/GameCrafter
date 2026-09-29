@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
-import { JsonRpcChannel } from '../jsonrpc-channel';
+import { JsonRpcChannel } from '../../ipc/jsonrpc-channel';
 import { StreamableHttpTransport } from './streamable-http';
 
 const servers: ReturnType<typeof createServer>[] = [];

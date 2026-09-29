@@ -53,6 +53,13 @@ export class CredentialStore {
     this.database.prepare('DELETE FROM credentials WHERE ref = ?').run(ref);
   }
 
+  deletePrefix(prefix: string): void {
+    if (!prefix) throw new Error('Credential namespace prefix cannot be empty');
+    this.database
+      .prepare('DELETE FROM credentials WHERE substr(ref, 1, ?) = ?')
+      .run(prefix.length, prefix);
+  }
+
   private getKey(): Buffer {
     if (this.key) return this.key;
     mkdirSync(this.profileDir, { recursive: true, mode: 0o700 });

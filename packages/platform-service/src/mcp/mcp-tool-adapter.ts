@@ -7,6 +7,7 @@ import {
   type ToolDefinition,
 } from '@gamecrafter/contracts';
 import { ToolRegistry, type ToolContext } from '../tools/tool-registry';
+import { requiresDestructiveSideEffects } from '../tools/tool-security';
 import type { McpToolDescriptor } from './session';
 
 export interface McpToolClassification {
@@ -65,9 +66,7 @@ function toToolDefinition(
   classification: McpToolClassification,
 ): ToolDefinition {
   const annotations = tool.annotations ?? {};
-  const dangerousName = /execute[_-]?code|run[_-]?python|exec|eval|command[_-]?port/i.test(
-    tool.name,
-  );
+  const dangerousName = requiresDestructiveSideEffects(tool.name);
   const sideEffects: SideEffect = dangerousName
     ? 'destructive'
     : (classification.sideEffects ??

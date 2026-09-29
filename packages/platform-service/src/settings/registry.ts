@@ -46,6 +46,16 @@ export class SettingsRegistry {
     for (const [key, registered] of pendingDefinitions) this.definitions.set(key, registered);
   }
 
+  unregisterSource(source: string): string[] {
+    const removed: string[] = [];
+    for (const [key, registered] of this.definitions) {
+      if (registered.definition.source !== source) continue;
+      this.definitions.delete(key);
+      removed.push(key);
+    }
+    return removed.sort((left, right) => left.localeCompare(right));
+  }
+
   describe(): { groups: SettingGroup[]; definitions: SettingDefinition[] } {
     const groups = [...this.groups.values()].sort((left, right) => left.order - right.order);
     const groupOrders = new Map(groups.map((group) => [group.id, group.order]));

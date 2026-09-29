@@ -25,6 +25,20 @@ describe('CredentialStore', () => {
     }
   });
 
+  it('deletes only credentials beneath a plugin namespace prefix', () => {
+    const fixture = makeFixture();
+    try {
+      const credentials = new CredentialStore(fixture.database, fixture.profileDir);
+      credentials.put('plugin:sample-hello:api', 'secret-a');
+      credentials.put('plugin:sample-hello-extra:api', 'secret-b');
+      credentials.deletePrefix('plugin:sample-hello:');
+      expect(credentials.get('plugin:sample-hello:api')).toBeUndefined();
+      expect(credentials.get('plugin:sample-hello-extra:api')).toBe('secret-b');
+    } finally {
+      fixture.close();
+    }
+  });
+
   it('fails authentication when the encryption key is wrong', () => {
     const fixture = makeFixture();
     try {

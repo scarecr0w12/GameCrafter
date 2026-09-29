@@ -13,6 +13,15 @@ import {
   type McpConnectionPatch,
   type McpConnectionState,
   type McpToolsResult,
+  type DeclarativePanel,
+  type InstalledPlugin,
+  type IsolationReport,
+  type PluginCapability,
+  type PluginInspection,
+  type PluginListEntry,
+  type PluginLogEntry,
+  type PluginModulesResult,
+  type PluginWorkerState,
   type Model,
   type ModelCapabilities,
   type ModelPool,
@@ -61,6 +70,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeBoardThreadChangedListener?: () => void;
   private removeBoardMessagePostedListener?: () => void;
   private removeBoardDecisionChangedListener?: () => void;
+  private removePluginWorkerChangedListener?: () => void;
+  private removePluginChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -81,6 +92,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeBoardThreadChangedListener?.();
     this.removeBoardMessagePostedListener?.();
     this.removeBoardDecisionChangedListener?.();
+    this.removePluginWorkerChangedListener?.();
+    this.removePluginChangedListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -124,6 +137,12 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       (event) => {
         this.client?.onBoardDecisionChanged(event);
       },
+    );
+    this.removePluginWorkerChangedListener = this.platformConnection.onPluginWorkerChanged(
+      (event) => this.client?.onPluginWorkerChanged(event),
+    );
+    this.removePluginChangedListener = this.platformConnection.onPluginChanged((event) =>
+      this.client?.onPluginChanged(event),
     );
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -532,6 +551,71 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   async listMcpLogs(connectionId: string, limit?: number): Promise<McpConnectionLogEntry[]> {
     const client = await this.getPlatformClient();
     return (await client.call('mcp/log', { connectionId, limit })).entries;
+  }
+
+  async listPlugins(projectId?: string): Promise<PluginListEntry[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('plugin/list', { projectId })).plugins;
+  }
+
+  async inspectPlugin(source: string): Promise<PluginInspection> {
+    return (await this.getPlatformClient()).call('plugin/inspect', { source });
+  }
+
+  async installPlugin(
+    source: string,
+    acceptCapabilities: PluginCapability[],
+  ): Promise<InstalledPlugin> {
+    return (await this.getPlatformClient()).call('plugin/install', { source, acceptCapabilities });
+  }
+
+  async uninstallPlugin(pluginId: string): Promise<{ removed: true }> {
+    return (await this.getPlatformClient()).call('plugin/uninstall', { pluginId });
+  }
+
+  async enablePlugin(pluginId: string, projectId?: string): Promise<{ enabled: true }> {
+    return (await this.getPlatformClient()).call('plugin/enable', { pluginId, projectId });
+  }
+
+  async disablePlugin(pluginId: string, projectId?: string): Promise<{ enabled: false }> {
+    return (await this.getPlatformClient()).call('plugin/disable', { pluginId, projectId });
+  }
+
+  async startPlugin(pluginId: string, projectId: string): Promise<PluginWorkerState> {
+    return (await this.getPlatformClient()).call('plugin/start', { pluginId, projectId });
+  }
+
+  async stopPlugin(pluginId: string, projectId: string): Promise<PluginWorkerState> {
+    return (await this.getPlatformClient()).call('plugin/stop', { pluginId, projectId });
+  }
+
+  async getPluginStatus(pluginId: string, projectId?: string): Promise<PluginWorkerState> {
+    return (await this.getPlatformClient()).call('plugin/status', { pluginId, projectId });
+  }
+
+  async getPluginIsolationReport(): Promise<IsolationReport> {
+    return (await this.getPlatformClient()).call('plugin/isolationReport', {});
+  }
+
+  async listPluginLogs(
+    pluginId: string,
+    projectId?: string,
+    limit?: number,
+  ): Promise<PluginLogEntry[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('plugin/log', { pluginId, projectId, limit })).entries;
+  }
+
+  async setPluginSecret(pluginId: string, name: string, value: string): Promise<{ stored: true }> {
+    return (await this.getPlatformClient()).call('plugin/setSecret', { pluginId, name, value });
+  }
+
+  async getPluginPanel(pluginId: string, panelId: string): Promise<DeclarativePanel> {
+    return (await this.getPlatformClient()).call('plugin/panel', { pluginId, panelId });
+  }
+
+  async getPluginModules(): Promise<PluginModulesResult> {
+    return (await this.getPlatformClient()).call('plugin/modules', {});
   }
 
   async listBoardThreads(params: RpcParams<'board/threads'>): Promise<RpcResult<'board/threads'>> {

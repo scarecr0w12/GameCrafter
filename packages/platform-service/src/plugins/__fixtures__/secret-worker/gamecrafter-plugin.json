@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "secret-fixture",
+  "name": "Secret Fixture",
+  "version": "1.0.0",
+  "description": "Exercises plugin secret scoping and log redaction.",
+  "publisher": { "name": "GameCrafter tests" },
+  "license": "Apache-2.0",
+  "compatibility": { "platform": "^0.1.0", "protocol": 1 },
+  "runtime": {
+    "kind": "python",
+    "entry": "secret_worker.py",
+    "args": [],
+    "interpreter": "python3"
+  },
+  "capabilities": ["secrets.read"],
+  "contributes": {
+    "tools": [
+      {
+        "toolId": "secret-fixture/read-secret",
+        "title": "Read plugin secret",
+        "description": "Reads a secret from this plugin's namespace.",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "secretName": { "type": "string" } },
+          "required": ["secretName"],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "secretValue": { "type": "string" },
+            "secretFound": { "type": "boolean" },
+            "secretErrorCode": { "type": "integer" }
+          },
+          "additionalProperties": false
+        },
+        "executionMode": "project-file",
+        "sideEffects": "none",
+        "evidence": "Plugin credential namespace lookup."
+      }
+    ],
+    "modules": [],
+    "genres": [],
+    "roles": [],
+    "skills": [],
+    "settings": [],
+    "ui": { "panels": [], "commands": [] }
+  },
+  "dependencies": { "plugins": {} },
+  "migrations": []
+}

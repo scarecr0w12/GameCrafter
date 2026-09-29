@@ -43,9 +43,12 @@ export function minAccessMode(left: AccessMode, right: AccessMode): AccessMode {
   return ACCESS_MODE_RANK[left] <= ACCESS_MODE_RANK[right] ? left : right;
 }
 
+export const ToolIdSchema = Type.String({ pattern: '^[a-z0-9][a-z0-9.-]{0,127}/[^\\s]+$' });
+export type ToolId = Static<typeof ToolIdSchema>;
+
 export const ToolDefinitionSchema = Type.Object(
   {
-    toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
+    toolId: ToolIdSchema,
     title: Type.String(),
     description: Type.String(),
     inputSchema: Type.Unknown(),
@@ -105,7 +108,7 @@ export const ToolCallRecordSchema = Type.Object(
     projectId: Type.String({ format: 'uuid' }),
     taskId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
     agentId: Type.Union([Type.String(), Type.Null()]),
-    toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
+    toolId: ToolIdSchema,
     input: Type.Unknown(),
     accessMode: AccessModeSchema,
     decision: ToolDecisionSchema,
@@ -127,7 +130,7 @@ export const ApprovalRequestSchema = Type.Object(
     approvalId: Type.String({ format: 'uuid' }),
     projectId: Type.String({ format: 'uuid' }),
     callId: Type.String({ format: 'uuid' }),
-    toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
+    toolId: ToolIdSchema,
     sideEffects: SideEffectSchema,
     summary: Type.String(),
     input: Type.Unknown(),

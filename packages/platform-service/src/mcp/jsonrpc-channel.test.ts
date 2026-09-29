@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JsonRpcChannel } from './jsonrpc-channel';
+import { JsonRpcChannel } from '../ipc/jsonrpc-channel';
 import type { JsonRpcMessage, McpTransport } from './types';
 
 class FakeTransport implements McpTransport {

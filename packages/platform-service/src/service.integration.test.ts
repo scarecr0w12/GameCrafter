@@ -62,7 +62,7 @@ describe('platform service integration', () => {
 
     const settingsDescription = await client.call('settings/describe', {});
     expect(settingsDescription.groups).toHaveLength(10);
-    expect(settingsDescription.definitions).toHaveLength(29);
+    expect(settingsDescription.definitions).toHaveLength(33);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
     let resolveCloned: (value: unknown) => void = () => undefined;

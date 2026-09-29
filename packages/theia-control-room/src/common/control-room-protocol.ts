@@ -10,6 +10,15 @@ import type {
   McpConnectionPatch,
   McpConnectionState,
   McpToolsResult,
+  DeclarativePanel,
+  InstalledPlugin,
+  IsolationReport,
+  PluginCapability,
+  PluginInspection,
+  PluginListEntry,
+  PluginLogEntry,
+  PluginModulesResult,
+  PluginWorkerState,
   Model,
   ModelCapabilities,
   ModelPool,
@@ -218,6 +227,20 @@ export interface ControlRoomService {
     executionMode?: ExecutionMode,
   ): Promise<ToolDefinition>;
   listMcpLogs(connectionId: string, limit?: number): Promise<McpConnectionLogEntry[]>;
+  listPlugins(projectId?: string): Promise<PluginListEntry[]>;
+  inspectPlugin(source: string): Promise<PluginInspection>;
+  installPlugin(source: string, acceptCapabilities: PluginCapability[]): Promise<InstalledPlugin>;
+  uninstallPlugin(pluginId: string): Promise<{ removed: true }>;
+  enablePlugin(pluginId: string, projectId?: string): Promise<{ enabled: true }>;
+  disablePlugin(pluginId: string, projectId?: string): Promise<{ enabled: false }>;
+  startPlugin(pluginId: string, projectId: string): Promise<PluginWorkerState>;
+  stopPlugin(pluginId: string, projectId: string): Promise<PluginWorkerState>;
+  getPluginStatus(pluginId: string, projectId?: string): Promise<PluginWorkerState>;
+  getPluginIsolationReport(): Promise<IsolationReport>;
+  listPluginLogs(pluginId: string, projectId?: string, limit?: number): Promise<PluginLogEntry[]>;
+  setPluginSecret(pluginId: string, name: string, value: string): Promise<{ stored: true }>;
+  getPluginPanel(pluginId: string, panelId: string): Promise<DeclarativePanel>;
+  getPluginModules(): Promise<PluginModulesResult>;
   listBoardThreads(params: RpcParams<'board/threads'>): Promise<RpcResult<'board/threads'>>;
   getBoardThread(params: RpcParams<'board/thread'>): Promise<RpcResult<'board/thread'>>;
   createBoardThread(
@@ -264,5 +287,7 @@ export interface ControlRoomClient {
   onBoardThreadChanged(event: RpcNotificationParams<'board/threadChanged'>): void;
   onBoardMessagePosted(event: RpcNotificationParams<'board/messagePosted'>): void;
   onBoardDecisionChanged(event: RpcNotificationParams<'board/decisionChanged'>): void;
+  onPluginWorkerChanged(event: RpcNotificationParams<'plugin/workerChanged'>): void;
+  onPluginChanged(event: RpcNotificationParams<'plugin/changed'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

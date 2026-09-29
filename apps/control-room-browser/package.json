@@ -56,6 +56,7 @@
     "@theia/plugin-ext": "1.75.0",
     "@theia/plugin-ext-vscode": "1.75.0",
     "@theia/search-in-workspace": "1.75.0",
+    "@theia/vsx-registry": "1.75.0",
     "@theia/process": "1.75.0",
     "@theia/keymaps": "1.75.0",
     "react": "19.3.0",

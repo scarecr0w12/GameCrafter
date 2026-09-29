@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-hello",
+  "name": "Sample Hello",
+  "version": "1.0.0",
+  "description": "A first-party plugin demonstrating the GameCrafter worker SDK.",
+  "publisher": {
+    "name": "GameCrafter"
+  },
+  "license": "Apache-2.0",
+  "compatibility": {
+    "platform": "^0.1.0",
+    "protocol": 1
+  },
+  "runtime": {
+    "kind": "node",
+    "entry": "dist/index.cjs",
+    "args": []
+  },
+  "capabilities": ["tools.call", "fs.project.read"],
+  "contributes": {
+    "tools": [
+      {
+        "toolId": "sample-hello/greet",
+        "title": "Greet",
+        "description": "Returns a greeting from the sample plugin.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "readPath": { "type": "string" }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "greeting": { "type": "string" },
+            "readContent": { "type": "string" },
+            "readErrorCode": { "type": "integer" }
+          },
+          "required": ["greeting"],
+          "additionalProperties": false
+        },
+        "executionMode": "project-file",
+        "sideEffects": "none",
+        "evidence": "Sample plugin greeting result."
+      }
+    ],
+    "modules": [
+      {
+        "id": "hello-module",
+        "name": "Hello module",
+        "description": "A sample module contributed by the first-party plugin.",
+        "requires": [],
+        "suggests": [],
+        "records": []
+      }
+    ],
+    "genres": [],
+    "roles": [],
+    "skills": [],
+    "settings": [
+      {
+        "key": "plugin.sample-hello.greetingPrefix",
+        "title": "Greeting prefix",
+        "description": "Prefix used by the sample greeting tool.",
+        "group": "plugins",
+        "schema": { "type": "string", "minLength": 1 },
+        "default": "Hello",
+        "scopes": ["platform", "project"],
+        "source": "plugin:sample-hello"
+      }
+    ],
+    "ui": {
+      "panels": [
+        {
+          "id": "hello-panel",
+          "title": "Hello plugin",
+          "kind": "declarative",
+          "source": "panels/hello.json",
+          "placement": "main"
+        }
+      ],
+      "commands": [
+        {
+          "id": "sample-hello.greet",
+          "title": "Greet",
+          "toolId": "sample-hello/greet"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "plugins": {}
+  },
+  "migrations": []
+}

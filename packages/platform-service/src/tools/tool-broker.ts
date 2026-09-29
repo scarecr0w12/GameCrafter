@@ -38,6 +38,7 @@ export interface ToolBrokerOptions {
   projects: ProfileStore;
   tasks: TaskService;
   events: ToolBrokerEvents;
+  isToolAvailable?: (tool: ToolDefinition, projectId: string) => boolean;
   now?: () => Date;
   approvalTimeoutOverrideMs?: number;
 }
@@ -54,6 +55,7 @@ export interface ToolCallRequest {
 export interface ToolCallContext {
   sessionId?: string;
   accessCeiling?: AccessMode;
+  agentRole?: string | null;
   signal?: AbortSignal;
 }
 
@@ -81,7 +83,13 @@ export class ToolBroker {
 
   listTools(projectId?: string): ToolDefinition[] {
     if (projectId) this.requireProject(projectId);
-    return this.options.registry.list().filter((tool) => tool.source !== 'board-internal');
+    return this.options.registry.list().filter((tool) => {
+      if (tool.source === 'board-internal') return false;
+      if (tool.source.startsWith('plugin:')) {
+        return Boolean(projectId && (this.options.isToolAvailable?.(tool, projectId) ?? false));
+      }
+      return !projectId || (this.options.isToolAvailable?.(tool, projectId) ?? true);
+    });
   }
 
   async call(request: ToolCallRequest, context: ToolCallContext = {}): Promise<ToolCallRecord> {
@@ -188,7 +196,12 @@ export class ToolBroker {
     const task = request.taskId
       ? this.options.tasks.get(request.projectId, request.taskId)
       : undefined;
-    const tool = this.options.registry.get(request.toolId);
+    const registeredTool = this.options.registry.get(request.toolId);
+    const tool =
+      registeredTool &&
+      this.options.isToolAvailable?.(registeredTool.definition, request.projectId) === false
+        ? undefined
+        : registeredTool;
     const store = this.store(request.projectId);
     const callId = uuidv7();
     const accessMode = this.effectiveMode(
@@ -349,7 +362,7 @@ export class ToolBroker {
       tool,
       record,
       request.input,
-      task?.assignee?.role ?? null,
+      context.agentRole ?? task?.assignee?.role ?? null,
       context.signal,
     );
   }
