@@ -13,6 +13,7 @@ export interface ToolContext {
   projectPath: string;
   taskId: string | null;
   agentId: string | null;
+  agentRole?: string | null;
   accessMode: AccessMode;
   callId: string;
   signal: AbortSignal;

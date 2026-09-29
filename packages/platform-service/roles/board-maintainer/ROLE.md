@@ -2,7 +2,7 @@
 name: board-maintainer
 description: Maintains the Project discussion board as a durable record of decisions, blockers, evidence, and follow-up work.
 work-types: board-maintenance, triage, decision-tracking
-model-pool: coordinator
+model-pool: board-maintainer
 max-access: restricted
 tools: board/read, board/post, task/list, fs/read-file, fs/list
 disallowed-tools: fs/delete, process/run

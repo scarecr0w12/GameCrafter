@@ -62,7 +62,7 @@ describe('platform service integration', () => {
 
     const settingsDescription = await client.call('settings/describe', {});
     expect(settingsDescription.groups).toHaveLength(10);
-    expect(settingsDescription.definitions).toHaveLength(25);
+    expect(settingsDescription.definitions).toHaveLength(29);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
     let resolveCloned: (value: unknown) => void = () => undefined;
@@ -107,7 +107,7 @@ describe('platform service integration', () => {
       path.join(project.path, '.gamecrafter', 'project.sqlite'),
     );
     try {
-      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(4);
+      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(5);
       expect(
         projectDatabase.prepare('SELECT kind FROM events WHERE kind = ?').all('project.created'),
       ).toHaveLength(1);
@@ -137,6 +137,127 @@ describe('platform service integration', () => {
       source: 'default',
       value: 'ask-always',
     });
+    const boardThread = await client.call('board/createThread', {
+      projectId: project.projectId,
+      title: 'Dungeon exit route',
+      kind: 'question',
+      tags: ['level-design'],
+      body: 'Where should players escape the chamber?',
+      type: 'question',
+    });
+    const boardMessage = await client.call('board/post', {
+      projectId: project.projectId,
+      threadId: boardThread.thread.threadId,
+      type: 'finding',
+      body: 'The western door is currently locked.',
+      author: { kind: 'agent', role: 'explorer', taskId: null },
+    });
+    expect(boardMessage.author).toEqual({ kind: 'user' });
+    expect(
+      (
+        await client.call('board/thread', {
+          projectId: project.projectId,
+          threadId: boardThread.thread.threadId,
+          includeMessages: true,
+        })
+      ).messages.map((message) => message.seq),
+    ).toEqual([1, 2]);
+    expect(
+      (
+        await client.call('board/search', {
+          projectId: project.projectId,
+          query: 'western door',
+        })
+      ).messages[0]?.messageId,
+    ).toBe(boardMessage.messageId);
+    const brokerBoardTools = await client.call('tool/list', { projectId: project.projectId });
+    expect(brokerBoardTools.tools.map((tool) => tool.toolId)).toContain('board/read');
+    expect(brokerBoardTools.tools.map((tool) => tool.toolId)).toContain('board/post');
+    expect(brokerBoardTools.tools.map((tool) => tool.toolId)).toContain('board/propose-decision');
+    expect(brokerBoardTools.tools.map((tool) => tool.toolId)).not.toContain(
+      'board/maintenance-execute',
+    );
+    const explorerTask = await client.call('task/create', {
+      projectId: project.projectId,
+      kind: 'noop.sleep',
+      title: 'Read the discussion board',
+      goal: 'Exercise board read tool role access',
+      input: { ms: 30_000 },
+      assignee: { role: 'explorer', accessCeiling: 'restricted' },
+    });
+    const readCall = await client.call('tool/call', {
+      projectId: project.projectId,
+      taskId: explorerTask.task.taskId,
+      toolId: 'board/read',
+      input: { threadId: boardThread.thread.threadId },
+      accessCeiling: 'restricted',
+    });
+    expect(readCall.output.thread.threadId).toBe(boardThread.thread.threadId);
+    await expect(
+      client.call('tool/call', {
+        projectId: project.projectId,
+        taskId: explorerTask.task.taskId,
+        toolId: 'board/post',
+        input: { threadId: boardThread.thread.threadId, type: 'comment', body: 'not allowed' },
+        accessCeiling: 'restricted',
+      }),
+    ).rejects.toMatchObject({ code: -32031 });
+    const designerTask = await client.call('task/create', {
+      projectId: project.projectId,
+      kind: 'noop.sleep',
+      title: 'Post a board finding',
+      goal: 'Exercise board post role access',
+      input: { ms: 30_000 },
+      assignee: { role: 'game-designer', accessCeiling: 'restricted' },
+    });
+    const postCall = await client.call('tool/call', {
+      projectId: project.projectId,
+      taskId: designerTask.task.taskId,
+      toolId: 'board/post',
+      input: {
+        threadId: boardThread.thread.threadId,
+        type: 'finding',
+        body: 'The route needs a key.',
+      },
+      accessCeiling: 'restricted',
+    });
+    expect(postCall.output.author).toMatchObject({
+      kind: 'agent',
+      role: 'game-designer',
+      taskId: designerTask.task.taskId,
+    });
+    const proposalCall = await client.call('tool/call', {
+      projectId: project.projectId,
+      taskId: designerTask.task.taskId,
+      toolId: 'board/propose-decision',
+      input: {
+        threadId: boardThread.thread.threadId,
+        title: 'Keep a spare key',
+        statement: 'Every locked exit should have a recoverable key.',
+      },
+      accessCeiling: 'restricted',
+    });
+    expect(proposalCall.output.type).toBe('decision');
+    expect(proposalCall.output.author).toMatchObject({ kind: 'agent', role: 'game-designer' });
+    expect(
+      (await client.call('board/decisions', { projectId: project.projectId })).decisions,
+    ).toHaveLength(0);
+    await client.call('task/cancel', {
+      projectId: project.projectId,
+      taskId: explorerTask.task.taskId,
+      reason: 'board tool test complete',
+    });
+    await client.call('task/cancel', {
+      projectId: project.projectId,
+      taskId: designerTask.task.taskId,
+      reason: 'board tool test complete',
+    });
+    await expect(
+      client.call('board/delete', {
+        projectId: project.projectId,
+        threadId: boardThread.thread.threadId,
+      }),
+    ).rejects.toMatchObject({ code: -32075 });
     expect(await changed).toMatchObject({
       kind: 'created',
       project: { projectId: project.projectId },

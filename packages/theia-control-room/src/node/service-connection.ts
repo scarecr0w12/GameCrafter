@@ -43,6 +43,15 @@ export class PlatformServiceConnection {
   private readonly mcpInputRequiredListeners = new Set<
     (event: RpcNotificationParams<'mcp/inputRequired'>) => void
   >();
+  private readonly boardThreadChangedListeners = new Set<
+    (event: RpcNotificationParams<'board/threadChanged'>) => void
+  >();
+  private readonly boardMessagePostedListeners = new Set<
+    (event: RpcNotificationParams<'board/messagePosted'>) => void
+  >();
+  private readonly boardDecisionChangedListeners = new Set<
+    (event: RpcNotificationParams<'board/decisionChanged'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -114,6 +123,27 @@ export class PlatformServiceConnection {
     return () => this.mcpInputRequiredListeners.delete(listener);
   }
 
+  onBoardThreadChanged(
+    listener: (event: RpcNotificationParams<'board/threadChanged'>) => void,
+  ): () => void {
+    this.boardThreadChangedListeners.add(listener);
+    return () => this.boardThreadChangedListeners.delete(listener);
+  }
+
+  onBoardMessagePosted(
+    listener: (event: RpcNotificationParams<'board/messagePosted'>) => void,
+  ): () => void {
+    this.boardMessagePostedListeners.add(listener);
+    return () => this.boardMessagePostedListeners.delete(listener);
+  }
+
+  onBoardDecisionChanged(
+    listener: (event: RpcNotificationParams<'board/decisionChanged'>) => void,
+  ): () => void {
+    this.boardDecisionChangedListeners.add(listener);
+    return () => this.boardDecisionChangedListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -162,6 +192,15 @@ export class PlatformServiceConnection {
         });
         client.onNotification('mcp/inputRequired', (event) => {
           for (const listener of this.mcpInputRequiredListeners) listener(event);
+        });
+        client.onNotification('board/threadChanged', (event) => {
+          for (const listener of this.boardThreadChangedListeners) listener(event);
+        });
+        client.onNotification('board/messagePosted', (event) => {
+          for (const listener of this.boardMessagePostedListeners) listener(event);
+        });
+        client.onNotification('board/decisionChanged', (event) => {
+          for (const listener of this.boardDecisionChangedListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

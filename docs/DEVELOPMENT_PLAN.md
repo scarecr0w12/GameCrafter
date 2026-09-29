@@ -139,7 +139,7 @@ flowchart TD
 - **Depends on:** WP6, WP8.
 - **Scope:** threads, typed messages, subscriptions, binding-decision events with immutable history; decision-to-record synchronisation workflow; configurable maintenance agent (immediate on binding decisions, periodic audits, archive-not-delete default).
 - **Done when:** a binding decision produces a reviewable canon diff and the board item is marked synchronised only after success.
-- **Status:** Not started.
+- **Status:** Implemented (unit/integration-tested; maintenance model calls tested against the fake provider only): Project-local threads, typed immutable messages with edit history and single supersession, per-thread sequence numbers, FTS5 search, subscriptions, user-only binding (agents propose through `board/propose-decision`), archive-not-delete with a setting-gated permanent delete, the idempotent decision-to-record workflow (`docs/decisions/<date>-<slug>.md` written through the tool broker under the Project's access mode, link validation, Git commit, `synchronized` only after the commit, conflict detection when a record belongs to another decision or changed outside the workflow), supervised `board-maintenance.sync|audit|cleanup` tasks with schema-validated model verdicts, the periodic scheduler, `board/read|post` broker tools with role allowlist checks, and the Discussion Board view. The proposal diff is a whole-file replacement diff, canon reconciliation beyond decision records waits for WP14, and role tool allowlists are enforced per tool rather than centrally in the broker (to be consolidated in WP18).
 
 ### WP12 — Plugin host and isolation
 

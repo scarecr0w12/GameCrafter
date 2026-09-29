@@ -47,10 +47,11 @@ describe('tool contracts', () => {
   it('assigns stable side-effect and access-mode ranks', () => {
     expect(SIDE_EFFECT_RANK).toEqual({
       none: 0,
-      'workspace-write': 1,
-      'external-write': 2,
-      paid: 3,
-      destructive: 4,
+      'internal-write': 1,
+      'workspace-write': 2,
+      'external-write': 3,
+      paid: 4,
+      destructive: 5,
     });
     expect(ACCESS_MODE_RANK).toEqual({ 'ask-always': 0, restricted: 1, full: 2 });
     expect(minAccessMode('full', 'restricted')).toBe('restricted');
@@ -68,6 +69,17 @@ describe('tool contracts', () => {
       compile(ToolCallRecordSchema).check({
         ...call,
         toolId: mcpDefinition.toolId,
+      }),
+    ).toBe(true);
+  });
+
+  it('allows internal-write tools with a declared minimum access mode', () => {
+    expect(
+      compile(ToolDefinitionSchema).check({
+        ...definition,
+        toolId: 'board/post',
+        minAccessMode: 'restricted',
+        sideEffects: 'internal-write',
       }),
     ).toBe(true);
   });

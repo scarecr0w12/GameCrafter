@@ -21,7 +21,11 @@ import { createBuiltinSettings } from './settings/definitions';
 import { SettingsRegistry } from './settings/registry';
 import { SettingsService } from './settings/settings-service';
 import { TaskService } from './tasks/task-service';
-import { HandlerRegistry, registerBuiltinHandlers } from './workers/handler-registry';
+import {
+  HandlerRegistry,
+  registerBoardMaintenanceHandlers,
+  registerBuiltinHandlers,
+} from './workers/handler-registry';
 import { WorkerSupervisor } from './workers/supervisor';
 import { log } from './logger';
 import { CompletionService } from './models/completion-service';
@@ -38,6 +42,11 @@ import { ToolBroker } from './tools/tool-broker';
 import { registerBuiltinTools } from './tools/builtin-tools';
 import { ToolRegistry } from './tools/tool-registry';
 import { McpConnectionManager } from './mcp/connection-manager';
+import { BoardService } from './board/board-service';
+import { BoardMaintenanceService } from './board/board-maintenance-service';
+import { CanonSyncWorkflow } from './board/canon-sync-workflow';
+import { registerBoardMaintenanceTool, registerBoardTools } from './board/board-tools';
+import { BoardMaintenanceScheduler } from './board/maintenance-scheduler';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -60,6 +69,7 @@ export class PlatformService {
     private readonly workerSupervisor: WorkerSupervisor,
     private readonly toolBroker: ToolBroker,
     private readonly mcpConnections: McpConnectionManager,
+    private readonly boardMaintenanceScheduler: BoardMaintenanceScheduler,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -93,6 +103,7 @@ export class PlatformService {
     const completionService = new CompletionService(modelRegistry, modelRouter);
     const handlerRegistry = new HandlerRegistry();
     registerBuiltinHandlers(handlerRegistry);
+    registerBoardMaintenanceHandlers(handlerRegistry);
     const taskService = new TaskService(
       profile,
       projectDatabases,
@@ -156,6 +167,16 @@ export class PlatformService {
     });
     taskService.setSupervisor(workerSupervisor);
     const startedAt = new Date().toISOString();
+    const boardRef: { service?: BoardService } = {};
+    const boardMaintenanceRef: { scheduler?: BoardMaintenanceScheduler } = {};
+    const board = (): BoardService => {
+      if (!boardRef.service) throw new Error('Discussion board service is not initialized');
+      return boardRef.service;
+    };
+    const boardMaintenance = (): BoardMaintenanceScheduler => {
+      if (!boardMaintenanceRef.scheduler) throw new Error('Board maintenance is not initialized');
+      return boardMaintenanceRef.scheduler;
+    };
     const handlers: RpcHandlers = {
       'service/info': () => ({
         serviceVersion: platformVersion,
@@ -205,9 +226,9 @@ export class PlatformService {
       'task/get': ({ projectId, taskId }) => taskService.get(projectId, taskId),
       'task/list': ({ projectId, states, parentTaskId, rootTaskId, limit }) => ({
         tasks: taskService.list(projectId, {
-          states,
-          parentTaskId,
-          rootTaskId,
+          ...(states === undefined ? {} : { states }),
+          ...(parentTaskId === undefined ? {} : { parentTaskId }),
+          ...(rootTaskId === undefined ? {} : { rootTaskId }),
           limit: limit ?? 200,
         }),
       }),
@@ -348,9 +369,59 @@ export class PlatformService {
       'mcp/log': ({ connectionId, limit }) => ({
         entries: mcpConnections.logEntries(connectionId, limit),
       }),
+      'board/threads': ({ projectId, status, kind, tags, search }) => ({
+        threads: board().threads(projectId, { status, kind, tags, search }),
+      }),
+      'board/thread': ({ projectId, threadId, includeMessages, afterSeq, limit }) =>
+        board().thread(projectId, threadId, { includeMessages, afterSeq, limit }),
+      'board/createThread': ({ projectId, title, kind, tags, links, body, type }) =>
+        board().createThread({ projectId, title, kind, tags, links, body, type }, { kind: 'user' }),
+      'board/post': ({ projectId, threadId, title, kind, type, body, links, replyTo }) =>
+        board().post(
+          { projectId, threadId, title, kind, type, body, links, replyTo },
+          { kind: 'user' },
+        ),
+      'board/edit': ({ projectId, messageId, body }) => board().edit(projectId, messageId, body),
+      'board/supersede': ({ projectId, messageId, byMessageId }) =>
+        board().supersede(projectId, messageId, byMessageId),
+      'board/setThreadStatus': ({ projectId, threadId, status }) =>
+        board().setThreadStatus(projectId, threadId, status),
+      'board/bind': (input) => board().bind(input),
+      'board/decisions': ({ projectId, syncStatus }) => ({
+        decisions: board().decisions(projectId, syncStatus),
+      }),
+      'board/decision': ({ projectId, decisionId }) => ({
+        decision: board().decision(projectId, decisionId),
+        proposals: board().proposals(projectId, decisionId),
+      }),
+      'board/retrySync': ({ projectId, decisionId }) => {
+        const decision = board().decision(projectId, decisionId);
+        boardMaintenance().retrySync(projectId, decision);
+        return decision;
+      },
+      'board/subscribe': ({ projectId, subscriber, filter }) =>
+        board().subscribe(projectId, subscriber, filter),
+      'board/unsubscribe': ({ projectId, subscriptionId }) => {
+        board().unsubscribe(projectId, subscriptionId);
+        return { removed: true };
+      },
+      'board/subscriptions': ({ projectId, subscriber }) => ({
+        subscriptions: board().subscriptions(projectId, subscriber),
+      }),
+      'board/summary': ({ projectId, threadId }) => board().summary(projectId, threadId),
+      'board/search': ({ projectId, query, limit }) => board().search(projectId, query, limit),
+      'board/maintenance/run': ({ projectId, mode }) => ({
+        taskId: boardMaintenance().scheduleManual(projectId, mode),
+      }),
+      'board/maintenance/status': ({ projectId }) => board().maintenanceStatus(projectId),
+      'board/delete': ({ projectId, threadId }) => {
+        board().deleteThread(projectId, threadId);
+        return { deleted: true };
+      },
       'service/stop': ({ checkpoint }) => {
         setTimeout(() => {
           void (async () => {
+            boardMaintenance().stop();
             await workerSupervisor.stopAll({ checkpoint });
             await toolBroker.stopAll();
             await platformService.stop(checkpoint);
@@ -373,6 +444,43 @@ export class PlatformService {
       onSessionOpened: (sessionId) => settingsService.openSession(sessionId),
       onSessionClosed: (sessionId) => settingsService.closeSession(sessionId),
     });
+    boardRef.service = new BoardService({
+      projectDatabases,
+      settings: settingsService,
+      events: {
+        threadChanged: (projectId, thread) =>
+          server.broadcast('board/threadChanged', { projectId, thread }),
+        messagePosted: (projectId, message) =>
+          server.broadcast('board/messagePosted', { projectId, message }),
+        decisionChanged: (projectId, decision) =>
+          server.broadcast('board/decisionChanged', { projectId, decision }),
+      },
+      onBindingDecision: (decision) => {
+        boardMaintenanceRef.scheduler?.scheduleSync(decision);
+      },
+    });
+    boardMaintenanceRef.scheduler = new BoardMaintenanceScheduler({
+      board: board(),
+      tasks: taskService,
+      settings: settingsService,
+    });
+    const canonSync = new CanonSyncWorkflow({
+      board: board(),
+      projects: profile,
+      tasks: taskService,
+      tools: toolBroker,
+    });
+    const boardMaintenanceService = new BoardMaintenanceService({
+      board: board(),
+      tasks: taskService,
+      projects: profile,
+      settings: settingsService,
+      completion: completionService,
+      scheduler: boardMaintenance(),
+      canonSync,
+    });
+    registerBoardTools(toolRegistry, board(), roleRegistry);
+    registerBoardMaintenanceTool(toolRegistry, boardMaintenanceService);
     const mcpConnections = new McpConnectionManager({
       database,
       profile,
@@ -395,6 +503,7 @@ export class PlatformService {
       workerSupervisor,
       toolBroker,
       mcpConnections,
+      boardMaintenance(),
       paths,
       startedAt,
     );
@@ -411,12 +520,14 @@ export class PlatformService {
     }
     await mcpConnections.start();
     workerSupervisor.start();
+    boardMaintenance().start();
     return platformService;
   }
 
   async stop(checkpoint = true): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
+    this.boardMaintenanceScheduler.stop();
     await this.workerSupervisor.stopAll({ checkpoint });
     await this.toolBroker.stopAll();
     await this.mcpConnections.stop();

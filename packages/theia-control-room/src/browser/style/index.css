@@ -423,3 +423,179 @@
 .gamecrafter-connections-result {
   color: var(--theia-successForeground);
 }
+
+.gamecrafter-board {
+  color: var(--theia-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.gamecrafter-board-header,
+.gamecrafter-board-thread-header,
+.gamecrafter-board-actions,
+.gamecrafter-board-maintenance > div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gamecrafter-board-header h1 {
+  flex: 1;
+  margin: 0;
+}
+
+.gamecrafter-board-layout {
+  display: grid;
+  flex: 1;
+  gap: 16px;
+  grid-template-columns: minmax(17rem, 24rem) minmax(0, 1fr);
+  min-height: 24rem;
+}
+
+.gamecrafter-board-sidebar,
+.gamecrafter-board-thread-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.gamecrafter-board-section,
+.gamecrafter-board-maintenance,
+.gamecrafter-board-decisions {
+  background: var(--theia-sideBar-background);
+  border: 1px solid var(--theia-widget-border);
+  padding: 12px;
+}
+
+.gamecrafter-board-filters,
+.gamecrafter-board-form,
+.gamecrafter-board-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gamecrafter-board label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gamecrafter-board-thread-list,
+.gamecrafter-board-messages {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.gamecrafter-board-thread-list li + li,
+.gamecrafter-board-messages li + li {
+  margin-top: 8px;
+}
+
+.gamecrafter-board-thread-list button {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  width: 100%;
+}
+
+.gamecrafter-board-thread-list button.selected {
+  border-color: var(--theia-focusBorder);
+}
+
+.gamecrafter-board-thread-list small,
+.gamecrafter-board-messages small {
+  color: var(--theia-descriptionForeground);
+}
+
+.gamecrafter-board-thread-header {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.gamecrafter-board-thread-header h2 {
+  margin-top: 0;
+}
+
+.gamecrafter-board-status,
+.gamecrafter-board-message-type,
+.gamecrafter-board-sync {
+  border: 1px solid var(--theia-widget-border);
+  border-radius: 3px;
+  display: inline-block;
+  font-size: 0.85em;
+  padding: 2px 6px;
+}
+
+.gamecrafter-board-messages li {
+  border: 1px solid var(--theia-widget-border);
+  padding: 10px;
+}
+
+.gamecrafter-board-messages li.superseded .gamecrafter-board-message-body {
+  opacity: 0.65;
+  text-decoration: line-through;
+}
+
+.gamecrafter-board-messages li > header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gamecrafter-board-messages time,
+.gamecrafter-board-decisions code {
+  color: var(--theia-descriptionForeground);
+  font-size: 0.85em;
+}
+
+.gamecrafter-board-message-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gamecrafter-board-links {
+  font-size: 0.9em;
+  margin: 8px 0;
+}
+
+.gamecrafter-board-decisions article {
+  border-top: 1px solid var(--theia-widget-border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.gamecrafter-board-decisions pre {
+  background: var(--theia-editor-background);
+  max-height: 20rem;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+.gamecrafter-board-error {
+  color: var(--theia-errorForeground);
+}
+
+.gamecrafter-board-result {
+  color: var(--theia-successForeground);
+}
+
+@media (max-width: 900px) {
+  .gamecrafter-board-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

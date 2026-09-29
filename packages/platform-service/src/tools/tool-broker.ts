@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   RpcError,
   RpcErrorCode,
+  ACCESS_MODE_RANK,
   minAccessMode,
   redact,
   uuidv7,
@@ -80,7 +81,7 @@ export class ToolBroker {
 
   listTools(projectId?: string): ToolDefinition[] {
     if (projectId) this.requireProject(projectId);
-    return this.options.registry.list();
+    return this.options.registry.list().filter((tool) => tool.source !== 'board-internal');
   }
 
   async call(request: ToolCallRequest, context: ToolCallContext = {}): Promise<ToolCallRecord> {
@@ -342,7 +343,15 @@ export class ToolBroker {
       store.insertCall(record);
     }
 
-    return this.runTool(store, project.path, tool, record, request.input, context.signal);
+    return this.runTool(
+      store,
+      project.path,
+      tool,
+      record,
+      request.input,
+      task?.assignee?.role ?? null,
+      context.signal,
+    );
   }
 
   private async runTool(
@@ -351,6 +360,7 @@ export class ToolBroker {
     tool: RegisteredTool,
     record: ToolCallRecord,
     input: unknown,
+    agentRole: string | null,
     callerSignal?: AbortSignal,
   ): Promise<ToolCallRecord> {
     const controller = new AbortController();
@@ -366,6 +376,7 @@ export class ToolBroker {
         projectPath,
         taskId: record.taskId,
         agentId: record.agentId,
+        agentRole,
         accessMode: record.accessMode,
         callId: record.callId,
         signal: controller.signal,
@@ -451,6 +462,15 @@ export class ToolBroker {
     definition: ToolDefinition,
     accessMode: AccessMode,
   ): { decision: ToolCallRecord['decision']; reason: string } {
+    if (
+      definition.minAccessMode &&
+      ACCESS_MODE_RANK[accessMode] < ACCESS_MODE_RANK[definition.minAccessMode]
+    ) {
+      return {
+        decision: 'denied',
+        reason: `Tool ${definition.toolId} requires ${definition.minAccessMode} access or higher.`,
+      };
+    }
     if (accessMode === 'full') return { decision: 'allowed', reason: 'full_access' };
     if (accessMode === 'restricted') {
       const allowedSideEffects = this.options.settings.resolve(

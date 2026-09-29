@@ -48,6 +48,21 @@ import {
   SkillValidationResultSchema,
 } from '../skills';
 import {
+  BindingDecisionSchema,
+  BoardAuthorSchema,
+  BoardLinkSchema,
+  BoardMaintenanceStatusSchema,
+  BoardMessageSchema,
+  BoardMessageTypeSchema,
+  BoardSubscriptionFilterSchema,
+  BoardSubscriptionSchema,
+  BoardSubscriptionSubscriberSchema,
+  BoardThreadKindSchema,
+  BoardThreadSchema,
+  BoardThreadStatusSchema,
+  CanonSyncProposalSchema,
+} from '../board';
+import {
   McpConnectionConfigSchema,
   McpConnectionInputSchema,
   McpConnectionListEntrySchema,
@@ -796,6 +811,242 @@ export const RpcMethods = {
       { additionalProperties: false },
     ),
   },
+  'board/threads': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        status: Type.Optional(BoardThreadStatusSchema),
+        kind: Type.Optional(BoardThreadKindSchema),
+        tags: Type.Optional(Type.Array(Type.String())),
+        search: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { threads: Type.Array(BoardThreadSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/thread': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        threadId: Type.String({ format: 'uuid' }),
+        includeMessages: Type.Optional(Type.Boolean()),
+        afterSeq: Type.Optional(Type.Integer({ minimum: 0 })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { thread: BoardThreadSchema, messages: Type.Array(BoardMessageSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/createThread': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        title: Type.String({ minLength: 1 }),
+        kind: BoardThreadKindSchema,
+        tags: Type.Optional(Type.Array(Type.String())),
+        links: Type.Optional(Type.Array(BoardLinkSchema)),
+        body: Type.String({ minLength: 1 }),
+        type: Type.Optional(BoardMessageTypeSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { thread: BoardThreadSchema, message: BoardMessageSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'board/post': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        threadId: Type.Optional(Type.String({ format: 'uuid' })),
+        title: Type.Optional(Type.String({ minLength: 1 })),
+        kind: Type.Optional(BoardThreadKindSchema),
+        type: BoardMessageTypeSchema,
+        body: Type.String({ minLength: 1 }),
+        links: Type.Optional(Type.Array(BoardLinkSchema)),
+        replyTo: Type.Optional(Type.Union([Type.String({ format: 'uuid' }), Type.Null()])),
+        author: Type.Optional(BoardAuthorSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: BoardMessageSchema,
+  },
+  'board/edit': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        messageId: Type.String({ format: 'uuid' }),
+        body: Type.String({ minLength: 1 }),
+      },
+      { additionalProperties: false },
+    ),
+    result: BoardMessageSchema,
+  },
+  'board/supersede': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        messageId: Type.String({ format: 'uuid' }),
+        byMessageId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: BoardMessageSchema,
+  },
+  'board/setThreadStatus': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        threadId: Type.String({ format: 'uuid' }),
+        status: BoardThreadStatusSchema,
+      },
+      { additionalProperties: false },
+    ),
+    result: BoardThreadSchema,
+  },
+  'board/bind': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        messageId: Type.String({ format: 'uuid' }),
+        title: Type.Optional(Type.String({ minLength: 1 })),
+        statement: Type.Optional(Type.String({ minLength: 1 })),
+        rationale: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+        supersedes: Type.Optional(Type.Union([Type.String({ format: 'uuid' }), Type.Null()])),
+        confirmedByUser: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: BindingDecisionSchema,
+  },
+  'board/decisions': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        syncStatus: Type.Optional(BindingDecisionSchema.properties.syncStatus),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { decisions: Type.Array(BindingDecisionSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/decision': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        decisionId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { decision: BindingDecisionSchema, proposals: Type.Array(CanonSyncProposalSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/retrySync': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), decisionId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: BindingDecisionSchema,
+  },
+  'board/subscribe': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        subscriber: BoardSubscriptionSubscriberSchema,
+        filter: Type.Optional(BoardSubscriptionFilterSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: BoardSubscriptionSchema,
+  },
+  'board/unsubscribe': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        subscriptionId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'board/subscriptions': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        subscriber: Type.Optional(BoardSubscriptionSubscriberSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { subscriptions: Type.Array(BoardSubscriptionSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/summary': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), threadId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        summary: Type.Union([Type.String(), Type.Null()]),
+        summaryUpdatedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'board/search': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        query: Type.String({ minLength: 1 }),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { threads: Type.Array(BoardThreadSchema), messages: Type.Array(BoardMessageSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/maintenance/run': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        mode: Type.Union([Type.Literal('audit'), Type.Literal('cleanup'), Type.Literal('sync')]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { taskId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+  },
+  'board/maintenance/status': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: BoardMaintenanceStatusSchema,
+  },
+  'board/delete': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), threadId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ deleted: Type.Literal(true) }, { additionalProperties: false }),
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -886,6 +1137,24 @@ export const RpcNotifications = {
   },
   'mcp/stateChanged': { params: McpConnectionStateChangedSchema },
   'mcp/inputRequired': { params: McpInputRequiredSchema },
+  'board/threadChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), thread: BoardThreadSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'board/messagePosted': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), message: BoardMessageSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'board/decisionChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), decision: BindingDecisionSchema },
+      { additionalProperties: false },
+    ),
+  },
 } as const satisfies Record<string, { params: TSchema }>;
 
 export type RpcMethodName = keyof typeof RpcMethods;
@@ -942,6 +1211,13 @@ export const RpcErrorCode = {
   McpSamplingRefused: -32064,
   McpDockerUnavailable: -32065,
   McpInputRequestNotFound: -32066,
+  BoardThreadNotFound: -32070,
+  BoardMessageNotFound: -32071,
+  BoardMessageImmutable: -32072,
+  BoardBindingNotAllowed: -32073,
+  BoardDecisionNotFound: -32074,
+  BoardDeletionDisabled: -32075,
+  BoardSyncConflict: -32076,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

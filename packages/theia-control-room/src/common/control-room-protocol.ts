@@ -24,6 +24,8 @@ import type {
   RouteDecision,
   RouteOutcome,
   RpcNotificationParams,
+  RpcParams,
+  RpcResult,
   SkillActivation,
   SkillCatalogEntry,
   SkillEnablement,
@@ -216,6 +218,37 @@ export interface ControlRoomService {
     executionMode?: ExecutionMode,
   ): Promise<ToolDefinition>;
   listMcpLogs(connectionId: string, limit?: number): Promise<McpConnectionLogEntry[]>;
+  listBoardThreads(params: RpcParams<'board/threads'>): Promise<RpcResult<'board/threads'>>;
+  getBoardThread(params: RpcParams<'board/thread'>): Promise<RpcResult<'board/thread'>>;
+  createBoardThread(
+    params: RpcParams<'board/createThread'>,
+  ): Promise<RpcResult<'board/createThread'>>;
+  postBoardMessage(params: RpcParams<'board/post'>): Promise<RpcResult<'board/post'>>;
+  editBoardMessage(params: RpcParams<'board/edit'>): Promise<RpcResult<'board/edit'>>;
+  supersedeBoardMessage(
+    params: RpcParams<'board/supersede'>,
+  ): Promise<RpcResult<'board/supersede'>>;
+  setBoardThreadStatus(
+    params: RpcParams<'board/setThreadStatus'>,
+  ): Promise<RpcResult<'board/setThreadStatus'>>;
+  bindBoardDecision(params: RpcParams<'board/bind'>): Promise<RpcResult<'board/bind'>>;
+  listBoardDecisions(params: RpcParams<'board/decisions'>): Promise<RpcResult<'board/decisions'>>;
+  getBoardDecision(params: RpcParams<'board/decision'>): Promise<RpcResult<'board/decision'>>;
+  retryBoardSync(params: RpcParams<'board/retrySync'>): Promise<RpcResult<'board/retrySync'>>;
+  subscribeBoard(params: RpcParams<'board/subscribe'>): Promise<RpcResult<'board/subscribe'>>;
+  unsubscribeBoard(params: RpcParams<'board/unsubscribe'>): Promise<RpcResult<'board/unsubscribe'>>;
+  listBoardSubscriptions(
+    params: RpcParams<'board/subscriptions'>,
+  ): Promise<RpcResult<'board/subscriptions'>>;
+  getBoardSummary(params: RpcParams<'board/summary'>): Promise<RpcResult<'board/summary'>>;
+  searchBoard(params: RpcParams<'board/search'>): Promise<RpcResult<'board/search'>>;
+  runBoardMaintenance(
+    params: RpcParams<'board/maintenance/run'>,
+  ): Promise<RpcResult<'board/maintenance/run'>>;
+  getBoardMaintenanceStatus(
+    params: RpcParams<'board/maintenance/status'>,
+  ): Promise<RpcResult<'board/maintenance/status'>>;
+  deleteBoardThread(params: RpcParams<'board/delete'>): Promise<RpcResult<'board/delete'>>;
 }
 
 export interface ControlRoomClient {
@@ -228,5 +261,8 @@ export interface ControlRoomClient {
   onToolCalled(event: RpcNotificationParams<'tool/called'>): void;
   onMcpStateChanged(event: RpcNotificationParams<'mcp/stateChanged'>): void;
   onMcpInputRequired(event: RpcNotificationParams<'mcp/inputRequired'>): void;
+  onBoardThreadChanged(event: RpcNotificationParams<'board/threadChanged'>): void;
+  onBoardMessagePosted(event: RpcNotificationParams<'board/messagePosted'>): void;
+  onBoardDecisionChanged(event: RpcNotificationParams<'board/decisionChanged'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

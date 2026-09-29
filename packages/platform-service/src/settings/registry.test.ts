@@ -10,7 +10,7 @@ describe('SettingsRegistry', () => {
 
     const description = registry.describe();
     expect(description.groups).toHaveLength(10);
-    expect(description.definitions).toHaveLength(25);
+    expect(description.definitions).toHaveLength(29);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({

@@ -1,4 +1,5 @@
 export * from './ids';
+export * from './board';
 export * from './models';
 export * from './mcp';
 export * from './project/manifest';

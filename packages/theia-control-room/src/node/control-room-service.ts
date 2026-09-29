@@ -20,6 +20,8 @@ import {
   type ModelPricing,
   type ProviderAccount,
   type ProviderKind,
+  type RpcParams,
+  type RpcResult,
   type RouteDecision,
   type RouteOutcome,
   type RoleRecord,
@@ -56,6 +58,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeToolCalledListener?: () => void;
   private removeMcpStateChangedListener?: () => void;
   private removeMcpInputRequiredListener?: () => void;
+  private removeBoardThreadChangedListener?: () => void;
+  private removeBoardMessagePostedListener?: () => void;
+  private removeBoardDecisionChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -73,6 +78,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeToolCalledListener?.();
     this.removeMcpStateChangedListener?.();
     this.removeMcpInputRequiredListener?.();
+    this.removeBoardThreadChangedListener?.();
+    this.removeBoardMessagePostedListener?.();
+    this.removeBoardDecisionChangedListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -102,6 +110,21 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeMcpInputRequiredListener = this.platformConnection.onMcpInputRequired((event) => {
       this.client?.onMcpInputRequired(event);
     });
+    this.removeBoardThreadChangedListener = this.platformConnection.onBoardThreadChanged(
+      (event) => {
+        this.client?.onBoardThreadChanged(event);
+      },
+    );
+    this.removeBoardMessagePostedListener = this.platformConnection.onBoardMessagePosted(
+      (event) => {
+        this.client?.onBoardMessagePosted(event);
+      },
+    );
+    this.removeBoardDecisionChangedListener = this.platformConnection.onBoardDecisionChanged(
+      (event) => {
+        this.client?.onBoardDecisionChanged(event);
+      },
+    );
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
     });
@@ -509,6 +532,104 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   async listMcpLogs(connectionId: string, limit?: number): Promise<McpConnectionLogEntry[]> {
     const client = await this.getPlatformClient();
     return (await client.call('mcp/log', { connectionId, limit })).entries;
+  }
+
+  async listBoardThreads(params: RpcParams<'board/threads'>): Promise<RpcResult<'board/threads'>> {
+    return (await this.getPlatformClient()).call('board/threads', params);
+  }
+
+  async getBoardThread(params: RpcParams<'board/thread'>): Promise<RpcResult<'board/thread'>> {
+    return (await this.getPlatformClient()).call('board/thread', params);
+  }
+
+  async createBoardThread(
+    params: RpcParams<'board/createThread'>,
+  ): Promise<RpcResult<'board/createThread'>> {
+    return (await this.getPlatformClient()).call('board/createThread', params);
+  }
+
+  async postBoardMessage(params: RpcParams<'board/post'>): Promise<RpcResult<'board/post'>> {
+    return (await this.getPlatformClient()).call('board/post', params);
+  }
+
+  async editBoardMessage(params: RpcParams<'board/edit'>): Promise<RpcResult<'board/edit'>> {
+    return (await this.getPlatformClient()).call('board/edit', params);
+  }
+
+  async supersedeBoardMessage(
+    params: RpcParams<'board/supersede'>,
+  ): Promise<RpcResult<'board/supersede'>> {
+    return (await this.getPlatformClient()).call('board/supersede', params);
+  }
+
+  async setBoardThreadStatus(
+    params: RpcParams<'board/setThreadStatus'>,
+  ): Promise<RpcResult<'board/setThreadStatus'>> {
+    return (await this.getPlatformClient()).call('board/setThreadStatus', params);
+  }
+
+  async bindBoardDecision(params: RpcParams<'board/bind'>): Promise<RpcResult<'board/bind'>> {
+    return (await this.getPlatformClient()).call('board/bind', params);
+  }
+
+  async listBoardDecisions(
+    params: RpcParams<'board/decisions'>,
+  ): Promise<RpcResult<'board/decisions'>> {
+    return (await this.getPlatformClient()).call('board/decisions', params);
+  }
+
+  async getBoardDecision(
+    params: RpcParams<'board/decision'>,
+  ): Promise<RpcResult<'board/decision'>> {
+    return (await this.getPlatformClient()).call('board/decision', params);
+  }
+
+  async retryBoardSync(
+    params: RpcParams<'board/retrySync'>,
+  ): Promise<RpcResult<'board/retrySync'>> {
+    return (await this.getPlatformClient()).call('board/retrySync', params);
+  }
+
+  async subscribeBoard(
+    params: RpcParams<'board/subscribe'>,
+  ): Promise<RpcResult<'board/subscribe'>> {
+    return (await this.getPlatformClient()).call('board/subscribe', params);
+  }
+
+  async unsubscribeBoard(
+    params: RpcParams<'board/unsubscribe'>,
+  ): Promise<RpcResult<'board/unsubscribe'>> {
+    return (await this.getPlatformClient()).call('board/unsubscribe', params);
+  }
+
+  async listBoardSubscriptions(
+    params: RpcParams<'board/subscriptions'>,
+  ): Promise<RpcResult<'board/subscriptions'>> {
+    return (await this.getPlatformClient()).call('board/subscriptions', params);
+  }
+
+  async getBoardSummary(params: RpcParams<'board/summary'>): Promise<RpcResult<'board/summary'>> {
+    return (await this.getPlatformClient()).call('board/summary', params);
+  }
+
+  async searchBoard(params: RpcParams<'board/search'>): Promise<RpcResult<'board/search'>> {
+    return (await this.getPlatformClient()).call('board/search', params);
+  }
+
+  async runBoardMaintenance(
+    params: RpcParams<'board/maintenance/run'>,
+  ): Promise<RpcResult<'board/maintenance/run'>> {
+    return (await this.getPlatformClient()).call('board/maintenance/run', params);
+  }
+
+  async getBoardMaintenanceStatus(
+    params: RpcParams<'board/maintenance/status'>,
+  ): Promise<RpcResult<'board/maintenance/status'>> {
+    return (await this.getPlatformClient()).call('board/maintenance/status', params);
+  }
+
+  async deleteBoardThread(params: RpcParams<'board/delete'>): Promise<RpcResult<'board/delete'>> {
+    return (await this.getPlatformClient()).call('board/delete', params);
   }
 
   async stopServiceOnWindowClose(): Promise<void> {

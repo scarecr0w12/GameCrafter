@@ -9,6 +9,7 @@ export type ExecutionMode = Static<typeof ExecutionModeSchema>;
 
 export const SideEffectSchema = Type.Union([
   Type.Literal('none'),
+  Type.Literal('internal-write'),
   Type.Literal('workspace-write'),
   Type.Literal('external-write'),
   Type.Literal('paid'),
@@ -18,10 +19,11 @@ export type SideEffect = Static<typeof SideEffectSchema>;
 
 export const SIDE_EFFECT_RANK: Record<SideEffect, number> = {
   none: 0,
-  'workspace-write': 1,
-  'external-write': 2,
-  paid: 3,
-  destructive: 4,
+  'internal-write': 1,
+  'workspace-write': 2,
+  'external-write': 3,
+  paid: 4,
+  destructive: 5,
 };
 
 export const AccessModeSchema = Type.Union([
@@ -49,6 +51,7 @@ export const ToolDefinitionSchema = Type.Object(
     inputSchema: Type.Unknown(),
     outputSchema: Type.Optional(Type.Unknown()),
     executionMode: ExecutionModeSchema,
+    minAccessMode: Type.Optional(AccessModeSchema),
     sideEffects: SideEffectSchema,
     evidence: Type.String(),
     capabilities: Type.Array(Type.String()),

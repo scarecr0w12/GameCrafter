@@ -263,6 +263,7 @@ export const McpToolClassifySchema = Type.Object(
     sideEffects: Type.Optional(
       Type.Union([
         Type.Literal('none'),
+        Type.Literal('internal-write'),
         Type.Literal('workspace-write'),
         Type.Literal('external-write'),
         Type.Literal('paid'),

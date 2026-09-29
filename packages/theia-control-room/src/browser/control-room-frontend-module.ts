@@ -15,6 +15,8 @@ import { SkillsWidget } from './skills-widget';
 import { SkillsViewContribution } from './skills-view-contribution';
 import { ConnectionsWidget } from './connections-widget';
 import { ConnectionsViewContribution } from './connections-view-contribution';
+import { DiscussionBoardWidget } from './discussion-board-widget';
+import { DiscussionBoardViewContribution } from './discussion-board-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -39,6 +41,7 @@ export default new ContainerModule((bind) => {
   bind(ModelsWidget).toSelf().inSingletonScope();
   bind(SkillsWidget).toSelf().inSingletonScope();
   bind(ConnectionsWidget).toSelf().inSingletonScope();
+  bind(DiscussionBoardWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -69,12 +72,19 @@ export default new ContainerModule((bind) => {
       createWidget: () => context.container.get(ConnectionsWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: DiscussionBoardWidget.ID,
+      createWidget: () => context.container.get(DiscussionBoardWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
   bindViewContribution(bind, ModelsViewContribution);
   bindViewContribution(bind, SkillsViewContribution);
   bindViewContribution(bind, ConnectionsViewContribution);
+  bindViewContribution(bind, DiscussionBoardViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();

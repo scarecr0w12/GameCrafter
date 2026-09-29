@@ -26,6 +26,15 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly mcpInputRequiredEmitter = new Emitter<
     RpcNotificationParams<'mcp/inputRequired'>
   >();
+  private readonly boardThreadChangedEmitter = new Emitter<
+    RpcNotificationParams<'board/threadChanged'>
+  >();
+  private readonly boardMessagePostedEmitter = new Emitter<
+    RpcNotificationParams<'board/messagePosted'>
+  >();
+  private readonly boardDecisionChangedEmitter = new Emitter<
+    RpcNotificationParams<'board/decisionChanged'>
+  >();
   private readonly serviceStatusEmitter = new Emitter<{
     connected: boolean;
     message?: string;
@@ -40,6 +49,9 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly toolCalled = this.toolCalledEmitter.event;
   readonly mcpStateChanged = this.mcpStateChangedEmitter.event;
   readonly mcpInputRequired = this.mcpInputRequiredEmitter.event;
+  readonly boardThreadChanged = this.boardThreadChangedEmitter.event;
+  readonly boardMessagePosted = this.boardMessagePostedEmitter.event;
+  readonly boardDecisionChanged = this.boardDecisionChangedEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
@@ -76,6 +88,18 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onMcpInputRequired(event: RpcNotificationParams<'mcp/inputRequired'>): void {
     this.mcpInputRequiredEmitter.fire(event);
+  }
+
+  onBoardThreadChanged(event: RpcNotificationParams<'board/threadChanged'>): void {
+    this.boardThreadChangedEmitter.fire(event);
+  }
+
+  onBoardMessagePosted(event: RpcNotificationParams<'board/messagePosted'>): void {
+    this.boardMessagePostedEmitter.fire(event);
+  }
+
+  onBoardDecisionChanged(event: RpcNotificationParams<'board/decisionChanged'>): void {
+    this.boardDecisionChangedEmitter.fire(event);
   }
 
   onServiceStatus(status: { connected: boolean; message?: string }): void {

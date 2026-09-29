@@ -48,9 +48,29 @@ export function registerBuiltinHandlers(
   }
 }
 
+export function registerBoardMaintenanceHandlers(
+  registry: HandlerRegistry,
+  module = resolveBoardMaintenanceHandlerModule(),
+): void {
+  for (const [kind, handlerExport] of Object.entries({
+    'board-maintenance.sync': 'boardMaintenanceSync',
+    'board-maintenance.audit': 'boardMaintenanceAudit',
+    'board-maintenance.cleanup': 'boardMaintenanceCleanup',
+  })) {
+    registry.register(kind, { module, export: handlerExport });
+  }
+}
+
 function resolveBuiltinHandlerModule(): string {
   const local = path.join(__dirname, 'builtin-handlers.js');
   return existsSync(local)
     ? local
     : path.resolve(__dirname, '..', '..', 'lib', 'workers', 'builtin-handlers.js');
+}
+
+function resolveBoardMaintenanceHandlerModule(): string {
+  const local = path.join(__dirname, 'board-maintenance-handlers.js');
+  return existsSync(local)
+    ? local
+    : path.resolve(__dirname, '..', '..', 'lib', 'workers', 'board-maintenance-handlers.js');
 }

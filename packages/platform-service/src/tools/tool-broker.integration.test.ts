@@ -52,8 +52,11 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(8);
+    expect(result.tools).toHaveLength(11);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
+      'board/post',
+      'board/propose-decision',
+      'board/read',
       'fs/delete',
       'fs/list',
       'fs/read-file',

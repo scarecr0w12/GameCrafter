@@ -143,4 +143,116 @@ export const projectMigrations: Migration[] = [
       CREATE INDEX skill_activations_task_idx ON skill_activations(task_id);
     `,
   },
+  {
+    id: 5,
+    name: 'create discussion board and maintenance tables',
+    up: `
+      CREATE TABLE board_threads (
+        thread_id TEXT PRIMARY KEY,
+        schema_version INTEGER NOT NULL,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL,
+        tags TEXT NOT NULL,
+        links TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_message_at TEXT NOT NULL,
+        message_count INTEGER NOT NULL,
+        summary TEXT,
+        summary_updated_at TEXT,
+        archived_at TEXT
+      );
+      CREATE INDEX board_threads_project_status_idx ON board_threads(project_id, status, last_message_at);
+      CREATE TABLE board_messages (
+        message_id TEXT PRIMARY KEY,
+        schema_version INTEGER NOT NULL,
+        thread_id TEXT NOT NULL REFERENCES board_threads(thread_id) ON DELETE CASCADE,
+        project_id TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        body TEXT NOT NULL,
+        author TEXT NOT NULL,
+        links TEXT NOT NULL,
+        reply_to TEXT,
+        created_at TEXT NOT NULL,
+        superseded_by TEXT,
+        edit_history TEXT NOT NULL,
+        thread_title TEXT NOT NULL,
+        UNIQUE(thread_id, seq),
+        FOREIGN KEY(reply_to) REFERENCES board_messages(message_id)
+      );
+      CREATE INDEX board_messages_project_thread_seq_idx ON board_messages(project_id, thread_id, seq);
+      CREATE VIRTUAL TABLE board_messages_fts USING fts5(
+        body,
+        thread_title,
+        content='board_messages',
+        content_rowid='rowid'
+      );
+      CREATE TRIGGER board_messages_fts_insert AFTER INSERT ON board_messages BEGIN
+        INSERT INTO board_messages_fts(rowid, body, thread_title)
+        VALUES (new.rowid, new.body, new.thread_title);
+      END;
+      CREATE TRIGGER board_messages_fts_delete AFTER DELETE ON board_messages BEGIN
+        INSERT INTO board_messages_fts(board_messages_fts, rowid, body, thread_title)
+        VALUES ('delete', old.rowid, old.body, old.thread_title);
+      END;
+      CREATE TRIGGER board_messages_fts_update AFTER UPDATE OF body, thread_title ON board_messages BEGIN
+        INSERT INTO board_messages_fts(board_messages_fts, rowid, body, thread_title)
+        VALUES ('delete', old.rowid, old.body, old.thread_title);
+        INSERT INTO board_messages_fts(rowid, body, thread_title)
+        VALUES (new.rowid, new.body, new.thread_title);
+      END;
+      CREATE TABLE board_decisions (
+        decision_id TEXT PRIMARY KEY,
+        schema_version INTEGER NOT NULL,
+        project_id TEXT NOT NULL,
+        thread_id TEXT NOT NULL REFERENCES board_threads(thread_id) ON DELETE CASCADE,
+        message_id TEXT NOT NULL UNIQUE REFERENCES board_messages(message_id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        statement TEXT NOT NULL,
+        rationale TEXT,
+        made_by TEXT NOT NULL,
+        bound_at TEXT NOT NULL,
+        supersedes TEXT,
+        sync_status TEXT NOT NULL,
+        sync_attempts INTEGER NOT NULL,
+        last_sync_error TEXT,
+        synced_at TEXT,
+        canon_record_path TEXT,
+        canon_commit TEXT
+      );
+      CREATE INDEX board_decisions_project_status_idx ON board_decisions(project_id, sync_status);
+      CREATE TABLE board_subscriptions (
+        subscription_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        subscriber TEXT NOT NULL,
+        filter TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX board_subscriptions_project_idx ON board_subscriptions(project_id);
+      CREATE TABLE canon_sync_proposals (
+        proposal_id TEXT PRIMARY KEY,
+        decision_id TEXT NOT NULL REFERENCES board_decisions(decision_id) ON DELETE CASCADE,
+        project_id TEXT NOT NULL,
+        path TEXT NOT NULL,
+        before_content TEXT,
+        after_content TEXT NOT NULL,
+        diff TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        applied_at TEXT,
+        commit_sha TEXT
+      );
+      CREATE INDEX canon_sync_proposals_decision_idx ON canon_sync_proposals(decision_id, created_at);
+      CREATE TABLE board_maintenance_state (
+        project_id TEXT PRIMARY KEY,
+        last_audit_at TEXT,
+        last_cleanup_at TEXT,
+        next_audit_at TEXT,
+        running_task_id TEXT
+      );
+    `,
+  },
 ];
