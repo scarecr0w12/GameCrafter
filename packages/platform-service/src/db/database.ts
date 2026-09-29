@@ -54,6 +54,10 @@ export class Database {
     }
   }
 
+  snapshotTo(destinationPath: string): void {
+    this.database.prepare('VACUUM INTO ?').run(destinationPath);
+  }
+
   close(): void {
     this.database.close();
   }

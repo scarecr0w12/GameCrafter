@@ -55,6 +55,7 @@ import { PluginService } from './plugins/plugin-service';
 import type { IsolationLauncher } from './plugins/isolation/types';
 import { EngineConnectorService } from './engines/engine-connector-service';
 import { AssetService } from './assets/asset-service';
+import { BackupService } from './backup/backup-service';
 import { KnowledgeService } from './knowledge/knowledge-service';
 import type { VectorStore } from './knowledge/vector-store';
 
@@ -65,6 +66,7 @@ export interface PlatformServiceOptions {
   onStopRequested?: (checkpoint: boolean) => Promise<void> | void;
   onWorkerStarted?: (taskId: string, pid: number) => void;
   approvalTimeoutOverrideMs?: number;
+  backupNow?: () => Date;
   pluginLaunchers?: {
     linux?: IsolationLauncher;
     win32?: IsolationLauncher;
@@ -89,6 +91,7 @@ export class PlatformService {
     private readonly pluginHost: PluginHost,
     private readonly knowledgeService: KnowledgeService,
     private readonly assetService: AssetService,
+    private readonly backupService: BackupService,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -232,6 +235,11 @@ export class PlatformService {
       if (!assetRef.service) throw new Error('Asset service is not initialized');
       return assetRef.service;
     };
+    const backupRef: { service?: BackupService } = {};
+    const backups = (): BackupService => {
+      if (!backupRef.service) throw new Error('Backup service is not initialized');
+      return backupRef.service;
+    };
     const knowledgeRef: { service?: KnowledgeService } = {};
     const knowledge = (): KnowledgeService => {
       if (!knowledgeRef.service) throw new Error('Knowledge service is not initialized');
@@ -313,6 +321,47 @@ export class PlatformService {
         assets().preview(projectId, sourcePath, refresh),
       'asset/openInAuthoringTool': ({ projectId, path: sourcePath }) =>
         assets().openInAuthoringTool(projectId, sourcePath),
+      'backup/identities': () => ({ identities: backups().identities() }),
+      'backup/identity/create': (input) => backups().createIdentity(input),
+      'backup/identity/remove': ({ identityId }) => {
+        backups().removeIdentity(identityId);
+        return { removed: true };
+      },
+      'backup/destinations': () => ({ destinations: backups().destinationsList() }),
+      'backup/addDestination': (input) => backups().addDestination(input),
+      'backup/updateDestination': (input) => backups().updateDestination(input),
+      'backup/removeDestination': ({ destinationId }) => {
+        backups().removeDestination(destinationId);
+        return { removed: true };
+      },
+      'backup/testDestination': ({ destinationId }) => backups().testDestination(destinationId),
+      'backup/plans': ({ projectId }) => ({ plans: backups().plans(projectId) }),
+      'backup/savePlan': (input) => backups().savePlan(input),
+      'backup/removePlan': ({ planId }) => {
+        backups().removePlan(planId);
+        return { removed: true };
+      },
+      'backup/run': (input) => backups().run(input),
+      'backup/runs': ({ projectId, limit }) => ({ runs: backups().runs(projectId, limit) }),
+      'backup/run/get': ({ runId }) => backups().runById(runId),
+      'backup/cancel': ({ runId }) => backups().cancel(runId),
+      'backup/archives': ({ destinationId }) =>
+        backups()
+          .archives(destinationId)
+          .then((archives) => ({ archives })),
+      'backup/inspect': (input) => backups().inspect(input),
+      'backup/verify': (input) => backups().verify(input),
+      'backup/restore': async (input) => {
+        const result = await backups().restore(input);
+        if (result.registeredProjectId) {
+          const project = workspace.get(result.registeredProjectId);
+          server.broadcast('project/changed', { kind: 'opened', project });
+          knowledge().onProjectOpened(project.projectId);
+          await mcpConnections.onProjectOpened(project.projectId);
+          await plugins().autoStartProject(project.projectId);
+        }
+        return result;
+      },
       'knowledge/records': ({ projectId, type, status, module, includeInactive, search }) =>
         knowledge().records(projectId, { type, status, module, includeInactive, search }),
       'knowledge/record': ({ projectId, recordId }) => knowledge().record(projectId, recordId),
@@ -700,6 +749,24 @@ export class PlatformService {
         jobChanged: (projectId, job) => server.broadcast('asset/jobChanged', { projectId, job }),
       },
     });
+    backupRef.service = new BackupService({
+      database,
+      projects: profile,
+      projectDatabases,
+      workspace,
+      credentials,
+      settings: settingsService,
+      profileDir: paths.profileDir,
+      platformVersion,
+      pluginVersions: () =>
+        Object.fromEntries(
+          plugins()
+            .list()
+            .map(({ installed }) => [installed.pluginId, installed.version]),
+        ),
+      events: { runChanged: (run) => server.broadcast('backup/runChanged', { run }) },
+      now: options.backupNow,
+    });
     knowledgeRef.service = new KnowledgeService({
       projects: profile,
       projectDatabases,
@@ -723,6 +790,7 @@ export class PlatformService {
     settingsService.onChanged((event) => {
       if (event.key.startsWith('engine.')) void engines().onSettingChanged(event);
       if (event.key.startsWith('assets.')) assets().onSettingChanged(event);
+      if (event.key.startsWith('backup.')) backups().onSettingChanged(event.key);
       if (event.key.startsWith('knowledge.')) knowledge().onSettingChanged(event);
       server.broadcast('settings/changed', event);
       void plugins()
@@ -744,6 +812,7 @@ export class PlatformService {
       pluginHost,
       knowledge(),
       assets(),
+      backups(),
       paths,
       startedAt,
     );
@@ -763,6 +832,7 @@ export class PlatformService {
     boardMaintenance().start();
     await plugins().autoStartRegisteredProjects();
     await assets().start();
+    await backups().start();
     await knowledge().start();
     return platformService;
   }
@@ -771,6 +841,7 @@ export class PlatformService {
     if (this.stopped) return;
     this.stopped = true;
     await this.assetService.stop();
+    await this.backupService.stop();
     this.knowledgeService.stop();
     this.boardMaintenanceScheduler.stop();
     await this.pluginHost.stopAll();

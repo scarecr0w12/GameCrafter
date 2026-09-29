@@ -249,4 +249,54 @@ export const profileMigrations: Migration[] = [
         ON asset_provider_accounts(provider_kind, enabled);
     `,
   },
+  {
+    id: 9,
+    name: 'create backup registry and run tables',
+    up: `
+      CREATE TABLE backup_identities (
+        identity_id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        identity_json TEXT NOT NULL
+      );
+      CREATE TABLE backup_destinations (
+        destination_id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        destination_json TEXT NOT NULL
+      );
+      CREATE INDEX backup_destinations_kind_enabled_idx
+        ON backup_destinations(kind, enabled);
+      CREATE TABLE backup_plans (
+        plan_id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        project_id TEXT,
+        destination_id TEXT NOT NULL,
+        identity_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL,
+        updated_at TEXT NOT NULL,
+        plan_json TEXT NOT NULL
+      );
+      CREATE INDEX backup_plans_scope_project_idx
+        ON backup_plans(scope, project_id, enabled);
+      CREATE INDEX backup_plans_destination_idx ON backup_plans(destination_id);
+      CREATE INDEX backup_plans_identity_idx ON backup_plans(identity_id);
+      CREATE TABLE backup_runs (
+        run_id TEXT PRIMARY KEY,
+        plan_id TEXT,
+        scope TEXT NOT NULL,
+        project_id TEXT,
+        destination_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        run_json TEXT NOT NULL
+      );
+      CREATE INDEX backup_runs_status_started_idx ON backup_runs(status, started_at DESC);
+      CREATE INDEX backup_runs_project_started_idx ON backup_runs(project_id, started_at DESC);
+      CREATE INDEX backup_runs_plan_started_idx ON backup_runs(plan_id, started_at DESC);
+    `,
+  },
 ];

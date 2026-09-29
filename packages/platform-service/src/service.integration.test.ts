@@ -61,8 +61,8 @@ describe('platform service integration', () => {
     expect(client.sessionId).toMatch(/^[0-9a-f-]{36}$/i);
 
     const settingsDescription = await client.call('settings/describe', {});
-    expect(settingsDescription.groups).toHaveLength(13);
-    expect(settingsDescription.definitions).toHaveLength(52);
+    expect(settingsDescription.groups).toHaveLength(14);
+    expect(settingsDescription.definitions).toHaveLength(59);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
     let resolveCloned: (value: unknown) => void = () => undefined;

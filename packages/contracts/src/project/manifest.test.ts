@@ -20,6 +20,18 @@ describe('project manifest contracts', () => {
     expect(projectManifest.check(validManifest)).toBe(true);
   });
 
+  it('accepts restoredFrom provenance in schema version 1', () => {
+    const restoredFrom = {
+      projectId: '019535d4-2c00-7000-8000-000000000002',
+      archiveId: '019535d4-2c00-7000-8000-000000000003',
+      restoredAt: '2026-09-29T12:00:00.000Z',
+    };
+    expect(projectManifest.assert({ ...validManifest, restoredFrom })).toMatchObject({
+      schemaVersion: 1,
+      restoredFrom,
+    });
+  });
+
   it.each([
     ['missing engine family', { ...validManifest, engine: {} }],
     ['unknown engine family', { ...validManifest, engine: { family: 'unreal5' } }],

@@ -4,6 +4,14 @@ import { inject, injectable } from '@theia/core/shared/inversify';
 import {
   type AccessMode,
   type ApprovalRequest,
+  type BackupArchiveEntry,
+  type BackupDestination,
+  type BackupIdentity,
+  type BackupManifest,
+  type BackupPlan,
+  type BackupRestoreResult,
+  type BackupRun,
+  type BackupVerifyResult,
   type AssetFileEntry,
   type AssetJob,
   type AssetPreview,
@@ -84,6 +92,7 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeEngineCapabilitiesChangedListener?: () => void;
   private removeEngineRunChangedListener?: () => void;
   private removeAssetJobChangedListener?: () => void;
+  private removeBackupRunChangedListener?: () => void;
   private removeKnowledgeIndexChangedListener?: () => void;
   private removeKnowledgeRecordChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
@@ -111,6 +120,7 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeEngineCapabilitiesChangedListener?.();
     this.removeEngineRunChangedListener?.();
     this.removeAssetJobChangedListener?.();
+    this.removeBackupRunChangedListener?.();
     this.removeKnowledgeIndexChangedListener?.();
     this.removeKnowledgeRecordChangedListener?.();
     this.removeServiceStatusListener?.();
@@ -172,6 +182,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     );
     this.removeAssetJobChangedListener = this.platformConnection.onAssetJobChanged((event) =>
       this.client?.onAssetJobChanged(event),
+    );
+    this.removeBackupRunChangedListener = this.platformConnection.onBackupRunChanged((event) =>
+      this.client?.onBackupRunChanged(event),
     );
     this.removeKnowledgeIndexChangedListener = this.platformConnection.onKnowledgeIndexChanged(
       (event) => this.client?.onKnowledgeIndexChanged(event),
@@ -622,6 +635,96 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     input: RpcParams<'asset/openInAuthoringTool'>,
   ): Promise<RpcResult<'asset/openInAuthoringTool'>> {
     return (await this.getPlatformClient()).call('asset/openInAuthoringTool', input);
+  }
+
+  async listBackupIdentities(): Promise<BackupIdentity[]> {
+    return (await this.getPlatformClient())
+      .call('backup/identities', {})
+      .then((result) => result.identities);
+  }
+
+  async createBackupIdentity(input: RpcParams<'backup/identity/create'>): Promise<BackupIdentity> {
+    return (await this.getPlatformClient()).call('backup/identity/create', input);
+  }
+
+  async removeBackupIdentity(identityId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('backup/identity/remove', { identityId });
+  }
+
+  async listBackupDestinations(): Promise<BackupDestination[]> {
+    return (await this.getPlatformClient())
+      .call('backup/destinations', {})
+      .then((result) => result.destinations);
+  }
+
+  async addBackupDestination(
+    input: RpcParams<'backup/addDestination'>,
+  ): Promise<BackupDestination> {
+    return (await this.getPlatformClient()).call('backup/addDestination', input);
+  }
+
+  async updateBackupDestination(
+    input: RpcParams<'backup/updateDestination'>,
+  ): Promise<BackupDestination> {
+    return (await this.getPlatformClient()).call('backup/updateDestination', input);
+  }
+
+  async removeBackupDestination(destinationId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('backup/removeDestination', { destinationId });
+  }
+
+  async testBackupDestination(destinationId: string): Promise<RpcResult<'backup/testDestination'>> {
+    return (await this.getPlatformClient()).call('backup/testDestination', { destinationId });
+  }
+
+  async listBackupPlans(projectId?: string): Promise<BackupPlan[]> {
+    return (await this.getPlatformClient())
+      .call('backup/plans', { projectId })
+      .then((result) => result.plans);
+  }
+
+  async saveBackupPlan(input: RpcParams<'backup/savePlan'>): Promise<BackupPlan> {
+    return (await this.getPlatformClient()).call('backup/savePlan', input);
+  }
+
+  async removeBackupPlan(planId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('backup/removePlan', { planId });
+  }
+
+  async runBackup(input: RpcParams<'backup/run'>): Promise<BackupRun> {
+    return (await this.getPlatformClient()).call('backup/run', input);
+  }
+
+  async listBackupRuns(projectId?: string, limit?: number): Promise<BackupRun[]> {
+    return (await this.getPlatformClient())
+      .call('backup/runs', { projectId, limit })
+      .then((result) => result.runs);
+  }
+
+  async getBackupRun(runId: string): Promise<BackupRun> {
+    return (await this.getPlatformClient()).call('backup/run/get', { runId });
+  }
+
+  async cancelBackupRun(runId: string): Promise<BackupRun> {
+    return (await this.getPlatformClient()).call('backup/cancel', { runId });
+  }
+
+  async listBackupArchives(destinationId: string): Promise<BackupArchiveEntry[]> {
+    return (await this.getPlatformClient())
+      .call('backup/archives', { destinationId })
+      .then((result) => result.archives);
+  }
+
+  async inspectBackupArchive(input: RpcParams<'backup/inspect'>): Promise<BackupManifest> {
+    return (await this.getPlatformClient()).call('backup/inspect', input);
+  }
+
+  async verifyBackupArchive(input: RpcParams<'backup/verify'>): Promise<BackupVerifyResult> {
+    return (await this.getPlatformClient()).call('backup/verify', input);
+  }
+
+  async restoreBackupArchive(input: RpcParams<'backup/restore'>): Promise<BackupRestoreResult> {
+    return (await this.getPlatformClient()).call('backup/restore', input);
   }
 
   async listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]> {

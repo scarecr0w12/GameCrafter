@@ -3,6 +3,117 @@
   gap: 8px;
 }
 
+.gamecrafter-backups {
+  color: var(--theia-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.gamecrafter-backups-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.gamecrafter-backups-header h2 {
+  margin-bottom: 4px;
+}
+
+.gamecrafter-backups-header p,
+.gamecrafter-backups-section p {
+  margin: 0;
+}
+
+.gamecrafter-backups-section {
+  border-top: 1px solid var(--theia-widget-border);
+  padding-top: 12px;
+}
+
+.gamecrafter-backups-section h3 {
+  margin: 4px 0 10px;
+}
+
+.gamecrafter-backups-form {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 10px 0;
+}
+
+.gamecrafter-backups-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gamecrafter-backups-form input,
+.gamecrafter-backups-form textarea,
+.gamecrafter-backups-form select {
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+}
+
+.gamecrafter-backups-form textarea {
+  min-height: 4rem;
+}
+
+.gamecrafter-backups-wide {
+  grid-column: 1 / -1;
+}
+
+.gamecrafter-backups-checkbox {
+  align-items: center;
+  flex-direction: row !important;
+}
+
+.gamecrafter-backups-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gamecrafter-backups-list li {
+  align-items: center;
+  border-bottom: 1px solid var(--theia-widget-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.gamecrafter-backups-runs li {
+  align-items: start;
+}
+
+.gamecrafter-backups-message {
+  color: var(--theia-textLink-foreground);
+}
+
+.gamecrafter-backups-warning {
+  color: var(--theia-editorWarning-foreground);
+}
+
+.gamecrafter-backup-status,
+.gamecrafter-backup-badge {
+  border: 1px solid var(--theia-widget-border);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+
+.gamecrafter-backup-status-verified,
+.gamecrafter-backup-badge {
+  color: var(--theia-successForeground);
+}
+
 .gamecrafter-settings {
   color: var(--theia-foreground);
   display: flex;

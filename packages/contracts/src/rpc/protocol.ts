@@ -23,6 +23,21 @@ import {
   AssetProviderKindSchema,
 } from '../assets';
 import {
+  BackupArchiveEntrySchema,
+  BackupDestinationConfigSchema,
+  BackupDestinationKindSchema,
+  BackupDestinationSchema,
+  BackupIdentitySchema,
+  BackupManifestSchema,
+  BackupPlanSchema,
+  BackupRestoreResultSchema,
+  BackupRetentionSchema,
+  BackupRunSchema,
+  BackupScheduleSchema,
+  BackupScopeSchema,
+  BackupVerifyResultSchema,
+} from '../backup';
+import {
   EffectiveSettingSchema,
   SettingDefinitionSchema,
   SettingGroupSchema,
@@ -448,6 +463,207 @@ export const RpcMethods = {
       { launched: Type.Boolean(), command: Type.String() },
       { additionalProperties: false },
     ),
+  },
+  'backup/identities': {
+    params: EmptyParams,
+    result: Type.Object(
+      { identities: Type.Array(BackupIdentitySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'backup/identity/create': {
+    params: Type.Object(
+      {
+        label: Type.String({ minLength: 1, maxLength: 200 }),
+        secret: Type.String({ minLength: 12 }),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupIdentitySchema,
+  },
+  'backup/identity/remove': {
+    params: Type.Object(
+      { identityId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'backup/destinations': {
+    params: EmptyParams,
+    result: Type.Object(
+      { destinations: Type.Array(BackupDestinationSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'backup/addDestination': {
+    params: Type.Object(
+      {
+        kind: BackupDestinationKindSchema,
+        displayName: Type.String({ minLength: 1, maxLength: 200 }),
+        config: BackupDestinationConfigSchema,
+        secrets: Type.Optional(Type.Record(Type.String(), Type.String())),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupDestinationSchema,
+  },
+  'backup/updateDestination': {
+    params: Type.Object(
+      {
+        destinationId: Type.String({ format: 'uuid' }),
+        patch: Type.Object(
+          {
+            displayName: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+            config: Type.Optional(BackupDestinationConfigSchema),
+            secrets: Type.Optional(Type.Record(Type.String(), Type.String())),
+            enabled: Type.Optional(Type.Boolean()),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupDestinationSchema,
+  },
+  'backup/removeDestination': {
+    params: Type.Object(
+      { destinationId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'backup/testDestination': {
+    params: Type.Object(
+      { destinationId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        ok: Type.Boolean(),
+        latencyMs: Type.Integer({ minimum: 0 }),
+        error: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  'backup/plans': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ plans: Type.Array(BackupPlanSchema) }, { additionalProperties: false }),
+  },
+  'backup/savePlan': {
+    params: Type.Object(
+      {
+        planId: Type.Optional(Type.String({ format: 'uuid' })),
+        plan: Type.Object(
+          {
+            scope: BackupScopeSchema,
+            projectId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+            destinationId: Type.String({ format: 'uuid' }),
+            identityId: Type.String({ format: 'uuid' }),
+            schedule: BackupScheduleSchema,
+            retention: BackupRetentionSchema,
+            enabled: Type.Boolean(),
+          },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupPlanSchema,
+  },
+  'backup/removePlan': {
+    params: Type.Object(
+      { planId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'backup/run': {
+    params: Type.Union([
+      Type.Object({ planId: Type.String({ format: 'uuid' }) }, { additionalProperties: false }),
+      Type.Object(
+        {
+          scope: BackupScopeSchema,
+          projectId: Type.Optional(Type.String({ format: 'uuid' })),
+          destinationId: Type.String({ format: 'uuid' }),
+          identityId: Type.String({ format: 'uuid' }),
+        },
+        { additionalProperties: false },
+      ),
+    ]),
+    result: BackupRunSchema,
+  },
+  'backup/runs': {
+    params: Type.Object(
+      {
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ runs: Type.Array(BackupRunSchema) }, { additionalProperties: false }),
+  },
+  'backup/run/get': {
+    params: Type.Object(
+      { runId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: BackupRunSchema,
+  },
+  'backup/cancel': {
+    params: Type.Object(
+      { runId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: BackupRunSchema,
+  },
+  'backup/archives': {
+    params: Type.Object(
+      { destinationId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { archives: Type.Array(BackupArchiveEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'backup/inspect': {
+    params: Type.Object(
+      {
+        destinationId: Type.String({ format: 'uuid' }),
+        archiveName: Type.String({ minLength: 1 }),
+        secret: Type.String({ minLength: 12 }),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupManifestSchema,
+  },
+  'backup/verify': {
+    params: Type.Object(
+      {
+        destinationId: Type.String({ format: 'uuid' }),
+        archiveName: Type.String({ minLength: 1 }),
+        secret: Type.String({ minLength: 12 }),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupVerifyResultSchema,
+  },
+  'backup/restore': {
+    params: Type.Object(
+      {
+        destinationId: Type.String({ format: 'uuid' }),
+        archiveName: Type.String({ minLength: 1 }),
+        secret: Type.String({ minLength: 12 }),
+        targetPath: Type.String({ minLength: 1 }),
+        register: Type.Optional(Type.Boolean()),
+      },
+      { additionalProperties: false },
+    ),
+    result: BackupRestoreResultSchema,
   },
   'knowledge/records': {
     params: Type.Object(
@@ -1646,6 +1862,9 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'backup/runChanged': {
+    params: Type.Object({ run: BackupRunSchema }, { additionalProperties: false }),
+  },
   'knowledge/indexChanged': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }), status: KnowledgeIndexStateSchema },
@@ -1771,6 +1990,15 @@ export const RpcErrorCode = {
   VectorStoreUnavailable: -32104,
   EmbeddingProfileMissing: -32105,
   AssetPreviewUnavailable: -32106,
+  BackupIdentityNotFound: -32107,
+  BackupDestinationNotFound: -32108,
+  BackupPlanNotFound: -32109,
+  BackupRunNotFound: -32110,
+  BackupArchiveNotFound: -32111,
+  BackupUnlockFailed: -32112,
+  BackupArchiveCorrupt: -32113,
+  BackupDestinationFailed: -32114,
+  BackupTargetNotEmpty: -32115,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

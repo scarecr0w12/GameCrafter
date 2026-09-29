@@ -30,6 +30,16 @@ export const ProjectManifestSchema = Type.Object(
     modules: Type.Array(Type.String()),
     createdAt: Type.String({ format: 'date-time' }),
     createdByPlatformVersion: Type.String(),
+    restoredFrom: Type.Optional(
+      Type.Object(
+        {
+          projectId: Type.String({ format: 'uuid' }),
+          archiveId: Type.String({ format: 'uuid' }),
+          restoredAt: Type.String({ format: 'date-time' }),
+        },
+        { additionalProperties: false },
+      ),
+    ),
   },
   {
     $id: 'https://gamecrafter.dev/schemas/project-manifest/v1',

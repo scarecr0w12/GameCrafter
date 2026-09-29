@@ -48,6 +48,9 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly assetJobChangedEmitter = new Emitter<
     RpcNotificationParams<'asset/jobChanged'>
   >();
+  private readonly backupRunChangedEmitter = new Emitter<
+    RpcNotificationParams<'backup/runChanged'>
+  >();
   private readonly knowledgeIndexChangedEmitter = new Emitter<
     RpcNotificationParams<'knowledge/indexChanged'>
   >();
@@ -76,6 +79,7 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly engineCapabilitiesChanged = this.engineCapabilitiesChangedEmitter.event;
   readonly engineRunChanged = this.engineRunChangedEmitter.event;
   readonly assetJobChanged = this.assetJobChangedEmitter.event;
+  readonly backupRunChanged = this.backupRunChangedEmitter.event;
   readonly knowledgeIndexChanged = this.knowledgeIndexChangedEmitter.event;
   readonly knowledgeRecordChanged = this.knowledgeRecordChangedEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
@@ -146,6 +150,10 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onAssetJobChanged(event: RpcNotificationParams<'asset/jobChanged'>): void {
     this.assetJobChangedEmitter.fire(event);
+  }
+
+  onBackupRunChanged(event: RpcNotificationParams<'backup/runChanged'>): void {
+    this.backupRunChangedEmitter.fire(event);
   }
 
   onKnowledgeIndexChanged(event: RpcNotificationParams<'knowledge/indexChanged'>): void {

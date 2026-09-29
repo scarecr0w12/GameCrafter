@@ -67,6 +67,9 @@ export class PlatformServiceConnection {
   private readonly assetJobChangedListeners = new Set<
     (event: RpcNotificationParams<'asset/jobChanged'>) => void
   >();
+  private readonly backupRunChangedListeners = new Set<
+    (event: RpcNotificationParams<'backup/runChanged'>) => void
+  >();
   private readonly knowledgeIndexChangedListeners = new Set<
     (event: RpcNotificationParams<'knowledge/indexChanged'>) => void
   >();
@@ -198,6 +201,13 @@ export class PlatformServiceConnection {
     return () => this.assetJobChangedListeners.delete(listener);
   }
 
+  onBackupRunChanged(
+    listener: (event: RpcNotificationParams<'backup/runChanged'>) => void,
+  ): () => void {
+    this.backupRunChangedListeners.add(listener);
+    return () => this.backupRunChangedListeners.delete(listener);
+  }
+
   onKnowledgeIndexChanged(
     listener: (event: RpcNotificationParams<'knowledge/indexChanged'>) => void,
   ): () => void {
@@ -284,6 +294,9 @@ export class PlatformServiceConnection {
         });
         client.onNotification('asset/jobChanged', (event) => {
           for (const listener of this.assetJobChangedListeners) listener(event);
+        });
+        client.onNotification('backup/runChanged', (event) => {
+          for (const listener of this.backupRunChangedListeners) listener(event);
         });
         client.onNotification('knowledge/indexChanged', (event) => {
           for (const listener of this.knowledgeIndexChangedListeners) listener(event);

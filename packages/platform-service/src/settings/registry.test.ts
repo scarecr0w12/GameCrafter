@@ -9,8 +9,8 @@ describe('SettingsRegistry', () => {
     registry.register('builtin', builtins.groups, builtins.definitions);
 
     const description = registry.describe();
-    expect(description.groups).toHaveLength(13);
-    expect(description.definitions).toHaveLength(52);
+    expect(description.groups).toHaveLength(14);
+    expect(description.definitions).toHaveLength(59);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({
@@ -36,12 +36,22 @@ describe('SettingsRegistry', () => {
     expect(description.groups[10]?.id).toBe('engine');
     expect(description.groups[11]?.id).toBe('knowledge');
     expect(description.groups[12]?.id).toBe('assets');
+    expect(description.groups[13]?.id).toBe('backup');
     expect(
       description.definitions.find((definition) => definition.key === 'assets.pollIntervalSeconds'),
     ).toMatchObject({ group: 'assets', default: 5, scopes: ['platform', 'project'] });
     expect(
       description.definitions.find((definition) => definition.key === 'assets.importDirectory'),
     ).toMatchObject({ default: 'game/assets/generated', scopes: ['platform', 'project'] });
+    expect(
+      description.definitions.find((definition) => definition.key === 'backup.excludeGlobs'),
+    ).toMatchObject({ group: 'backup', default: [], scopes: ['platform', 'project'] });
+    expect(
+      description.definitions.find((definition) => definition.key === 'backup.scryptLogN'),
+    ).toMatchObject({ group: 'backup', default: 15, scopes: ['platform'] });
+    expect(
+      description.definitions.find((definition) => definition.key === 'backup.maxArchiveMb'),
+    ).toMatchObject({ group: 'backup', default: 0, scopes: ['platform'] });
   });
 
   it('rejects duplicate keys', () => {

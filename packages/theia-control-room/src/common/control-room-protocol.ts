@@ -9,6 +9,14 @@ import type {
   AssetPreview,
   AssetProviderAccount,
   AssetProviderCapabilities,
+  BackupArchiveEntry,
+  BackupDestination,
+  BackupIdentity,
+  BackupManifest,
+  BackupPlan,
+  BackupRestoreResult,
+  BackupRun,
+  BackupVerifyResult,
   EngineFamily,
   EngineInstallation,
   EngineOperationRun,
@@ -239,6 +247,25 @@ export interface ControlRoomService {
   openAssetInAuthoringTool(
     input: RpcParams<'asset/openInAuthoringTool'>,
   ): Promise<RpcResult<'asset/openInAuthoringTool'>>;
+  listBackupIdentities(): Promise<BackupIdentity[]>;
+  createBackupIdentity(input: RpcParams<'backup/identity/create'>): Promise<BackupIdentity>;
+  removeBackupIdentity(identityId: string): Promise<void>;
+  listBackupDestinations(): Promise<BackupDestination[]>;
+  addBackupDestination(input: RpcParams<'backup/addDestination'>): Promise<BackupDestination>;
+  updateBackupDestination(input: RpcParams<'backup/updateDestination'>): Promise<BackupDestination>;
+  removeBackupDestination(destinationId: string): Promise<void>;
+  testBackupDestination(destinationId: string): Promise<RpcResult<'backup/testDestination'>>;
+  listBackupPlans(projectId?: string): Promise<BackupPlan[]>;
+  saveBackupPlan(input: RpcParams<'backup/savePlan'>): Promise<BackupPlan>;
+  removeBackupPlan(planId: string): Promise<void>;
+  runBackup(input: RpcParams<'backup/run'>): Promise<BackupRun>;
+  listBackupRuns(projectId?: string, limit?: number): Promise<BackupRun[]>;
+  getBackupRun(runId: string): Promise<BackupRun>;
+  cancelBackupRun(runId: string): Promise<BackupRun>;
+  listBackupArchives(destinationId: string): Promise<BackupArchiveEntry[]>;
+  inspectBackupArchive(input: RpcParams<'backup/inspect'>): Promise<BackupManifest>;
+  verifyBackupArchive(input: RpcParams<'backup/verify'>): Promise<BackupVerifyResult>;
+  restoreBackupArchive(input: RpcParams<'backup/restore'>): Promise<BackupRestoreResult>;
   listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]>;
   addMcpConnection(
     config: McpConnectionInput,
@@ -352,6 +379,7 @@ export interface ControlRoomClient {
   onEngineCapabilitiesChanged(event: RpcNotificationParams<'engine/capabilitiesChanged'>): void;
   onEngineRunChanged(event: RpcNotificationParams<'engine/runChanged'>): void;
   onAssetJobChanged(event: RpcNotificationParams<'asset/jobChanged'>): void;
+  onBackupRunChanged(event: RpcNotificationParams<'backup/runChanged'>): void;
   onKnowledgeIndexChanged(event: RpcNotificationParams<'knowledge/indexChanged'>): void;
   onKnowledgeRecordChanged(event: RpcNotificationParams<'knowledge/recordChanged'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;

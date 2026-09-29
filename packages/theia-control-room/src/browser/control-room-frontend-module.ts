@@ -23,6 +23,8 @@ import { EngineWidget } from './engine-widget';
 import { EngineViewContribution } from './engine-view-contribution';
 import { AssetsWidget } from './assets-widget';
 import { AssetsViewContribution } from './assets-view-contribution';
+import { BackupsWidget } from './backups-widget';
+import { BackupsViewContribution } from './backups-view-contribution';
 import { KnowledgeWidget } from './knowledge-widget';
 import { KnowledgeViewContribution } from './knowledge-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
@@ -53,6 +55,7 @@ export default new ContainerModule((bind) => {
   bind(PluginsCatalogWidget).toSelf().inSingletonScope();
   bind(EngineWidget).toSelf().inSingletonScope();
   bind(AssetsWidget).toSelf().inSingletonScope();
+  bind(BackupsWidget).toSelf().inSingletonScope();
   bind(KnowledgeWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
@@ -110,6 +113,12 @@ export default new ContainerModule((bind) => {
     .inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
+      id: BackupsWidget.ID,
+      createWidget: () => context.container.get(BackupsWidget),
+    }))
+    .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
       id: KnowledgeWidget.ID,
       createWidget: () => context.container.get(KnowledgeWidget),
     }))
@@ -124,6 +133,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, PluginsCatalogViewContribution);
   bindViewContribution(bind, EngineViewContribution);
   bindViewContribution(bind, AssetsViewContribution);
+  bindViewContribution(bind, BackupsViewContribution);
   bindViewContribution(bind, KnowledgeViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);

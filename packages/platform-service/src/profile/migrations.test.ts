@@ -4,7 +4,7 @@ import { migrate } from '../db/migrator';
 import { profileMigrations } from './migrations';
 
 describe('profile migrations', () => {
-  it('creates MCP, plugin, engine, and asset persistence tables', () => {
+  it('creates MCP, plugin, engine, asset, and backup persistence tables', () => {
     const database = Database.open(':memory:');
     try {
       migrate(database, profileMigrations);
@@ -21,7 +21,11 @@ describe('profile migrations', () => {
       expect(tables).toContain('plugin_host_calls');
       expect(tables).toContain('engine_installations');
       expect(tables).toContain('asset_provider_accounts');
-      expect(database.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(8);
+      expect(tables).toContain('backup_identities');
+      expect(tables).toContain('backup_destinations');
+      expect(tables).toContain('backup_plans');
+      expect(tables).toContain('backup_runs');
+      expect(database.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(9);
     } finally {
       database.close();
     }
