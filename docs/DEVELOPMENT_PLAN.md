@@ -1,7 +1,7 @@
 # GameCrafter Development Plan: Work Packages by Dependency
 
 **Status:** Living plan. Ordering below is **technical dependency**, not product phasing: a work package appears after the packages whose interfaces it consumes. Every package targets the complete system described in [PLATFORM_DESIGN.md](PLATFORM_DESIGN.md); none of them is a milestone, release, or "first game".  
-**Last updated:** 2026-09-28  
+**Last updated:** 2026-09-29  
 **Related records:** [technical architecture](TECHNICAL_ARCHITECTURE.md), [decision register](OPEN_DECISIONS.md), [skills, roles, and tools](SKILLS_AGENTS_AND_TOOLS.md).
 
 Each work package lists the design sections and register entries it implements, its hard dependencies, its "done when" criteria, and its current status. Status values: **Not started**, **In progress**, **Implemented (unit/integration-tested)**, **Verified (live)**. Only behaviour covered by tests in this repository may be marked Implemented; connectors reach Verified only after tests against the real engine, tool, or server.
@@ -163,7 +163,7 @@ flowchart TD
 - **Depends on:** WP3, WP8 (embeddings).
 - **Scope:** canon record format with stable IDs and typed front matter; SQLite FTS5 index; Qdrant read/write adapter behind a versioned vector-store interface with Project namespaces; incremental indexer and reconciler; retrieval with file, revision, record ID, and quote-span citations.
 - **Done when:** index rebuild from source is idempotent and cross-Project leakage tests pass.
-- **Status:** Not started.
+- **Status:** Implemented (unit/integration-tested; embeddings tested against the fake provider only; the Qdrant adapter is tested against a Docker-run Qdrant when `docker` is available, otherwise that suite is skipped): canon record format with dotted stable IDs, eleven builtin record types plus plugin-contributed `recordTypes`, typed front matter (status `draft|proposed|accepted|deprecated|retconned`, typed references with confidence and source, provenance, `schemaVersion`), duplicate-ID and unknown-type reporting; `canon_records`/chunks/FTS5 tables in the Project database; index sources `canon|decisions|docs|code|board|assets|inactive` with Settings-gated code/board indexing; Git-aware incremental indexer (`ls-tree`/`status` revision detection, file watchers with debounce, periodic reconciliation, deterministic point IDs, stale-chunk deletion); per-Project embedding profiles pinned to model/provider/dimensions with versioned rebuild when the profile changes; versioned `VectorStore` interface with a Qdrant adapter that enforces the Project ID on every upsert/delete/query and refuses foreign-Project vectors; hybrid reciprocal-rank retrieval favouring accepted canon with file path, revision, record ID, and quote-span citations, degrading to lexical when semantic search is unavailable; supervised `knowledge.reindex|reconcile` tasks; `knowledge/*` RPC methods and broker tools; reference graph; and the Knowledge view. Idempotent-rebuild and cross-Project leakage tests pass. Live embedding providers and any vector store other than Qdrant remain untested/absent.
 
 ### WP15 — Asset pipeline and inspection
 
