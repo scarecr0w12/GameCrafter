@@ -37,6 +37,7 @@ import { registerSkillTools } from './skills/skill-tools';
 import { ToolBroker } from './tools/tool-broker';
 import { registerBuiltinTools } from './tools/builtin-tools';
 import { ToolRegistry } from './tools/tool-registry';
+import { McpConnectionManager } from './mcp/connection-manager';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -58,6 +59,7 @@ export class PlatformService {
     private readonly projectDatabases: ProjectDatabases,
     private readonly workerSupervisor: WorkerSupervisor,
     private readonly toolBroker: ToolBroker,
+    private readonly mcpConnections: McpConnectionManager,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -177,6 +179,7 @@ export class PlatformService {
       'project/open': ({ path: projectPath }) => {
         const project = workspace.open(projectPath);
         server.broadcast('project/changed', { kind: 'opened', project });
+        void mcpConnections.onProjectOpened(project.projectId);
         return project;
       },
       'project/get': ({ projectId }) => workspace.get(projectId),
@@ -319,6 +322,32 @@ export class PlatformService {
       }),
       'roles/list': ({ projectId }) => ({ roles: skillService.listRoles(projectId) }),
       'roles/get': ({ name, projectId }) => skillService.getRole(name, projectId),
+      'mcp/list': ({ projectId }) => ({ connections: mcpConnections.list(projectId) }),
+      'mcp/add': ({ config, credentials: mcpCredentials }) =>
+        mcpConnections.add(config, mcpCredentials),
+      'mcp/update': ({ connectionId, patch, credentials: mcpCredentials }) =>
+        mcpConnections.update(connectionId, patch, mcpCredentials),
+      'mcp/remove': async ({ connectionId }) => {
+        await mcpConnections.remove(connectionId);
+        return { removed: true };
+      },
+      'mcp/connect': ({ connectionId }) => mcpConnections.connect(connectionId),
+      'mcp/disconnect': ({ connectionId }) => mcpConnections.disconnect(connectionId),
+      'mcp/tools': ({ connectionId }) => mcpConnections.tools(connectionId),
+      'mcp/refreshTools': ({ connectionId }) => mcpConnections.tools(connectionId, true),
+      'mcp/answer': ({ connectionId, requestId, responses }) => {
+        mcpConnections.answer(connectionId, requestId, responses);
+        return { answered: true };
+      },
+      'mcp/classifyTool': async ({ connectionId, toolName, sideEffects, executionMode }) => ({
+        tool: await mcpConnections.classifyTool(connectionId, toolName, {
+          sideEffects,
+          executionMode,
+        }),
+      }),
+      'mcp/log': ({ connectionId, limit }) => ({
+        entries: mcpConnections.logEntries(connectionId, limit),
+      }),
       'service/stop': ({ checkpoint }) => {
         setTimeout(() => {
           void (async () => {
@@ -344,6 +373,20 @@ export class PlatformService {
       onSessionOpened: (sessionId) => settingsService.openSession(sessionId),
       onSessionClosed: (sessionId) => settingsService.closeSession(sessionId),
     });
+    const mcpConnections = new McpConnectionManager({
+      database,
+      profile,
+      credentials,
+      settings: settingsService,
+      tasks: taskService,
+      completion: completionService,
+      tools: toolRegistry,
+      events: {
+        stateChanged: (state) => server.broadcast('mcp/stateChanged', { state }),
+        inputRequired: (params) => server.broadcast('mcp/inputRequired', params),
+      },
+      clientInfo: { name: 'gamecrafter-platform-service', version: platformVersion },
+    });
     settingsService.onChanged((event) => server.broadcast('settings/changed', event));
     const platformService = new PlatformService(
       server,
@@ -351,6 +394,7 @@ export class PlatformService {
       projectDatabases,
       workerSupervisor,
       toolBroker,
+      mcpConnections,
       paths,
       startedAt,
     );
@@ -365,6 +409,7 @@ export class PlatformService {
       database.close();
       throw error;
     }
+    await mcpConnections.start();
     workerSupervisor.start();
     return platformService;
   }
@@ -374,6 +419,7 @@ export class PlatformService {
     this.stopped = true;
     await this.workerSupervisor.stopAll({ checkpoint });
     await this.toolBroker.stopAll();
+    await this.mcpConnections.stop();
     await this.server.close();
     this.projectDatabases.close();
     this.database.close();

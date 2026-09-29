@@ -20,6 +20,12 @@ export class ControlRoomClientEvents implements ControlRoomClient {
     RpcNotificationParams<'broker/approvalResolved'>
   >();
   private readonly toolCalledEmitter = new Emitter<RpcNotificationParams<'tool/called'>>();
+  private readonly mcpStateChangedEmitter = new Emitter<
+    RpcNotificationParams<'mcp/stateChanged'>
+  >();
+  private readonly mcpInputRequiredEmitter = new Emitter<
+    RpcNotificationParams<'mcp/inputRequired'>
+  >();
   private readonly serviceStatusEmitter = new Emitter<{
     connected: boolean;
     message?: string;
@@ -32,6 +38,8 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly approvalRequested = this.approvalRequestedEmitter.event;
   readonly approvalResolved = this.approvalResolvedEmitter.event;
   readonly toolCalled = this.toolCalledEmitter.event;
+  readonly mcpStateChanged = this.mcpStateChangedEmitter.event;
+  readonly mcpInputRequired = this.mcpInputRequiredEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
@@ -60,6 +68,14 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onToolCalled(event: RpcNotificationParams<'tool/called'>): void {
     this.toolCalledEmitter.fire(event);
+  }
+
+  onMcpStateChanged(event: RpcNotificationParams<'mcp/stateChanged'>): void {
+    this.mcpStateChangedEmitter.fire(event);
+  }
+
+  onMcpInputRequired(event: RpcNotificationParams<'mcp/inputRequired'>): void {
+    this.mcpInputRequiredEmitter.fire(event);
   }
 
   onServiceStatus(status: { connected: boolean; message?: string }): void {

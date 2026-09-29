@@ -133,4 +133,38 @@ export const profileMigrations: Migration[] = [
       );
     `,
   },
+  {
+    id: 5,
+    name: 'create MCP connection and usage tables',
+    up: `
+      CREATE TABLE mcp_connections (
+        connection_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        scope TEXT NOT NULL,
+        project_id TEXT,
+        config TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX mcp_connections_scope_project_idx ON mcp_connections(scope, project_id);
+      CREATE TABLE mcp_usage (
+        usage_id TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL,
+        task_id TEXT,
+        decision_id TEXT,
+        model_id TEXT,
+        cost_usd REAL NOT NULL,
+        recorded_at TEXT NOT NULL
+      );
+      CREATE INDEX mcp_usage_connection_time_idx ON mcp_usage(connection_id, recorded_at);
+      CREATE TABLE mcp_tool_overrides (
+        connection_id TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        side_effects TEXT,
+        execution_mode TEXT,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (connection_id, tool_name)
+      );
+    `,
+  },
 ];

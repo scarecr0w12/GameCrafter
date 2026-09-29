@@ -16,6 +16,62 @@ const definition: ToolDefinition = {
 };
 
 describe('ToolRegistry', () => {
+  it('validates MCP tool input schemas with bounded JSON Schema 2020-12 references', () => {
+    const registry = new ToolRegistry();
+    registry.register(
+      {
+        ...definition,
+        toolId: 'world-tools/echo',
+        source: 'mcp:connection-1',
+        inputSchema: {
+          $schema: 'https://json-schema.org/draft/2020-12/schema',
+          $defs: { value: { type: 'string' } },
+          type: 'object',
+          properties: { value: { $ref: '#/$defs/value' } },
+          required: ['value'],
+          additionalProperties: false,
+        },
+      },
+      async (_context, input) => ({ output: input }),
+    );
+    const tool = registry.get('world-tools/echo')!;
+    expect(registry.validateInput(tool, { value: 'ok' })).toEqual([]);
+    expect(registry.validateInput(tool, { value: 1 })).not.toEqual([]);
+    expect(() =>
+      registry.register(
+        {
+          ...definition,
+          toolId: 'world-tools/external-ref',
+          source: 'mcp:connection-1',
+          inputSchema: { $ref: 'https://example.invalid/schema.json' },
+        },
+        async (_context, input) => ({ output: input }),
+      ),
+    ).toThrow();
+  });
+
+  it('unregisters all tools owned by a source', () => {
+    const registry = new ToolRegistry();
+    const handler: ToolHandler = async (_context: ToolContext, input: unknown) => ({
+      output: input,
+    });
+    registry.register(definition, handler);
+    registry.register(
+      { ...definition, toolId: 'world-tools/echo', source: 'mcp:connection-1' },
+      handler,
+    );
+    registry.register(
+      { ...definition, toolId: 'world-tools/write', source: 'mcp:connection-1' },
+      handler,
+    );
+
+    expect(registry.unregisterSource('mcp:connection-1')).toEqual([
+      'world-tools/echo',
+      'world-tools/write',
+    ]);
+    expect(registry.list().map((tool) => tool.toolId)).toEqual(['test/echo']);
+  });
+
   it('rejects duplicate tool IDs', () => {
     const registry = new ToolRegistry();
     const handler: ToolHandler = async (_context: ToolContext, input: unknown) => ({

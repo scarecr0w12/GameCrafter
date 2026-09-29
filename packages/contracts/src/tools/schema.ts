@@ -43,7 +43,7 @@ export function minAccessMode(left: AccessMode, right: AccessMode): AccessMode {
 
 export const ToolDefinitionSchema = Type.Object(
   {
-    toolId: Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' }),
+    toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
     title: Type.String(),
     description: Type.String(),
     inputSchema: Type.Unknown(),
@@ -102,7 +102,7 @@ export const ToolCallRecordSchema = Type.Object(
     projectId: Type.String({ format: 'uuid' }),
     taskId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
     agentId: Type.Union([Type.String(), Type.Null()]),
-    toolId: Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' }),
+    toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
     input: Type.Unknown(),
     accessMode: AccessModeSchema,
     decision: ToolDecisionSchema,
@@ -124,7 +124,7 @@ export const ApprovalRequestSchema = Type.Object(
     approvalId: Type.String({ format: 'uuid' }),
     projectId: Type.String({ format: 'uuid' }),
     callId: Type.String({ format: 'uuid' }),
-    toolId: Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' }),
+    toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
     sideEffects: SideEffectSchema,
     summary: Type.String(),
     input: Type.Unknown(),

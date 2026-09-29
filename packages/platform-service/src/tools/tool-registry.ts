@@ -1,5 +1,6 @@
 import {
   compile,
+  compileJsonSchema2020,
   ToolDefinitionSchema,
   ValidationError,
   type AccessMode,
@@ -43,11 +44,17 @@ export class ToolRegistry {
       throw new Error(`Tool already registered: ${definition.toolId}`);
     }
     compile<ToolDefinition>(ToolDefinitionSchema).assert(definition);
-    const inputValidator = compile<unknown>(
-      definition.inputSchema as Parameters<typeof compile>[0],
-    );
+    const inputValidator = definition.source.startsWith('mcp:')
+      ? compileJsonSchema2020<unknown>(
+          definition.inputSchema as Parameters<typeof compileJsonSchema2020>[0],
+        )
+      : compile<unknown>(definition.inputSchema as Parameters<typeof compile>[0]);
     const outputValidator = definition.outputSchema
-      ? compile<unknown>(definition.outputSchema as Parameters<typeof compile>[0])
+      ? definition.source.startsWith('mcp:')
+        ? compileJsonSchema2020<unknown>(
+            definition.outputSchema as Parameters<typeof compileJsonSchema2020>[0],
+          )
+        : compile<unknown>(definition.outputSchema as Parameters<typeof compile>[0])
       : undefined;
     this.tools.set(definition.toolId, {
       definition: { ...definition, capabilities: [...definition.capabilities] },
@@ -55,6 +62,20 @@ export class ToolRegistry {
       outputValidator,
       handler,
     });
+  }
+
+  unregister(toolId: string): boolean {
+    return this.tools.delete(toolId);
+  }
+
+  unregisterSource(source: string): string[] {
+    const removed: string[] = [];
+    for (const [toolId, tool] of this.tools) {
+      if (tool.definition.source !== source) continue;
+      this.tools.delete(toolId);
+      removed.push(toolId);
+    }
+    return removed.sort((left, right) => left.localeCompare(right));
   }
 
   list(): ToolDefinition[] {

@@ -37,6 +37,12 @@ export class PlatformServiceConnection {
   private readonly toolCalledListeners = new Set<
     (event: RpcNotificationParams<'tool/called'>) => void
   >();
+  private readonly mcpStateChangedListeners = new Set<
+    (event: RpcNotificationParams<'mcp/stateChanged'>) => void
+  >();
+  private readonly mcpInputRequiredListeners = new Set<
+    (event: RpcNotificationParams<'mcp/inputRequired'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -94,6 +100,20 @@ export class PlatformServiceConnection {
     return () => this.toolCalledListeners.delete(listener);
   }
 
+  onMcpStateChanged(
+    listener: (event: RpcNotificationParams<'mcp/stateChanged'>) => void,
+  ): () => void {
+    this.mcpStateChangedListeners.add(listener);
+    return () => this.mcpStateChangedListeners.delete(listener);
+  }
+
+  onMcpInputRequired(
+    listener: (event: RpcNotificationParams<'mcp/inputRequired'>) => void,
+  ): () => void {
+    this.mcpInputRequiredListeners.add(listener);
+    return () => this.mcpInputRequiredListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -136,6 +156,12 @@ export class PlatformServiceConnection {
         });
         client.onNotification('tool/called', (event) => {
           for (const listener of this.toolCalledListeners) listener(event);
+        });
+        client.onNotification('mcp/stateChanged', (event) => {
+          for (const listener of this.mcpStateChangedListeners) listener(event);
+        });
+        client.onNotification('mcp/inputRequired', (event) => {
+          for (const listener of this.mcpInputRequiredListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

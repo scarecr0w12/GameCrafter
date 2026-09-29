@@ -47,6 +47,18 @@ import {
   SkillRecordSchema,
   SkillValidationResultSchema,
 } from '../skills';
+import {
+  McpConnectionConfigSchema,
+  McpConnectionInputSchema,
+  McpConnectionListEntrySchema,
+  McpConnectionPatchSchema,
+  McpConnectionLogEntrySchema,
+  McpConnectionStateChangedSchema,
+  McpConnectionStateSchema,
+  McpInputRequiredSchema,
+  McpToolClassifySchema,
+  McpToolsResultSchema,
+} from '../mcp';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -282,7 +294,7 @@ export const RpcMethods = {
     params: Type.Object(
       {
         projectId: Type.String({ format: 'uuid' }),
-        toolId: Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' }),
+        toolId: Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' }),
         input: Type.Unknown(),
         taskId: Type.Optional(Type.String({ format: 'uuid' })),
         agentId: Type.Optional(Type.String()),
@@ -297,7 +309,7 @@ export const RpcMethods = {
       {
         projectId: Type.String({ format: 'uuid' }),
         taskId: Type.Optional(Type.String({ format: 'uuid' })),
-        toolId: Type.Optional(Type.String({ pattern: '^[a-z0-9-]+/[a-z0-9-]+$' })),
+        toolId: Type.Optional(Type.String({ pattern: '^[a-z0-9][a-z0-9-]{0,63}/[^\\s]+$' })),
         limit: Type.Optional(Type.Integer({ minimum: 1, default: 200 })),
       },
       { additionalProperties: false },
@@ -690,6 +702,100 @@ export const RpcMethods = {
     ),
     result: RoleRecordSchema,
   },
+  'mcp/list': {
+    params: Type.Object(
+      { projectId: Type.Optional(Type.String({ format: 'uuid' })) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { connections: Type.Array(McpConnectionListEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'mcp/add': {
+    params: Type.Object(
+      {
+        config: McpConnectionInputSchema,
+        credentials: Type.Optional(Type.Record(Type.String(), Type.String())),
+      },
+      { additionalProperties: false },
+    ),
+    result: McpConnectionConfigSchema,
+  },
+  'mcp/update': {
+    params: Type.Object(
+      {
+        connectionId: Type.String({ format: 'uuid' }),
+        patch: McpConnectionPatchSchema,
+        credentials: Type.Optional(Type.Record(Type.String(), Type.String())),
+      },
+      { additionalProperties: false },
+    ),
+    result: McpConnectionConfigSchema,
+  },
+  'mcp/remove': {
+    params: Type.Object(
+      { connectionId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ removed: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'mcp/connect': {
+    params: Type.Object(
+      { connectionId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: McpConnectionStateSchema,
+  },
+  'mcp/disconnect': {
+    params: Type.Object(
+      { connectionId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: McpConnectionStateSchema,
+  },
+  'mcp/tools': {
+    params: Type.Object(
+      { connectionId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: McpToolsResultSchema,
+  },
+  'mcp/refreshTools': {
+    params: Type.Object(
+      { connectionId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: McpToolsResultSchema,
+  },
+  'mcp/answer': {
+    params: Type.Object(
+      {
+        connectionId: Type.String({ format: 'uuid' }),
+        requestId: Type.String(),
+        responses: Type.Unknown(),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ answered: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'mcp/classifyTool': {
+    params: McpToolClassifySchema,
+    result: Type.Object({ tool: ToolDefinitionSchema }, { additionalProperties: false }),
+  },
+  'mcp/log': {
+    params: Type.Object(
+      {
+        connectionId: Type.String({ format: 'uuid' }),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { entries: Type.Array(McpConnectionLogEntrySchema) },
+      { additionalProperties: false },
+    ),
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -778,6 +884,8 @@ export const RpcNotifications = {
       { additionalProperties: false },
     ),
   },
+  'mcp/stateChanged': { params: McpConnectionStateChangedSchema },
+  'mcp/inputRequired': { params: McpInputRequiredSchema },
 } as const satisfies Record<string, { params: TSchema }>;
 
 export type RpcMethodName = keyof typeof RpcMethods;
@@ -827,6 +935,13 @@ export const RpcErrorCode = {
   RoleNotFound: -32055,
   RoleInvalid: -32056,
   ProjectUntrusted: -32057,
+  McpConnectionNotFound: -32060,
+  McpUnsupportedProtocolVersion: -32061,
+  McpConnectFailed: -32062,
+  McpRequestFailed: -32063,
+  McpSamplingRefused: -32064,
+  McpDockerUnavailable: -32065,
+  McpInputRequestNotFound: -32066,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

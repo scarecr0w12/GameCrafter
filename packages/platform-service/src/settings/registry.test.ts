@@ -10,7 +10,19 @@ describe('SettingsRegistry', () => {
 
     const description = registry.describe();
     expect(description.groups).toHaveLength(10);
-    expect(description.definitions).toHaveLength(23);
+    expect(description.definitions).toHaveLength(25);
+    expect(
+      description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
+    ).toMatchObject({
+      group: 'connections',
+      default: true,
+      scopes: ['platform', 'project'],
+    });
+    expect(
+      description.definitions.find(
+        (definition) => definition.key === 'mcp.reconnectBackoffSeconds',
+      ),
+    ).toMatchObject({ group: 'connections', default: 10, scopes: ['platform'] });
     expect(description.groups[0]?.id).toBe('general');
     expect(description.groups[9]?.id).toBe('logs');
   });

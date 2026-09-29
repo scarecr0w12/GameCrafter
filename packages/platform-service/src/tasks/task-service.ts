@@ -26,8 +26,15 @@ export interface TaskServiceEvents {
   taskQuestion(projectId: string, question: TaskQuestion): void;
 }
 
+interface ExternalQuestionWaiter {
+  questionId?: string;
+  resolve(answer: unknown): void;
+  removeAbort(): void;
+}
+
 export class TaskService {
   private readonly runtimes = new Map<string, ProjectTaskRuntime>();
+  private readonly externalQuestions = new Map<string, ExternalQuestionWaiter>();
   private supervisor?: TaskSupervisorPort;
 
   constructor(
@@ -109,6 +116,45 @@ export class TaskService {
     return this.runtime(projectId).graph.events(filter);
   }
 
+  async askQuestion(
+    projectId: string,
+    taskId: string,
+    prompt: string,
+    options: string[] | null = null,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    if (signal?.aborted) throw abortError(signal.reason);
+    const key = `${projectId}:${taskId}`;
+    if (this.externalQuestions.has(key)) {
+      throw new Error(`Task already has an external question pending: ${taskId}`);
+    }
+    let resolveAnswer: (answer: unknown) => void = () => undefined;
+    let rejectAnswer: (error: Error) => void = () => undefined;
+    const answer = new Promise<unknown>((resolve, reject) => {
+      resolveAnswer = resolve;
+      rejectAnswer = reject;
+    });
+    const onAbort = () => {
+      this.externalQuestions.delete(key);
+      rejectAnswer(abortError(signal?.reason));
+    };
+    const waiter: ExternalQuestionWaiter = {
+      resolve: resolveAnswer,
+      removeAbort: () => signal?.removeEventListener('abort', onAbort),
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    this.externalQuestions.set(key, waiter);
+    try {
+      const question = this.runtime(projectId).graph.addQuestion(taskId, prompt, options);
+      waiter.questionId = question.questionId;
+      return await answer;
+    } catch (error) {
+      this.externalQuestions.delete(key);
+      waiter.removeAbort();
+      throw error;
+    }
+  }
+
   async answer(
     projectId: string,
     taskId: string,
@@ -116,6 +162,14 @@ export class TaskService {
     answer: unknown,
   ): Promise<TaskRecord> {
     const task = this.runtime(projectId).graph.answerQuestion(taskId, questionId, answer);
+    const key = `${projectId}:${taskId}`;
+    const externalQuestion = this.externalQuestions.get(key);
+    if (externalQuestion?.questionId === questionId) {
+      this.externalQuestions.delete(key);
+      externalQuestion.removeAbort();
+      externalQuestion.resolve(answer);
+      return task;
+    }
     await this.supervisor?.answerTask(projectId, taskId, questionId, answer);
     return task;
   }
@@ -125,4 +179,10 @@ export class TaskService {
       .flatMap((projectId) => this.runtime(projectId).graph.questions(pendingOnly))
       .sort((left, right) => left.askedAt.localeCompare(right.askedAt));
   }
+}
+
+function abortError(reason: unknown): Error {
+  const error = new Error(reason === undefined ? 'Question was cancelled' : String(reason));
+  error.name = 'AbortError';
+  return error;
 }

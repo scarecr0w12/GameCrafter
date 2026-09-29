@@ -5,6 +5,14 @@ import {
   type AccessMode,
   type ApprovalRequest,
   type EffectiveSetting,
+  type ExecutionMode,
+  type McpConnectionConfig,
+  type McpConnectionInput,
+  type McpConnectionListEntry,
+  type McpConnectionLogEntry,
+  type McpConnectionPatch,
+  type McpConnectionState,
+  type McpToolsResult,
   type Model,
   type ModelCapabilities,
   type ModelPool,
@@ -23,6 +31,7 @@ import {
   type ProjectSkillEntry,
   type ProjectSummary,
   type ServiceInfo,
+  type SideEffect,
   type TaskCreateInput,
   type TaskRecord,
   type ToolCallRecord,
@@ -45,6 +54,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeApprovalRequestedListener?: () => void;
   private removeApprovalResolvedListener?: () => void;
   private removeToolCalledListener?: () => void;
+  private removeMcpStateChangedListener?: () => void;
+  private removeMcpInputRequiredListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -60,6 +71,8 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeApprovalRequestedListener?.();
     this.removeApprovalResolvedListener?.();
     this.removeToolCalledListener?.();
+    this.removeMcpStateChangedListener?.();
+    this.removeMcpInputRequiredListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -82,6 +95,12 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     });
     this.removeToolCalledListener = this.platformConnection.onToolCalled((event) => {
       this.client?.onToolCalled(event);
+    });
+    this.removeMcpStateChangedListener = this.platformConnection.onMcpStateChanged((event) => {
+      this.client?.onMcpStateChanged(event);
+    });
+    this.removeMcpInputRequiredListener = this.platformConnection.onMcpInputRequired((event) => {
+      this.client?.onMcpInputRequired(event);
     });
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -412,6 +431,84 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   async trustProject(projectId: string, trusted: boolean): Promise<ProjectSummary> {
     const client = await this.getPlatformClient();
     return client.call('project/trust', { projectId, trusted });
+  }
+
+  async listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('mcp/list', { projectId })).connections;
+  }
+
+  async addMcpConnection(
+    config: McpConnectionInput,
+    credentials?: Record<string, string>,
+  ): Promise<McpConnectionConfig> {
+    const client = await this.getPlatformClient();
+    return client.call('mcp/add', { config, ...(credentials ? { credentials } : {}) });
+  }
+
+  async updateMcpConnection(
+    connectionId: string,
+    patch: McpConnectionPatch,
+    credentials?: Record<string, string>,
+  ): Promise<McpConnectionConfig> {
+    const client = await this.getPlatformClient();
+    return client.call('mcp/update', {
+      connectionId,
+      patch,
+      ...(credentials ? { credentials } : {}),
+    });
+  }
+
+  async removeMcpConnection(connectionId: string): Promise<void> {
+    const client = await this.getPlatformClient();
+    await client.call('mcp/remove', { connectionId });
+  }
+
+  async connectMcpConnection(connectionId: string): Promise<McpConnectionState> {
+    const client = await this.getPlatformClient();
+    return client.call('mcp/connect', { connectionId });
+  }
+
+  async disconnectMcpConnection(connectionId: string): Promise<McpConnectionState> {
+    const client = await this.getPlatformClient();
+    return client.call('mcp/disconnect', { connectionId });
+  }
+
+  async listMcpTools(connectionId: string): Promise<McpToolsResult> {
+    const client = await this.getPlatformClient();
+    return client.call('mcp/tools', { connectionId });
+  }
+
+  async refreshMcpTools(connectionId: string): Promise<McpToolsResult> {
+    const client = await this.getPlatformClient();
+    return client.call('mcp/refreshTools', { connectionId });
+  }
+
+  async answerMcpInput(connectionId: string, requestId: string, responses: unknown): Promise<void> {
+    const client = await this.getPlatformClient();
+    await client.call('mcp/answer', { connectionId, requestId, responses });
+  }
+
+  async classifyMcpTool(
+    connectionId: string,
+    toolName: string,
+    sideEffects?: SideEffect,
+    executionMode?: ExecutionMode,
+  ): Promise<ToolDefinition> {
+    const client = await this.getPlatformClient();
+    return (
+      await client.call('mcp/classifyTool', {
+        connectionId,
+        toolName,
+        sideEffects,
+        executionMode,
+      })
+    ).tool;
+  }
+
+  async listMcpLogs(connectionId: string, limit?: number): Promise<McpConnectionLogEntry[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('mcp/log', { connectionId, limit })).entries;
   }
 
   async stopServiceOnWindowClose(): Promise<void> {

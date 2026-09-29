@@ -2,6 +2,14 @@ import type {
   AccessMode,
   ApprovalRequest,
   EffectiveSetting,
+  ExecutionMode,
+  McpConnectionConfig,
+  McpConnectionInput,
+  McpConnectionListEntry,
+  McpConnectionLogEntry,
+  McpConnectionPatch,
+  McpConnectionState,
+  McpToolsResult,
   Model,
   ModelCapabilities,
   ModelPool,
@@ -21,6 +29,7 @@ import type {
   SkillEnablement,
   SkillRecord,
   ServiceInfo,
+  SideEffect,
   SettingDefinition,
   SettingGroup,
   SettingsScope,
@@ -184,6 +193,29 @@ export interface ControlRoomService {
   listRoles(projectId?: string): Promise<RoleRecord[]>;
   getRole(name: string, projectId?: string): Promise<RoleRecord>;
   trustProject(projectId: string, trusted: boolean): Promise<ProjectSummary>;
+  listMcpConnections(projectId?: string): Promise<McpConnectionListEntry[]>;
+  addMcpConnection(
+    config: McpConnectionInput,
+    credentials?: Record<string, string>,
+  ): Promise<McpConnectionConfig>;
+  updateMcpConnection(
+    connectionId: string,
+    patch: McpConnectionPatch,
+    credentials?: Record<string, string>,
+  ): Promise<McpConnectionConfig>;
+  removeMcpConnection(connectionId: string): Promise<void>;
+  connectMcpConnection(connectionId: string): Promise<McpConnectionState>;
+  disconnectMcpConnection(connectionId: string): Promise<McpConnectionState>;
+  listMcpTools(connectionId: string): Promise<McpToolsResult>;
+  refreshMcpTools(connectionId: string): Promise<McpToolsResult>;
+  answerMcpInput(connectionId: string, requestId: string, responses: unknown): Promise<void>;
+  classifyMcpTool(
+    connectionId: string,
+    toolName: string,
+    sideEffects?: SideEffect,
+    executionMode?: ExecutionMode,
+  ): Promise<ToolDefinition>;
+  listMcpLogs(connectionId: string, limit?: number): Promise<McpConnectionLogEntry[]>;
 }
 
 export interface ControlRoomClient {
@@ -194,5 +226,7 @@ export interface ControlRoomClient {
   onApprovalRequested(event: RpcNotificationParams<'broker/approvalRequested'>): void;
   onApprovalResolved(event: RpcNotificationParams<'broker/approvalResolved'>): void;
   onToolCalled(event: RpcNotificationParams<'tool/called'>): void;
+  onMcpStateChanged(event: RpcNotificationParams<'mcp/stateChanged'>): void;
+  onMcpInputRequired(event: RpcNotificationParams<'mcp/inputRequired'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

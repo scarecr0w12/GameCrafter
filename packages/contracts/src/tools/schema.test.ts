@@ -57,6 +57,21 @@ describe('tool contracts', () => {
     expect(minAccessMode('ask-always', 'full')).toBe('ask-always');
   });
 
+  it('allows MCP tool namespaced IDs that preserve server tool names', () => {
+    const mcpDefinition = {
+      ...definition,
+      toolId: 'dungeon-tools/write_file',
+      source: 'mcp:019535d4-2c00-7000-8000-000000000204',
+    };
+    expect(compile(ToolDefinitionSchema).check(mcpDefinition)).toBe(true);
+    expect(
+      compile(ToolCallRecordSchema).check({
+        ...call,
+        toolId: mcpDefinition.toolId,
+      }),
+    ).toBe(true);
+  });
+
   it('validates tool definitions, call records, and approvals', () => {
     expect(compile<ToolDefinition>(ToolDefinitionSchema).check(definition)).toBe(true);
     expect(compile<ToolCallRecord>(ToolCallRecordSchema).check(call)).toBe(true);
