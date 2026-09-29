@@ -25,6 +25,7 @@ It holds both the design documents (`docs/`) and the application code (`packages
 - `docs/SKILLS_AGENTS_AND_TOOLS.md`: contracts for skills, agent roles, MCP connections, connectors, and isolation direction.
 - `docs/OPEN_DECISIONS.md`: decision register. When a decision is settled, change its status in place and link the resolving section; do not delete entries.
 - `docs/DEVELOPMENT_PLAN.md`: work packages ordered by technical dependency, each mapped to design sections and register entries, with "done when" criteria. This is the only document allowed to express ordering, and the ordering is dependency, not product phasing.
+- `docs/STATUS.md`: summary of what exists, its evidence level (fake-tested vs. live-verified), and remaining work grouped by area. Update it in the same change that changes a work-package status or resolves a register entry; the plan remains the authoritative per-package status text.
 - `docs/research/*.md`: sourced reference notes. Every factual claim needs a source URL; mark anything unverified as "unverified". Include a "Last researched" date.
 
 ## Conventions

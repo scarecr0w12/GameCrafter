@@ -11,6 +11,7 @@ This repository holds both the design and the code. The design describes the com
 - [Skills, agent roles, and tool connections](docs/SKILLS_AGENTS_AND_TOOLS.md): installable skills (Agent Skills format), agent role packages, MCP connections, and engine/DCC connectors.
 - [Decision register](docs/OPEN_DECISIONS.md): every identified unresolved product, technical, and verification decision, with recommended defaults and status.
 - [Development plan](docs/DEVELOPMENT_PLAN.md): work packages ordered by technical dependency, what each implements, and their current status.
+- [Implementation status and remaining work](docs/STATUS.md): what exists today, how far it has been verified, and what is still open, grouped by area.
 - [Research notes](docs/research/): sourced reference material. Each note carries a "Last researched" date; re-verify before relying on a fast-moving fact.
 
 ## Code
