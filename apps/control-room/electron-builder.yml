@@ -2,6 +2,7 @@ appId: ai.gamecrafter.controlroom
 productName: GameCrafter
 artifactName: ${productName}-${version}-${arch}.${ext}
 asar: false
+# Theia rebuilds for the host; electron-builder must rebuild native addons for the target OS.
 npmRebuild: true
 files:
   - lib/**/*

@@ -9,9 +9,9 @@ Evidence levels used below follow the plan's rule: **Implemented** means behavio
 ## 1. Snapshot
 
 - WP0–WP18 are **Implemented (unit/integration-tested)**; WP19 is **In progress**.
-- The latest full gate (`npx turbo run build typecheck lint test --concurrency=1` plus the Prettier check) passed on the current WP19 working tree: 29/29 Turbo tasks; 85 platform-service files / 298 tests, 19 contracts files / 64 tests, and 8 Control Room extension files / 16 tests; the service client, plugin SDK, and sample plugin also passed. Browser and Electron app builds completed; Electron typecheck/lint/test are configured as skipped in Turbo. Linux AppImage and DEB artifacts also built locally. The hosted release workflow and Windows target have not run.
+- The latest full gate (`npx turbo run build typecheck lint test --concurrency=1` plus the Prettier check) passed on the WP19 update implementation: 29/29 Turbo tasks; 85 platform-service files / 298 tests, 19 contracts files / 64 tests, and 8 Control Room extension files / 16 tests; the service client, plugin SDK, and sample plugin also passed. Browser and Electron app builds completed; Electron typecheck/lint/test are configured as skipped in Turbo. Linux AppImage/DEB artifacts and a native Windows x64 NSIS installer have since built locally. The unpacked Windows app launched without the native-module error; the hosted release workflow has not run.
 - **No component has reached Verified (live)** except the Godot headless layer (real Godot 4.7.2 binary), the Blender headless layer (real Blender 5.2.2 LTS via WSL interop), and the Qdrant adapter (Docker-run Qdrant when `docker` is available). Everything that talks to a model provider, generation provider, Unity, Unreal, a live editor bridge, or a community MCP server is fake-tested only.
-- Windows has never been exercised: named-pipe transport and AppContainer isolation remain stubbed; the NSIS installer is configured but not built or tested.
+- Windows x64 packaging and app startup have been exercised from `E:\Development\GameCrafter`; the packaged `drivelist.node` is a PE x64 binary. NSIS install/uninstall, named-pipe behavior, and AppContainer isolation remain unverified.
 - The CI and desktop release workflows (`.github/workflows/ci.yml`, `.github/workflows/release.yml`) have not run on hosted runners.
 
 ## 2. Work package status
@@ -37,7 +37,7 @@ Evidence levels used below follow the plan's rule: **Implemented** means behavio
 | WP16 | DCC connectors                         | Implemented | Blender live (headless, via WSL interop); Maya/3ds Max/C4D/ZBrush fake executables | No live DCC bridge; four tools unverified against real apps; C05 stays Verify                                                    |
 | WP17 | Backup and restore                     | Implemented | Local destination real; S3/FTP/Drive fake servers                                  | No live remote destination; no in-place restore; no plugin destinations; no Windows drill                                        |
 | WP18 | Change graph and swarm coordinator     | Implemented | Scripted fake-model integration; real Git worktrees; browser smoke of Swarm view   | No live model provider, engine/DCC session, or Windows validation                                                                |
-| WP19 | Packaging and release                  | In progress | Update manager/RPC unit and integration tests; local Linux AppImage/DEB builds     | Installation remains manual; no previous-installer capture for rollback; signing-key provisioning and Windows release validation |
+| WP19 | Packaging and release                  | In progress | Update manager/RPC tests; local Linux installers; native Windows x64 installer and app-start smoke | Installation remains manual; no previous-installer capture for rollback; signing-key provisioning and hosted release validation |
 
 ## 3. What exists today, by architectural area
 

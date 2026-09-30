@@ -15,7 +15,7 @@
     "build:prod": "theia rebuild:electron --cacheRoot ../.. && theia build",
     "start": "theia start --plugins=local-dir:../../plugins",
     "package:linux": "npm run build:prod && electron-builder --linux",
-    "package:win": "npm run build:prod && electron-builder --win",
+    "package:win": "npm run build:prod && electron-builder --win && node scripts/verify-windows-native.cjs",
     "package:dir": "npm run build:prod && electron-builder --dir",
     "download:plugins": "theia download:plugins --rate-limit=15 --parallel=false",
     "clean": "theia clean",
@@ -87,5 +87,8 @@
     "@types/react-dom": "19.3.0",
     "electron": "42.8.1",
     "electron-builder": "26.16.1"
+  },
+  "optionalDependencies": {
+    "@vscode/windows-ca-certs": "0.3.4"
   }
 }
