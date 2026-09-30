@@ -8,6 +8,7 @@ jobs:
   quality:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
@@ -16,6 +17,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev
+      - if: runner.os == 'Windows'
+        uses: ./.github/actions/ensure-windows-spectre
       - run: npm ci
       - run: npx turbo run build typecheck lint test
 
@@ -29,6 +34,7 @@ jobs:
           cache: npm
       - run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev
       - run: npm ci
+      - run: npx turbo run build --filter=@gamecrafter/control-room-browser^...
       - run: npm run download:plugins
       - run: npm run build -w @gamecrafter/control-room-browser
       # Electron rebuild is left to the desktop release workflow.

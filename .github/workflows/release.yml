@@ -26,22 +26,7 @@ jobs:
           node-version: 24
           cache: npm
       - if: runner.os == 'Windows'
-        name: Ensure MSVC Spectre libraries
-        shell: powershell
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $installPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (-not $installPath) { throw 'Visual Studio C++ x64/x86 tools were not found.' }
-          $versionFile = Join-Path $installPath 'VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt'
-          $toolsetVersion = (Get-Content $versionFile -Raw).Trim()
-          $spectreLib = Join-Path $installPath "VC\Tools\MSVC\$toolsetVersion\lib\spectre\x64"
-          if (-not (Test-Path $spectreLib)) {
-            $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
-            $arguments = @('modify', '--installPath', "`"$installPath`"", '--add', 'Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre', '--quiet', '--norestart') -join ' '
-            $result = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
-            if ($result.ExitCode -notin @(0, 3010)) { throw "VS component installation failed with exit code $($result.ExitCode)." }
-          }
-          if (-not (Test-Path $spectreLib)) { throw "MSVC Spectre x64 libraries are still missing at $spectreLib." }
+        uses: ./.github/actions/ensure-windows-spectre
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev
       - run: npm ci
