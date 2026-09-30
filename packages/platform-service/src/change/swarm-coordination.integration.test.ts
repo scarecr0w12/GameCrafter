@@ -140,7 +140,6 @@ function scriptedResponse(body: Record<string, unknown>): ScriptedResponse {
           goal: taskBGoal,
           title: 'B: Aria map and gameplay note',
           touches: [
-            { resource: `file:${ariaPath}`, intent: 'write' },
             { resource: 'canon:char.aria-vale', intent: 'write' },
             { resource: 'file:game/README.md', intent: 'write' },
           ],
@@ -205,7 +204,7 @@ function scriptedResponse(body: Record<string, unknown>): ScriptedResponse {
           ),
         },
         'write-task-b-aria',
-        900,
+        10_000,
       );
     }
     if (taskBTurn === 2) {

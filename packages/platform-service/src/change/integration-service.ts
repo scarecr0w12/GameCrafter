@@ -589,9 +589,9 @@ export class IntegrationService {
       );
     } catch (error) {
       await this.git(['merge', '--abort'], projectPath).catch(() => undefined);
-      const conflicts = (
-        await this.detectGitConflicts(projectPath, integration.branch, integration.changedFiles)
-      ).map((file): IntegrationConflict => ({ file, kind: 'git-conflict', otherTaskId: null }));
+      const conflicts = (await this.detectGitConflicts(projectPath, integration.branch)).map(
+        (file): IntegrationConflict => ({ file, kind: 'git-conflict', otherTaskId: null }),
+      );
       const next = this.save({
         ...integration,
         status: 'conflict',
@@ -745,11 +745,7 @@ export class IntegrationService {
       );
       if (overlap) conflicts.push({ file, kind: 'declared-overlap', otherTaskId: overlap.taskId });
     }
-    const gitConflicts = await this.detectGitConflicts(
-      projectPath,
-      integration.branch!,
-      changedFiles,
-    );
+    const gitConflicts = await this.detectGitConflicts(projectPath, integration.branch!);
     for (const file of gitConflicts)
       conflicts.push({ file, kind: 'git-conflict', otherTaskId: null });
     const unique = new Map<string, IntegrationConflict>();
@@ -760,11 +756,7 @@ export class IntegrationService {
     return [...unique.values()];
   }
 
-  private async detectGitConflicts(
-    projectPath: string,
-    branch: string,
-    changedFiles: string[],
-  ): Promise<string[]> {
+  private async detectGitConflicts(projectPath: string, branch: string): Promise<string[]> {
     const worktreeDirectory = String(
       this.options.settings.resolve('coordination.worktreeDirectory', {
         projectId: this.options.projects.getByPath(projectPath)?.projectId,
@@ -778,11 +770,15 @@ export class IntegrationService {
     try {
       await this.git(['merge', '--no-commit', '--no-ff', branch], checkPath);
       return [];
-    } catch {
+    } catch (error) {
       const files = splitLines(
         await this.git(['diff', '--name-only', '--diff-filter=U'], checkPath).catch(() => ''),
       );
-      return files.length > 0 ? files : changedFiles;
+      if (files.length > 0) return files;
+      throw new Error(
+        `Unable to check merge conflicts for ${branch}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
     } finally {
       await this.git(['merge', '--abort'], checkPath).catch(() => undefined);
       await this.git(['worktree', 'remove', '--force', checkPath], projectPath).catch(
