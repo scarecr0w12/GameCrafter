@@ -14,7 +14,11 @@ const taskAGoal = "A: add a lantern detail to Aria's harbor scene.";
 const taskBGoal = 'B: add a map detail to Aria and document the gameplay change.';
 const ariaPath = 'docs/canon/characters/aria.md';
 
-type ScriptedResponse = { response: unknown; delayMs?: number };
+type ScriptedResponse = {
+  response: unknown;
+  delayMs?: number;
+  waitForReconciliationGate?: boolean;
+};
 
 let root: string | undefined;
 let service: PlatformService | undefined;
@@ -26,6 +30,8 @@ let coordinatorTurn = 0;
 let taskATurn = 0;
 let taskBTurn = 0;
 let reconcileTurn = 0;
+let reconciliationGate: Promise<void> = Promise.resolve();
+let releaseReconciliationGate: () => void = () => undefined;
 const providerRequests: Record<string, unknown>[] = [];
 
 function toolResponse(
@@ -221,7 +227,13 @@ function scriptedResponse(body: Record<string, unknown>): ScriptedResponse {
 
   if (goal.startsWith('Reconcile the overlapping changes')) {
     const turn = reconcileTurn++;
-    if (turn === 0 || turn === 3) {
+    if (turn === 0) {
+      return {
+        ...toolResponse('board/read', {}, `reconcile-review-${turn}`),
+        waitForReconciliationGate: true,
+      };
+    }
+    if (turn === 3) {
       return toolResponse('board/read', {}, `reconcile-review-${turn}`, 1_500);
     }
     if (turn === 1) {
@@ -287,6 +299,9 @@ async function startFakeModelServer(): Promise<string> {
   taskATurn = 0;
   taskBTurn = 0;
   reconcileTurn = 0;
+  reconciliationGate = new Promise<void>((resolve) => {
+    releaseReconciliationGate = resolve;
+  });
   fakeServer = createServer((request, response) => {
     let body = '';
     request.on('data', (chunk) => (body += chunk.toString()));
@@ -319,7 +334,8 @@ async function startFakeModelServer(): Promise<string> {
         response.writeHead(200, { 'content-type': 'application/json' });
         response.end(JSON.stringify(scripted.response));
       };
-      if (scripted.delayMs && scripted.delayMs > 0) setTimeout(send, scripted.delayMs);
+      if (scripted.waitForReconciliationGate) void reconciliationGate.then(send);
+      else if (scripted.delayMs && scripted.delayMs > 0) setTimeout(send, scripted.delayMs);
       else send();
     });
   });
@@ -400,6 +416,7 @@ async function waitForIntegrations(
 
 describe('swarm coordination through the RPC harness', () => {
   afterEach(async () => {
+    releaseReconciliationGate();
     client?.close();
     client = undefined;
     await service?.stop();
@@ -573,6 +590,7 @@ describe('swarm coordination through the RPC harness', () => {
     expect(ariaAfterFirstMerge).not.toContain('discovers a map beneath the north pier');
 
     const reconcileTaskId = String(integrationB.reconcileTaskId);
+    releaseReconciliationGate();
     const reconcileTask = await waitForTask(reconcileTaskId);
     expect(reconcileTask.state).toBe('succeeded');
     await waitForIntegrations([reconcileTaskId], (integrations) =>

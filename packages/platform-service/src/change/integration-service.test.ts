@@ -114,9 +114,16 @@ describe('IntegrationService', () => {
       projectId: fixture.projectId,
     });
     await fixture.integration.processTask(never.task);
-    expect(fixture.changes.integrationForTask(fixture.projectId, never.task.taskId)?.status).toBe(
-      'ready',
+    const neverIntegration = fixture.changes.integrationForTask(
+      fixture.projectId,
+      never.task.taskId,
     );
+    expect(
+      neverIntegration,
+      `Integration record: ${JSON.stringify(neverIntegration)}`,
+    ).toMatchObject({
+      status: 'ready',
+    });
     expect(
       execFileSync('git', ['status', '--porcelain'], {
         cwd: fixture.projectPath,
