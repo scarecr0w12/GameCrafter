@@ -27,6 +27,12 @@ import { ChangeService } from './change-service';
 import type { TaskWorktree, WorktreeManager } from './worktree-manager';
 
 const execFileAsync = promisify(execFile);
+const integrationGitIdentity = [
+  '-c',
+  'user.name=GameCrafter',
+  '-c',
+  'user.email=gamecrafter@localhost',
+];
 
 export interface ValidatedTaskResult {
   result: TaskResult;
@@ -579,6 +585,7 @@ export class IntegrationService {
     try {
       await this.git(
         [
+          ...integrationGitIdentity,
           'merge',
           '--no-ff',
           '-m',
@@ -768,7 +775,10 @@ export class IntegrationService {
     );
     await this.git(['worktree', 'add', '--detach', checkPath, 'HEAD'], projectPath);
     try {
-      await this.git(['merge', '--no-commit', '--no-ff', branch], checkPath);
+      await this.git(
+        [...integrationGitIdentity, 'merge', '--no-commit', '--no-ff', branch],
+        checkPath,
+      );
       return [];
     } catch (error) {
       const files = splitLines(

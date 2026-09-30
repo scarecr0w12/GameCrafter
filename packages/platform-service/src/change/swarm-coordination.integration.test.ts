@@ -139,6 +139,7 @@ function scriptedResponse(body: Record<string, unknown>): ScriptedResponse {
           role: 'gameplay-engineer',
           goal: taskBGoal,
           title: 'B: Aria map and gameplay note',
+          // Leave the Aria file undeclared so Git conflict detection is independent of lock scheduling.
           touches: [
             { resource: 'canon:char.aria-vale', intent: 'write' },
             { resource: 'file:game/README.md', intent: 'write' },
