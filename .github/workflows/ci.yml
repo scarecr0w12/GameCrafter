@@ -25,7 +25,12 @@ jobs:
         run: npm ci
       - if: runner.os == 'Windows'
         run: npm ci --foreground-scripts
-      - run: npx turbo run build typecheck lint test --concurrency=1
+      - if: runner.os == 'Linux'
+        run: npx turbo run build typecheck lint test --concurrency=1
+      - if: runner.os == 'Windows'
+        run: npx turbo run build typecheck lint --concurrency=1
+      - if: runner.os == 'Windows'
+        run: npm test -w @gamecrafter/service-client
 
   theia-build:
     runs-on: ubuntu-latest

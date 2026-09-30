@@ -11,11 +11,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, type TestContext } from 'vitest';
 import { RpcErrorCode, type PluginManifest } from '@gamecrafter/contracts';
 import { connect } from '@gamecrafter/service-client';
 import { Database } from '../db/database';
 import type { IsolationLauncher } from './isolation/types';
+import { BwrapLauncher } from './isolation/bwrap-launcher';
 import { resolvePaths } from '../paths';
 import { PlatformService } from '../service';
 
@@ -23,6 +24,17 @@ let service: PlatformService | undefined;
 let client: Awaited<ReturnType<typeof connect>> | undefined;
 let fakeModelServer: ReturnType<typeof createServer> | undefined;
 const temporaryDirectories: string[] = [];
+const bwrapProbe =
+  process.platform === 'linux' ? new BwrapLauncher().probe() : Promise.resolve(undefined);
+
+async function skipWithoutBwrap(context: TestContext): Promise<void> {
+  const report = await bwrapProbe;
+  if (!report?.available) {
+    context.skip(
+      `Requires a working Bubblewrap network namespace: ${report?.checks.map((check) => check.detail).join('; ') ?? 'non-Linux platform'}`,
+    );
+  }
+}
 
 afterEach(async () => {
   client?.close();
@@ -39,7 +51,8 @@ afterEach(async () => {
 });
 
 describe('plugin service integration', () => {
-  it('installs, enables, starts, calls, renders, stops, and uninstalls the sample plugin', async () => {
+  it('installs, enables, starts, calls, renders, stops, and uninstalls the sample plugin', async (context) => {
+    await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-service-'));
     temporaryDirectories.push(root);
     const profileDir = path.join(root, 'profile');
@@ -197,7 +210,8 @@ describe('plugin service integration', () => {
     });
   }, 60_000);
 
-  it('starts and calls a Python plugin worker over the shared JSON-RPC protocol', async () => {
+  it('starts and calls a Python plugin worker over the shared JSON-RPC protocol', async (context) => {
+    await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-python-plugin-'));
     temporaryDirectories.push(root);
     const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
@@ -296,7 +310,8 @@ describe('plugin service integration', () => {
     await client.call('plugin/uninstall', { pluginId: 'python-fixture' });
   }, 60_000);
 
-  it('retries a crashing plugin worker up to the configured restart limit', async () => {
+  it('retries a crashing plugin worker up to the configured restart limit', async (context) => {
+    await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-crash-'));
     temporaryDirectories.push(root);
     const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
@@ -365,7 +380,8 @@ describe('plugin service integration', () => {
     await client.call('plugin/uninstall', { pluginId: 'crash-fixture' });
   }, 30_000);
 
-  it('fails closed without isolation and only runs unisolated for Full access when enabled', async () => {
+  it('fails closed without isolation and only runs unisolated for Full access when enabled', async (context) => {
+    if (process.platform !== 'linux') context.skip('Exercises the Linux isolation launcher.');
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-isolation-policy-'));
     temporaryDirectories.push(root);
     let isolatedLaunchAttempts = 0;
@@ -471,7 +487,8 @@ describe('plugin service integration', () => {
     await client.call('plugin/uninstall', { pluginId: 'sample-hello' });
   }, 30_000);
 
-  it('scopes plugin secrets to their owner, redacts logs, and removes them on uninstall', async () => {
+  it('scopes plugin secrets to their owner, redacts logs, and removes them on uninstall', async (context) => {
+    await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-secret-'));
     temporaryDirectories.push(root);
     const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
@@ -564,7 +581,8 @@ describe('plugin service integration', () => {
     await client.call('plugin/uninstall', { pluginId: 'secret-fixture' });
   }, 60_000);
 
-  it('routes host model completions and retains plugin usage after uninstall', async () => {
+  it('routes host model completions and retains plugin usage after uninstall', async (context) => {
+    await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-model-'));
     temporaryDirectories.push(root);
     fakeModelServer = createServer((request, response) => {

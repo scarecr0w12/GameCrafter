@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -19,7 +20,10 @@ describe('service client', () => {
   it('maps response errors to RpcError with the server code', async () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'gc-client-'));
     temporaryDirectories.push(directory);
-    const socketPath = path.join(directory, 'service.sock');
+    const socketPath =
+      process.platform === 'win32'
+        ? `\\\\.\\pipe\\gamecrafter-client-${randomUUID()}`
+        : path.join(directory, 'service.sock');
     const server = net.createServer((socket) => {
       const connection = createMessageConnection(
         new StreamMessageReader(socket),
