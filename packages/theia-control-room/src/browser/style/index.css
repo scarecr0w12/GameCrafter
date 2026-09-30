@@ -1408,6 +1408,113 @@
   color: var(--theia-successForeground);
 }
 
+.gamecrafter-swarm {
+  color: var(--theia-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.gamecrafter-swarm-header,
+.gamecrafter-swarm-form-row,
+.gamecrafter-swarm-task header,
+.gamecrafter-swarm-feedback {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gamecrafter-swarm-header {
+  justify-content: space-between;
+}
+
+.gamecrafter-swarm-header h1,
+.gamecrafter-swarm-header p,
+.gamecrafter-swarm-panel h2 {
+  margin: 0 0 6px;
+}
+
+.gamecrafter-swarm label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gamecrafter-swarm input,
+.gamecrafter-swarm textarea,
+.gamecrafter-swarm select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 8rem;
+}
+
+.gamecrafter-swarm-panel {
+  background: var(--theia-sideBar-background);
+  border: 1px solid var(--theia-widget-border);
+  border-radius: 4px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.gamecrafter-swarm-task-tree,
+.gamecrafter-swarm-task-tree ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.gamecrafter-swarm-task-tree > li {
+  padding-left: 0;
+}
+
+.gamecrafter-swarm-task {
+  border-left: 2px solid var(--theia-widget-border);
+  margin: 8px 0;
+  padding: 8px;
+}
+
+.gamecrafter-swarm-task header {
+  justify-content: space-between;
+}
+
+.gamecrafter-swarm-task p {
+  overflow-wrap: anywhere;
+}
+
+.gamecrafter-swarm-task progress {
+  max-width: 8rem;
+}
+
+.gamecrafter-swarm-highlight > .gamecrafter-swarm-task {
+  border-color: var(--theia-focusBorder);
+}
+
+.gamecrafter-swarm table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.gamecrafter-swarm th,
+.gamecrafter-swarm td {
+  border-bottom: 1px solid var(--theia-widget-border);
+  padding: 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.gamecrafter-swarm-error {
+  color: var(--theia-errorForeground);
+}
+
+.gamecrafter-swarm-notice {
+  color: var(--theia-successForeground);
+}
+
 @media (max-width: 900px) {
   .gamecrafter-knowledge-layout {
     grid-template-columns: minmax(0, 1fr);

@@ -629,6 +629,34 @@ function diskSource(
   };
 }
 
+export interface WalkedProjectFile {
+  path: string;
+  absolutePath: string;
+  size: number;
+  mtimeMs: number;
+}
+
+export function walkProjectFiles(projectPath: string): WalkedProjectFile[] {
+  const files: WalkedProjectFile[] = [];
+  for (const rootName of ['docs', 'game']) {
+    const root = path.join(projectPath, rootName);
+    if (!existsSync(root)) continue;
+    files.push(
+      ...walkFiles(root, rootName).map((file) => ({
+        path: file.path,
+        absolutePath: file.absolutePath,
+        size: file.stats.size,
+        mtimeMs: file.stats.mtimeMs,
+      })),
+    );
+  }
+  return files;
+}
+
+export function readProjectTextFile(filePath: string): string | null {
+  return readSafeText(filePath);
+}
+
 function walkTextFiles(
   root: string,
   rootName: string,

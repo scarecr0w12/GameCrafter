@@ -15,6 +15,7 @@ import { MODELS_OPEN_COMMAND_ID } from './models-view-contribution';
 import { SKILLS_OPEN_COMMAND_ID } from './skills-view-contribution';
 import { CONNECTIONS_OPEN_COMMAND_ID } from './connections-view-contribution';
 import { DISCUSSION_BOARD_OPEN_COMMAND_ID } from './discussion-board-view-contribution';
+import { SWARM_OPEN_COMMAND_ID } from './swarm-view-contribution';
 import { PLUGINS_OPEN_COMMAND_ID } from './plugins-catalog-view-contribution';
 import { ENGINE_OPEN_COMMAND_ID } from './engine-view-contribution';
 import { DCC_OPEN_COMMAND_ID } from './dcc-view-contribution';
@@ -119,6 +120,13 @@ export class ProjectHomeWidget extends ReactWidget {
             }
           >
             Discussion Board
+          </button>
+          <button
+            className="theia-button"
+            type="button"
+            onClick={() => void this.commandService.executeCommand(SWARM_OPEN_COMMAND_ID)}
+          >
+            Swarm
           </button>
           <button
             className="theia-button"

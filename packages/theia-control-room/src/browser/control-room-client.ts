@@ -61,6 +61,15 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly knowledgeRecordChangedEmitter = new Emitter<
     RpcNotificationParams<'knowledge/recordChanged'>
   >();
+  private readonly changeLockChangedEmitter = new Emitter<
+    RpcNotificationParams<'change/lockChanged'>
+  >();
+  private readonly changeIntegrationChangedEmitter = new Emitter<
+    RpcNotificationParams<'change/integrationChanged'>
+  >();
+  private readonly changeRequestChangedEmitter = new Emitter<
+    RpcNotificationParams<'change/requestChanged'>
+  >();
   private readonly serviceStatusEmitter = new Emitter<{
     connected: boolean;
     message?: string;
@@ -88,6 +97,9 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   readonly backupRunChanged = this.backupRunChangedEmitter.event;
   readonly knowledgeIndexChanged = this.knowledgeIndexChangedEmitter.event;
   readonly knowledgeRecordChanged = this.knowledgeRecordChangedEmitter.event;
+  readonly changeLockChanged = this.changeLockChangedEmitter.event;
+  readonly changeIntegrationChanged = this.changeIntegrationChangedEmitter.event;
+  readonly changeRequestChanged = this.changeRequestChangedEmitter.event;
   readonly serviceStatus = this.serviceStatusEmitter.event;
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
@@ -176,6 +188,18 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onKnowledgeRecordChanged(event: RpcNotificationParams<'knowledge/recordChanged'>): void {
     this.knowledgeRecordChangedEmitter.fire(event);
+  }
+
+  onChangeLockChanged(event: RpcNotificationParams<'change/lockChanged'>): void {
+    this.changeLockChangedEmitter.fire(event);
+  }
+
+  onChangeIntegrationChanged(event: RpcNotificationParams<'change/integrationChanged'>): void {
+    this.changeIntegrationChangedEmitter.fire(event);
+  }
+
+  onChangeRequestChanged(event: RpcNotificationParams<'change/requestChanged'>): void {
+    this.changeRequestChangedEmitter.fire(event);
   }
 
   onServiceStatus(status: { connected: boolean; message?: string }): void {

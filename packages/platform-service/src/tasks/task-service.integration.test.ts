@@ -111,6 +111,35 @@ describe('Task service integration', () => {
     ]);
   }, 60_000);
 
+  it('persists optional coordination metadata on created tasks', async () => {
+    await setProjectSetting('access.mode', 'full');
+    const created = await client!.call('task/create', {
+      projectId,
+      kind: 'noop.echo',
+      title: 'Coordination metadata',
+      goal: 'Persist touches and completion policy',
+      input: { message: 'metadata' },
+      touches: [{ resource: 'file:game/README.md', intent: 'write' }],
+      role: 'explorer',
+      assignee: { role: 'explorer', accessCeiling: 'full' },
+      isolation: 'worktree',
+      contract: { required: [], validators: [] },
+    });
+    const task = await client!.call('task/get', { projectId, taskId: created.task.taskId });
+
+    expect(task).toMatchObject({
+      touches: [{ resource: 'file:game/README.md', intent: 'write' }],
+      role: 'explorer',
+      isolation: 'worktree',
+      contract: { required: [], validators: [] },
+    });
+    expect(task.input).toMatchObject({
+      message: 'metadata',
+      role: { name: 'explorer', systemPrompt: expect.any(String) },
+    });
+    expect(task.assignee).toMatchObject({ role: 'explorer', accessCeiling: 'restricted' });
+  });
+
   it('holds dependents pending until success and blocks them after permanent failure', async () => {
     await setProjectSetting('agents.maxConcurrentPerProject', 1);
     const prerequisite = await createTask('noop.sleep', 'Prerequisite', 'Finish before dependent', {

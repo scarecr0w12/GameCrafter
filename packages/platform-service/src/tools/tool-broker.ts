@@ -9,6 +9,7 @@ import {
   uuidv7,
   type AccessMode,
   type ApprovalRequest,
+  type TaskRecord,
   type ToolCallError,
   type ToolCallRecord,
   type ToolDefinition,
@@ -17,6 +18,8 @@ import type { ProfileStore } from '../profile/profile-store';
 import type { ProjectDatabases } from '../projects/project-databases';
 import type { SettingsService } from '../settings/settings-service';
 import type { TaskService } from '../tasks/task-service';
+import type { RoleRegistry } from '../roles/role-registry';
+import type { LockManager } from '../change/lock-manager';
 import { ToolStore } from './tool-store';
 import {
   ToolRegistry,
@@ -31,12 +34,24 @@ export interface ToolBrokerEvents {
   toolCalled(projectId: string, call: ToolCallRecord): void;
 }
 
+export interface ToolLockRequirement {
+  resource: string;
+  mode: 'shared' | 'exclusive';
+}
+
 export interface ToolBrokerOptions {
   registry: ToolRegistry;
   settings: SettingsService;
   projectDatabases: ProjectDatabases;
   projects: ProfileStore;
   tasks: TaskService;
+  roles?: RoleRegistry;
+  locks?: Pick<LockManager, 'assertHeld'>;
+  requiredLocks?: (
+    request: ToolCallRequest,
+    tool: ToolDefinition,
+    task: TaskRecord | undefined,
+  ) => ToolLockRequirement[] | Promise<ToolLockRequirement[]>;
   events: ToolBrokerEvents;
   isToolAvailable?: (tool: ToolDefinition, projectId: string) => boolean;
   now?: () => Date;
@@ -56,6 +71,7 @@ export interface ToolCallContext {
   sessionId?: string;
   accessCeiling?: AccessMode;
   agentRole?: string | null;
+  projectPathOverride?: string;
   signal?: AbortSignal;
 }
 
@@ -81,14 +97,29 @@ export class ToolBroker {
     this.now = options.now ?? (() => new Date());
   }
 
-  listTools(projectId?: string): ToolDefinition[] {
+  listTools(
+    projectId?: string,
+    options: { agentRole?: string; includeInternal?: boolean; accessCeiling?: AccessMode } = {},
+  ): ToolDefinition[] {
     if (projectId) this.requireProject(projectId);
     return this.options.registry.list().filter((tool) => {
-      if (tool.source.endsWith('-internal')) return false;
-      if (tool.source.startsWith('plugin:')) {
-        return Boolean(projectId && (this.options.isToolAvailable?.(tool, projectId) ?? false));
+      const internal = tool.source.endsWith('-internal');
+      if (internal && !options.includeInternal) return false;
+      if (projectId && tool.source.startsWith('plugin:')) {
+        if (!(this.options.isToolAvailable?.(tool, projectId) ?? false)) return false;
+      } else if (projectId && !(this.options.isToolAvailable?.(tool, projectId) ?? true)) {
+        return false;
       }
-      return !projectId || (this.options.isToolAvailable?.(tool, projectId) ?? true);
+      if (projectId && options.agentRole && !internal) {
+        if (!this.roleAllows(options.agentRole, projectId, tool.toolId)) return false;
+      }
+      if (projectId && options.accessCeiling && !internal) {
+        const configured = this.options.settings.resolve('access.mode', { projectId })
+          .value as AccessMode;
+        const mode = minAccessMode(configured, options.accessCeiling);
+        if (this.decisionFor(projectId, tool, mode).decision === 'denied') return false;
+      }
+      return true;
     });
   }
 
@@ -274,6 +305,59 @@ export class ToolBroker {
       );
     }
 
+    const agentRole = context.agentRole ?? task?.assignee?.role ?? task?.role ?? null;
+    if (
+      agentRole &&
+      !tool.definition.source.endsWith('-internal') &&
+      !this.roleAllows(agentRole, request.projectId, request.toolId)
+    ) {
+      const message = `Role ${agentRole} cannot use ${request.toolId}`;
+      this.finishRecord(store, {
+        ...record,
+        decision: 'denied',
+        decisionReason: 'role_tool_denied',
+        status: 'denied',
+        error: { message, code: String(RpcErrorCode.RoleToolDenied) },
+      });
+      throw new RpcError(message, RpcErrorCode.RoleToolDenied);
+    }
+
+    const requiredLocks =
+      (await this.options.requiredLocks?.(request, tool.definition, task)) ?? [];
+    for (const requiredLock of requiredLocks) {
+      try {
+        if (!request.taskId || !this.options.locks) {
+          throw new RpcError('A required resource lock is not held.', RpcErrorCode.LockNotHeld, {
+            resource: requiredLock.resource,
+            mode: requiredLock.mode,
+          });
+        }
+        this.options.locks.assertHeld(
+          request.projectId,
+          request.taskId,
+          requiredLock.resource,
+          requiredLock.mode,
+        );
+      } catch (error) {
+        const lockError =
+          error instanceof RpcError && error.code === RpcErrorCode.LockNotHeld
+            ? error
+            : new RpcError('A required resource lock is not held.', RpcErrorCode.LockNotHeld, {
+                resource: requiredLock.resource,
+                mode: requiredLock.mode,
+              });
+        const message = lockError.message;
+        this.finishRecord(store, {
+          ...record,
+          decision: 'denied',
+          decisionReason: 'required_lock_not_held',
+          status: 'failed',
+          error: { message, code: String(RpcErrorCode.LockNotHeld) },
+        });
+        throw lockError;
+      }
+    }
+
     const policy = this.decisionFor(request.projectId, tool.definition, accessMode);
     record = {
       ...record,
@@ -358,7 +442,9 @@ export class ToolBroker {
 
     return this.runTool(
       store,
-      project.path,
+      request.toolId.startsWith('fs/') && context.projectPathOverride
+        ? context.projectPathOverride
+        : project.path,
       tool,
       record,
       request.input,
@@ -453,6 +539,27 @@ export class ToolBroker {
     store.finalizeCall(storedRecord);
     this.options.events.toolCalled(record.projectId, storedRecord);
     return { ...storedRecord, input: record.input, output: record.output };
+  }
+
+  private roleAllows(roleName: string, projectId: string, toolId: string): boolean {
+    if (roleName.startsWith('plugin:') || !this.options.roles) return true;
+    try {
+      const role = this.options.roles.get(roleName, projectId);
+      const permissionToolId = toolId === 'board/propose-decision' ? 'board/post' : toolId;
+      const roleAllowsSkillTools =
+        (toolId === 'skills/activate' || toolId === 'skills/search') && role.skills.length > 0;
+      const roleAllowsLockTools = toolId.startsWith('locks/') && role.locks.length > 0;
+      const roleAllowsMemory = toolId === 'memory/write' && role.memory === 'project';
+      return (
+        (roleAllowsSkillTools ||
+          roleAllowsLockTools ||
+          roleAllowsMemory ||
+          role.tools.some((pattern) => matchesToolGlob(pattern, permissionToolId))) &&
+        !role.disallowedTools.some((pattern) => matchesToolGlob(pattern, permissionToolId))
+      );
+    } catch {
+      return false;
+    }
   }
 
   private effectiveMode(

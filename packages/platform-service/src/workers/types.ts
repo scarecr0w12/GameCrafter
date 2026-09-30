@@ -1,8 +1,15 @@
-import type { AccessMode, TaskError, TaskRecord, TaskResult } from '@gamecrafter/contracts';
+import type {
+  AccessMode,
+  TaskError,
+  TaskRecord,
+  TaskResult,
+  ToolDefinition,
+} from '@gamecrafter/contracts';
 
 export interface TaskHandlerContext {
   task: TaskRecord;
   input: unknown;
+  tools: ToolDefinition[];
   initialCheckpoint: unknown;
   signal: AbortSignal;
   progress(message: string, percent?: number): void;
@@ -20,6 +27,7 @@ export interface WorkerRunPayload {
   handler: { module: string; export?: string };
   input: unknown;
   checkpoint: unknown;
+  tools?: ToolDefinition[];
 }
 
 export type WorkerCommand =

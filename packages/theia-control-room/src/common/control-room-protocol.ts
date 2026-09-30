@@ -1,6 +1,11 @@
 import type {
   AccessMode,
   ApprovalRequest,
+  ChangeRequest,
+  FeedbackInput,
+  ImpactResult,
+  IntegrationRecord,
+  ResourceLock,
   EffectiveSetting,
   ExecutionMode,
   EngineCapabilityReport,
@@ -90,6 +95,9 @@ export interface ControlRoomService {
     projectId?: string,
   ): Promise<EffectiveSetting>;
   listTasks(projectId: string): Promise<TaskRecord[]>;
+  getTaskTree(projectId: string, rootTaskId: string): Promise<TaskRecord[]>;
+  listTaskEvents(params: RpcParams<'task/events'>): Promise<RpcResult<'task/events'>>;
+  listTaskQuestions(pendingOnly?: boolean): Promise<TaskQuestion[]>;
   createTask(input: TaskCreateInput): Promise<{ task: TaskRecord; deduplicated: boolean }>;
   cancelTask(projectId: string, taskId: string, reason?: string): Promise<string[]>;
   answerQuestion(
@@ -323,6 +331,17 @@ export interface ControlRoomService {
   setPluginSecret(pluginId: string, name: string, value: string): Promise<{ stored: true }>;
   getPluginPanel(pluginId: string, panelId: string): Promise<DeclarativePanel>;
   getPluginModules(): Promise<PluginModulesResult>;
+  requestChange(params: RpcParams<'change/request'>): Promise<ChangeRequest>;
+  listChangeRequests(params: RpcParams<'change/requests'>): Promise<ChangeRequest[]>;
+  getChangeImpact(params: RpcParams<'change/impact'>): Promise<ImpactResult>;
+  getChangeGraph(params: RpcParams<'change/graph'>): Promise<RpcResult<'change/graph'>>;
+  rebuildChangeGraph(projectId: string): Promise<RpcResult<'change/rebuildGraph'>>;
+  listResourceLocks(projectId: string): Promise<ResourceLock[]>;
+  releaseResourceLock(projectId: string, lockId: string): Promise<void>;
+  listIntegrations(params: RpcParams<'change/integrations'>): Promise<IntegrationRecord[]>;
+  integrateTask(projectId: string, taskId: string): Promise<IntegrationRecord>;
+  abortIntegration(projectId: string, integrationId: string): Promise<IntegrationRecord>;
+  submitFeedback(params: FeedbackInput): Promise<RpcResult<'change/feedback'>>;
   listBoardThreads(params: RpcParams<'board/threads'>): Promise<RpcResult<'board/threads'>>;
   getBoardThread(params: RpcParams<'board/thread'>): Promise<RpcResult<'board/thread'>>;
   createBoardThread(
@@ -404,5 +423,8 @@ export interface ControlRoomClient {
   onBackupRunChanged(event: RpcNotificationParams<'backup/runChanged'>): void;
   onKnowledgeIndexChanged(event: RpcNotificationParams<'knowledge/indexChanged'>): void;
   onKnowledgeRecordChanged(event: RpcNotificationParams<'knowledge/recordChanged'>): void;
+  onChangeLockChanged(event: RpcNotificationParams<'change/lockChanged'>): void;
+  onChangeIntegrationChanged(event: RpcNotificationParams<'change/integrationChanged'>): void;
+  onChangeRequestChanged(event: RpcNotificationParams<'change/requestChanged'>): void;
   onServiceStatus(status: { connected: boolean; message?: string }): void;
 }

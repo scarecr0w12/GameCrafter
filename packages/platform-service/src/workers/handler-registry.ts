@@ -32,6 +32,13 @@ export class HandlerRegistry {
   }
 }
 
+export function registerAgentHandlers(
+  registry: HandlerRegistry,
+  module = resolveAgentHandlerModule(),
+): void {
+  registry.register('agent.run', { module, export: 'agentRun' });
+}
+
 export function registerBuiltinHandlers(
   registry: HandlerRegistry,
   module = resolveBuiltinHandlerModule(),
@@ -67,6 +74,13 @@ export function registerKnowledgeHandlers(
 ): void {
   registry.register('knowledge.reindex', { module, export: 'knowledgeReindex' });
   registry.register('knowledge.reconcile', { module, export: 'knowledgeReconcile' });
+}
+
+function resolveAgentHandlerModule(): string {
+  const local = path.join(__dirname, 'agent-handlers.js');
+  return existsSync(local)
+    ? local
+    : path.resolve(__dirname, '..', '..', 'lib', 'workers', 'agent-handlers.js');
 }
 
 function resolveKnowledgeHandlerModule(): string {

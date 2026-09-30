@@ -2,12 +2,13 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { RpcErrorCode, TaskEventKind, uuidv7 } from '@gamecrafter/contracts';
-import type { TaskError, TaskRecord } from '@gamecrafter/contracts';
+import { RpcError, RpcErrorCode, TaskEventKind, uuidv7 } from '@gamecrafter/contracts';
+import type { IntegrationRecord, TaskError, TaskRecord, TaskResult } from '@gamecrafter/contracts';
 import { SettingsService } from '../settings/settings-service';
 import type { TaskSupervisorPort } from '../tasks/task-service';
 import type { ProjectTaskRuntime, TaskService } from '../tasks/task-service';
 import type { ToolBroker } from '../tools/tool-broker';
+import type { TaskWorktree, WorktreeManager } from '../change/worktree-manager';
 import type { HandlerRegistry } from './handler-registry';
 import type { WorkerCommand, WorkerMessage } from './types';
 
@@ -15,6 +16,7 @@ interface RunningWorker {
   projectId: string;
   taskId: string;
   workerId: string;
+  worktreePath?: string;
   child: ChildProcess;
   exitPromise: Promise<void>;
   resolveExit: () => void;
@@ -47,6 +49,7 @@ export interface WorkerSupervisorOptions {
   settings: SettingsService;
   handlers: HandlerRegistry;
   tools?: ToolBroker;
+  worktrees?: WorktreeManager;
   now?: () => Date;
   leaseTtlMs?: number;
   tickIntervalMs?: number;
@@ -58,6 +61,12 @@ export interface WorkerSupervisorOptions {
     messageType: 'result' | 'failed',
   ) => void;
   onWorkerExited?: (taskId: string, workerId: string) => void;
+  onLeaseRenewed?: (projectId: string, taskId: string, workerId: string) => void;
+  onTaskLeaseExpired?: (projectId: string, taskId: string) => void;
+  validateResult?: (
+    task: TaskRecord,
+    result: TaskResult,
+  ) => Promise<{ result: TaskResult; integration?: IntegrationRecord }>;
   onScheduleSnapshot?: (snapshot: WorkerScheduleSnapshot) => void;
 }
 
@@ -234,6 +243,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
   }
 
   private async startTask(runtime: ProjectTaskRuntime, original: TaskRecord): Promise<void> {
+    if (this.disposed) return;
     this.retryAfter.delete(original.taskId);
     const handler = this.options.handlers.get(original.kind);
     if (!handler) {
@@ -250,12 +260,67 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       return;
     }
 
+    let task = runtime.graph.get(original.taskId);
+    let worktree: TaskWorktree | undefined;
+    if (task.isolation === 'worktree') {
+      if (task.integration?.worktreePath && task.integration.branch) {
+        worktree = {
+          path: task.integration.worktreePath,
+          branch: task.integration.branch,
+          baseCommit: task.integration.baseCommit,
+        };
+      } else {
+        try {
+          if (!this.options.worktrees) throw new Error('Worktree manager is unavailable');
+          worktree = await this.options.worktrees.create(runtime.projectId, task.taskId);
+          if (this.disposed) {
+            await this.options.worktrees.remove(runtime.projectId, worktree.path, worktree.branch);
+            return;
+          }
+          const integration = {
+            schemaVersion: 1 as const,
+            integrationId: uuidv7(),
+            projectId: runtime.projectId,
+            taskId: task.taskId,
+            worktreePath: worktree.path,
+            branch: worktree.branch,
+            baseCommit: worktree.baseCommit,
+            status: 'pending' as const,
+            changedFiles: [],
+            conflicts: [],
+            validation: [],
+            mergeCommit: null,
+            reconcileTaskId: null,
+            updatedAt: this.now().toISOString(),
+          };
+          task = runtime.graph.update(task.taskId, { integration });
+        } catch (error) {
+          if (this.disposed) return;
+          const taskError: TaskError = {
+            message: error instanceof Error ? error.message : String(error),
+            code: String(RpcErrorCode.WorktreeUnavailable),
+            retryable: false,
+          };
+          runtime.graph.transition(task.taskId, 'blocked', 'worktree_unavailable', 'service', {
+            error: taskError,
+            finishedAt: this.now().toISOString(),
+          });
+          runtime.graph.appendEvent(
+            task.taskId,
+            TaskEventKind.Failed,
+            { error: taskError },
+            'service',
+          );
+          return;
+        }
+      }
+    }
+
     const workerId = uuidv7();
     const lease = {
       workerId,
       expiresAt: new Date(this.now().getTime() + this.leaseTtlMs).toISOString(),
     };
-    let task = runtime.graph.get(original.taskId);
     if (task.state === 'ready') {
       task = runtime.graph.transition(task.taskId, 'claimed', 'worker_claimed', 'scheduler', {
         lease,
@@ -309,6 +374,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       projectId: runtime.projectId,
       taskId: task.taskId,
       workerId,
+      ...(worktree ? { worktreePath: worktree.path } : {}),
       child,
       exitPromise,
       resolveExit,
@@ -342,6 +408,13 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       handler,
       input: task.input,
       checkpoint: task.checkpoint,
+      tools:
+        task.kind === 'agent.run'
+          ? (this.options.tools?.listTools(runtime.projectId, {
+              agentRole: task.role ?? task.assignee?.role,
+              accessCeiling: task.assignee?.accessCeiling,
+            }) ?? [])
+          : [],
     };
     this.send(child, command);
   }
@@ -359,8 +432,24 @@ export class WorkerSupervisor implements TaskSupervisorPort {
         const task = runtime.store.get(worker.taskId);
         if (task?.state === 'running') {
           worker.finalMessage = true;
-          if (message.type === 'result') runtime.graph.complete(worker.taskId, message.result);
-          else if (message.type === 'failed') runtime.graph.fail(worker.taskId, message.error);
+          if (message.type === 'result') {
+            try {
+              const validation = await this.options.validateResult?.(task, message.result);
+              if (validation?.integration)
+                runtime.graph.update(worker.taskId, { integration: validation.integration });
+              runtime.graph.complete(worker.taskId, validation?.result ?? message.result);
+            } catch (error) {
+              const taskError: TaskError = {
+                message: error instanceof Error ? error.message : String(error),
+                code:
+                  error instanceof RpcError
+                    ? String(error.code)
+                    : String(RpcErrorCode.CompletionContractUnmet),
+                retryable: true,
+              };
+              runtime.graph.fail(worker.taskId, taskError);
+            }
+          } else if (message.type === 'failed') runtime.graph.fail(worker.taskId, message.error);
         }
       }
       this.send(worker.child, { type: 'result-ack' });
@@ -377,6 +466,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
           expiresAt: new Date(this.now().getTime() + this.leaseTtlMs).toISOString(),
         },
       });
+      this.options.onLeaseRenewed?.(runtime.projectId, worker.taskId, worker.workerId);
       return;
     }
 
@@ -462,7 +552,13 @@ export class WorkerSupervisor implements TaskSupervisorPort {
           input: message.input,
           accessCeiling: message.accessCeiling,
         },
-        { accessCeiling: task.assignee?.accessCeiling, signal: controller.signal },
+        {
+          accessCeiling: task.assignee?.accessCeiling,
+          ...(message.toolId.startsWith('fs/') && worker.worktreePath
+            ? { projectPathOverride: worker.worktreePath }
+            : {}),
+          signal: controller.signal,
+        },
       );
       if (call.status !== 'completed') {
         const error = new Error(
@@ -580,6 +676,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
         runtime.graph.transition(task.taskId, 'ready', 'lease_expired', 'scheduler', {
           lease: null,
         });
+        this.options.onTaskLeaseExpired?.(projectId, task.taskId);
         runtime.graph.appendEvent(
           task.taskId,
           TaskEventKind.Retry,
@@ -623,6 +720,7 @@ export class WorkerSupervisor implements TaskSupervisorPort {
       }
     }
     await Promise.all(workers.map((worker) => worker.exitPromise));
+    await this.scheduling?.catch(() => undefined);
 
     for (const projectId of this.options.tasks.projectIds()) {
       const runtime = this.options.tasks.runtime(projectId);

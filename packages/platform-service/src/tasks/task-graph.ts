@@ -41,7 +41,7 @@ export class TaskGraph {
     this.now = options.now ?? (() => new Date());
   }
 
-  create(input: TaskCreateInput): CreatedTask {
+  create(input: TaskCreateInput, options: { deferReady?: boolean } = {}): CreatedTask {
     if (input.projectId !== this.options.projectId) {
       throw new RpcError(
         'Task project does not match its Project database',
@@ -68,6 +68,10 @@ export class TaskGraph {
     const parentTaskId = input.parentTaskId ?? null;
     const duplicate = this.options.store.findActiveDuplicate(parentTaskId, goalHash);
     if (duplicate) return { task: duplicate, deduplicated: true };
+    if (input.touches?.length) {
+      const touchedDuplicate = this.options.store.findActiveTouchDuplicate(goalHash, input.touches);
+      if (touchedDuplicate) return { task: touchedDuplicate, deduplicated: true };
+    }
 
     const taskId = uuidv7();
     const dependencies = [...new Set(input.dependsOn ?? [])];
@@ -95,6 +99,11 @@ export class TaskGraph {
       priority: input.priority ?? 50,
       dependsOn: dependencies,
       assignee: input.assignee ?? null,
+      ...(input.touches === undefined ? {} : { touches: input.touches }),
+      ...(input.role === undefined ? {} : { role: input.role }),
+      ...(input.isolation === undefined ? {} : { isolation: input.isolation }),
+      ...(input.contract === undefined ? {} : { contract: input.contract }),
+      ...(input.integration === undefined ? {} : { integration: input.integration }),
       budget: input.budget ?? {},
       spent: { costUsd: 0, tokens: 0 },
       attempt: 1,
@@ -115,7 +124,7 @@ export class TaskGraph {
     let created = task;
     if (hasFailedDependency) {
       created = this.options.store.transition(taskId, 'blocked', 'dependency_failed', 'scheduler');
-    } else if (allDependenciesSucceeded) {
+    } else if (allDependenciesSucceeded && !options.deferReady) {
       created = this.options.store.transition(
         taskId,
         'ready',

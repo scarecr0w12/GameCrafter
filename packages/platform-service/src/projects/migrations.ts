@@ -438,4 +438,77 @@ export const projectMigrations: Migration[] = [
       CREATE INDEX dcc_runs_status_started_idx ON dcc_runs(status, started_at DESC);
     `,
   },
+  {
+    id: 10,
+    name: 'add task coordination metadata',
+    up: `
+      ALTER TABLE tasks ADD COLUMN touches_json TEXT;
+      ALTER TABLE tasks ADD COLUMN role TEXT;
+      ALTER TABLE tasks ADD COLUMN isolation TEXT;
+      ALTER TABLE tasks ADD COLUMN completion_contract_json TEXT;
+      ALTER TABLE tasks ADD COLUMN integration_json TEXT;
+    `,
+  },
+  {
+    id: 11,
+    name: 'create change graph, lock, integration, and request tables',
+    up: `
+      CREATE TABLE change_nodes (
+        project_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        ref TEXT NOT NULL,
+        title TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL,
+        PRIMARY KEY(project_id, node_id)
+      );
+      CREATE INDEX change_nodes_project_kind_idx ON change_nodes(project_id, kind);
+      CREATE TABLE change_edges (
+        edge_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        from_node TEXT NOT NULL,
+        to_node TEXT NOT NULL,
+        rel TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        source TEXT NOT NULL,
+        evidence TEXT,
+        created_at TEXT NOT NULL,
+        UNIQUE(project_id, from_node, to_node, rel, source)
+      );
+      CREATE INDEX change_edges_project_from_idx ON change_edges(project_id, from_node);
+      CREATE INDEX change_edges_project_to_idx ON change_edges(project_id, to_node);
+      CREATE TABLE resource_locks (
+        lock_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        resource TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        worker_id TEXT,
+        acquired_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        renewed_at TEXT NOT NULL,
+        UNIQUE(project_id, resource, task_id)
+      );
+      CREATE INDEX resource_locks_project_resource_idx ON resource_locks(project_id, resource, expires_at);
+      CREATE INDEX resource_locks_project_task_idx ON resource_locks(project_id, task_id);
+      CREATE TABLE integrations (
+        integration_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        integration_json TEXT NOT NULL,
+        UNIQUE(project_id, task_id)
+      );
+      CREATE INDEX integrations_project_status_idx ON integrations(project_id, status, updated_at DESC);
+      CREATE TABLE change_requests (
+        request_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        root_task_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        request_json TEXT NOT NULL
+      );
+      CREATE INDEX change_requests_project_created_idx ON change_requests(project_id, created_at DESC);
+    `,
+  },
 ];

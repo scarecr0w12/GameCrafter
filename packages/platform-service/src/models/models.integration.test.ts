@@ -15,10 +15,17 @@ let projectId: string;
 let projectsDirectory: string;
 let fakeServer: ReturnType<typeof createServer> | undefined;
 
-const fakeRequests: { path: string; model?: string; authorization?: string }[] = [];
+const fakeRequests: {
+  path: string;
+  model?: string;
+  authorization?: string;
+  body?: Record<string, unknown>;
+}[] = [];
+const scriptedCompletions: Record<string, unknown>[] = [];
 
 async function createFakeServer(): Promise<string> {
   fakeRequests.length = 0;
+  scriptedCompletions.length = 0;
   fakeServer = createServer((request, response) => {
     let body = '';
     request.on('data', (chunk) => (body += chunk.toString()));
@@ -48,11 +55,15 @@ async function createFakeServer(): Promise<string> {
         return;
       }
       if (request.method === 'POST' && request.url === '/v1/chat/completions') {
-        const input = JSON.parse(body) as { model?: string; stream?: boolean };
+        const input = JSON.parse(body) as { model?: string; stream?: boolean } & Record<
+          string,
+          unknown
+        >;
         fakeRequests.push({
           path: request.url,
           model: input.model,
           authorization: request.headers.authorization,
+          body: input,
         });
         if (input.stream) {
           response.writeHead(200, { 'content-type': 'text/event-stream' });
@@ -65,6 +76,12 @@ async function createFakeServer(): Promise<string> {
             `data: ${JSON.stringify({ choices: [{ finish_reason: 'stop', delta: {} }], usage: { prompt_tokens: 20, completion_tokens: 8 } })}\n\n`,
           );
           response.end('data: [DONE]\n\n');
+          return;
+        }
+        const scripted = scriptedCompletions.shift();
+        if (scripted) {
+          response.writeHead(200, { 'content-type': 'application/json' });
+          response.end(JSON.stringify(scripted));
           return;
         }
         response.writeHead(200, { 'content-type': 'application/json' });
@@ -137,6 +154,19 @@ async function reportOutcome(
     inputTokens: 2000,
     outputTokens: 1000,
   } satisfies RouteOutcome);
+}
+
+async function waitForAgentTask(taskId: string) {
+  const deadline = Date.now() + 60_000;
+  let task = await client!.call('task/get', { projectId, taskId });
+  while (
+    Date.now() < deadline &&
+    !['succeeded', 'failed', 'blocked', 'cancelled'].includes(task.state)
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    task = await client!.call('task/get', { projectId, taskId });
+  }
+  return task;
 }
 
 describe('model registry and adaptive routing integration', () => {
@@ -328,5 +358,124 @@ describe('model registry and adaptive routing integration', () => {
           (request.path === '/v1/models' && request.authorization === 'Bearer fake-cheap-api-key'),
       ),
     ).toBe(true);
+  }, 60_000);
+
+  it('runs a multi-turn agent loop from scripted fake-provider tool calls', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-agent-runtime-'));
+    temporaryDirectories.push(root);
+    const profileDirectory = path.join(root, 'profile');
+    projectsDirectory = path.join(root, 'projects');
+    mkdirSync(projectsDirectory, { recursive: true });
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory }, 'linux');
+    service = await startService(paths);
+    client = await connectService(service.socketPath, paths);
+    const project = await client.call('project/create', {
+      name: 'Agent Runtime Project',
+      engine: { family: 'godot' },
+      parentDirectory: projectsDirectory,
+      folderName: 'agent-runtime-project',
+    });
+    projectId = project.projectId;
+    const baseUrl = await createFakeServer();
+    const account = await addAccount(baseUrl, 'Agent runtime model', 'good');
+    const discovered = await client.call('model/discover', { accountId: account.accountId });
+    const modelId = discovered.models[0]!.modelId;
+    await client.call('pool/create', {
+      name: 'Coordinator runtime pool',
+      scope: 'project',
+      projectId,
+      target: { kind: 'agent', id: 'coordinator' },
+      modelIds: [modelId],
+    });
+    await client.call('settings/set', {
+      key: 'access.mode',
+      scope: 'project',
+      value: 'full',
+      projectId,
+    });
+
+    scriptedCompletions.push(
+      {
+        choices: [
+          {
+            message: {
+              content: '',
+              tool_calls: [
+                {
+                  id: 'agent-board-read',
+                  type: 'function',
+                  function: { name: 'board/read', arguments: '{}' },
+                },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: { prompt_tokens: 40, completion_tokens: 10 },
+      },
+      {
+        choices: [
+          {
+            message: {
+              content: '',
+              tool_calls: [
+                {
+                  id: 'agent-complete',
+                  type: 'function',
+                  function: {
+                    name: 'tasks/complete',
+                    arguments: JSON.stringify({
+                      summary: 'Reviewed the board and completed the task.',
+                      artifacts: [],
+                      evidence: [{ kind: 'board', ref: 'read-current-threads' }],
+                      claims: [{ kind: 'generated', ref: 'agent-summary' }],
+                    }),
+                  },
+                },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: { prompt_tokens: 55, completion_tokens: 12 },
+      },
+    );
+
+    const created = await client.call('task/create', {
+      projectId,
+      kind: 'agent.run',
+      title: 'Run coordinator agent',
+      goal: 'Read the discussion board, then report completion.',
+      role: 'coordinator',
+      budget: { maxTokens: 10_000 },
+      contract: { required: ['generated'], validators: [] },
+      input: {},
+    });
+    const task = await waitForAgentTask(created.task.taskId);
+
+    expect(task.state).toBe('succeeded');
+    expect(task.result).toMatchObject({
+      summary: 'Reviewed the board and completed the task.',
+      claims: [{ kind: 'generated', ref: 'agent-summary' }],
+    });
+    const agentRequests = fakeRequests.filter((request) => request.path === '/v1/chat/completions');
+    expect(agentRequests).toHaveLength(2);
+    const offeredTools = agentRequests[0]!.body!.tools as Array<{
+      function: { name: string; parameters: Record<string, unknown> };
+    }>;
+    const offeredNames = offeredTools.map((tool) => tool.function.name);
+    expect(offeredNames).toContain('board/read');
+    expect(offeredNames).not.toContain('fs/write-file');
+    const activateSkill = offeredTools.find((tool) => tool.function.name === 'skills/activate');
+    expect(activateSkill?.function.parameters).toMatchObject({
+      properties: { name: { enum: expect.arrayContaining(['project-planning']) } },
+    });
+    const calls = await client.call('tool/calls', { projectId, taskId: task.taskId });
+    expect(calls.calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ toolId: 'board/read', status: 'completed' }),
+        expect.objectContaining({ toolId: 'model/complete', status: 'completed' }),
+      ]),
+    );
   }, 60_000);
 });

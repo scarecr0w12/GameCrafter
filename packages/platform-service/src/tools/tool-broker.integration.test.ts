@@ -1,8 +1,17 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  RpcErrorCode,
   uuidv7,
   type AccessMode,
   type ApprovalRequest,
@@ -52,7 +61,7 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(42);
+    expect(result.tools).toHaveLength(50);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
       'asset/files',
       'asset/generate',
@@ -67,6 +76,8 @@ describe('Tool broker integration', () => {
       'canon/propose-status',
       'canon/read',
       'canon/write',
+      'change/impact',
+      'change/integrations',
       'dcc/convert',
       'dcc/discover',
       'dcc/export',
@@ -92,10 +103,16 @@ describe('Tool broker integration', () => {
       'fs/read-file',
       'fs/write-file',
       'knowledge/search',
+      'locks/acquire',
+      'locks/list',
+      'locks/release',
+      'memory/write',
       'process/run',
       'project/manifest',
       'skills/activate',
       'skills/search',
+      'tasks/await',
+      'tasks/delegate',
     ]);
     expect(result.tools.find((tool) => tool.toolId === 'process/run')).toMatchObject({
       executionMode: 'headless-process',
@@ -376,6 +393,35 @@ describe('Tool broker integration', () => {
       .map((event) => (event.payload as { callId: string }).callId);
     expect(eventCallIds).toHaveLength(calls.calls.length);
     expect(new Set(eventCallIds)).toEqual(new Set(calls.calls.map((call) => call.callId)));
+  }, 60_000);
+
+  it('enforces a role allowlist centrally for board and filesystem tools', async () => {
+    await setSetting('access.mode', 'project', 'full');
+    const task = await client!.call('task/create', {
+      projectId,
+      kind: 'noop.echo',
+      title: 'Read-only Explorer',
+      goal: 'Inspect files without writing',
+      role: 'explorer',
+      input: { message: 'ready' },
+    });
+
+    await expect(
+      client!.call('tool/call', {
+        projectId,
+        taskId: task.task.taskId,
+        toolId: 'fs/write-file',
+        input: { path: 'game/role-denied.txt', content: 'must not write' },
+      }),
+    ).rejects.toMatchObject({ code: RpcErrorCode.RoleToolDenied });
+    expect(existsSync(path.join(projectPath, 'game', 'role-denied.txt'))).toBe(false);
+    const calls = await client!.call('tool/calls', { projectId, taskId: task.task.taskId });
+    expect(calls.calls).toHaveLength(1);
+    expect(calls.calls[0]).toMatchObject({
+      toolId: 'fs/write-file',
+      decision: 'denied',
+      error: { code: String(RpcErrorCode.RoleToolDenied) },
+    });
   }, 60_000);
 });
 

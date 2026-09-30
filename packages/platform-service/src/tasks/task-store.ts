@@ -43,6 +43,11 @@ interface TaskRow {
   priority: number;
   dependsOnJson: string;
   assigneeJson: string | null;
+  touchesJson: string | null;
+  role: string | null;
+  isolation: TaskRecord['isolation'] | null;
+  completionContractJson: string | null;
+  integrationJson: string | null;
   budgetJson: string;
   spentJson: string;
   attempt: number;
@@ -93,6 +98,11 @@ const taskColumns = `
   priority,
   depends_on AS dependsOnJson,
   assignee AS assigneeJson,
+  touches_json AS touchesJson,
+  role,
+  isolation,
+  completion_contract_json AS completionContractJson,
+  integration_json AS integrationJson,
   budget AS budgetJson,
   spent AS spentJson,
   attempt,
@@ -264,6 +274,33 @@ export class TaskStore {
     return row ? taskFromRow(row) : undefined;
   }
 
+  findActiveTouchDuplicate(
+    goalHash: string,
+    touches: NonNullable<TaskRecord['touches']>,
+  ): TaskRecord | undefined {
+    const requestedWrites = new Set(
+      touches.filter((touch) => touch.intent === 'write').map((touch) => touch.resource),
+    );
+    if (requestedWrites.size === 0) return undefined;
+    for (const candidate of this.list({
+      states: ['pending', 'ready', 'claimed', 'running', 'waiting_input'],
+      limit: 1_000,
+    })) {
+      if (candidate.goalHash !== goalHash) continue;
+      const candidateWrites = new Set(
+        (candidate.touches ?? [])
+          .filter((touch) => touch.intent === 'write')
+          .map((touch) => touch.resource),
+      );
+      if (candidateWrites.size === 0) continue;
+      const overlap = [...requestedWrites].filter((resource) =>
+        candidateWrites.has(resource),
+      ).length;
+      if (overlap / Math.min(requestedWrites.size, candidateWrites.size) >= 0.5) return candidate;
+    }
+    return undefined;
+  }
+
   addQuestion(
     taskId: string,
     prompt: string,
@@ -352,10 +389,11 @@ export class TaskStore {
       .prepare(
         `INSERT INTO tasks (
           task_id, schema_version, project_id, parent_task_id, root_task_id, depth,
-          kind, title, goal, goal_hash, state, priority, depends_on, assignee, budget,
-          spent, attempt, max_attempts, lease, input, checkpoint, result, error,
-          created_at, updated_at, started_at, finished_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          kind, title, goal, goal_hash, state, priority, depends_on, assignee, touches_json,
+          role, isolation, completion_contract_json, integration_json, budget, spent, attempt,
+          max_attempts, lease, input, checkpoint, result, error, created_at, updated_at,
+          started_at, finished_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(...taskValues(task));
   }
@@ -365,10 +403,11 @@ export class TaskStore {
       .prepare(
         `INSERT INTO tasks (
           task_id, schema_version, project_id, parent_task_id, root_task_id, depth,
-          kind, title, goal, goal_hash, state, priority, depends_on, assignee, budget,
-          spent, attempt, max_attempts, lease, input, checkpoint, result, error,
-          created_at, updated_at, started_at, finished_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          kind, title, goal, goal_hash, state, priority, depends_on, assignee, touches_json,
+          role, isolation, completion_contract_json, integration_json, budget, spent, attempt,
+          max_attempts, lease, input, checkpoint, result, error, created_at, updated_at,
+          started_at, finished_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(task_id) DO UPDATE SET
           schema_version = excluded.schema_version,
           project_id = excluded.project_id,
@@ -383,6 +422,11 @@ export class TaskStore {
           priority = excluded.priority,
           depends_on = excluded.depends_on,
           assignee = excluded.assignee,
+          touches_json = excluded.touches_json,
+          role = excluded.role,
+          isolation = excluded.isolation,
+          completion_contract_json = excluded.completion_contract_json,
+          integration_json = excluded.integration_json,
           budget = excluded.budget,
           spent = excluded.spent,
           attempt = excluded.attempt,
@@ -452,6 +496,11 @@ function taskValues(task: TaskRecord): Array<string | number | null> {
     task.priority,
     JSON.stringify(task.dependsOn),
     encodeNullable(task.assignee),
+    encodeOptionalJson(task.touches),
+    task.role ?? null,
+    task.isolation ?? null,
+    encodeOptionalJson(task.contract),
+    encodeOptionalJson(task.integration),
     JSON.stringify(task.budget),
     JSON.stringify(task.spent),
     task.attempt,
@@ -484,6 +533,17 @@ function taskFromRow(row: TaskRow): TaskRecord {
     priority: row.priority,
     dependsOn: JSON.parse(row.dependsOnJson) as string[],
     assignee: decodeNullable(row.assigneeJson),
+    ...(row.touchesJson === null
+      ? {}
+      : { touches: JSON.parse(row.touchesJson) as TaskRecord['touches'] }),
+    ...(row.role === null ? {} : { role: row.role }),
+    ...(row.isolation === null ? {} : { isolation: row.isolation }),
+    ...(row.completionContractJson === null
+      ? {}
+      : { contract: JSON.parse(row.completionContractJson) as TaskRecord['contract'] }),
+    ...(row.integrationJson === null
+      ? {}
+      : { integration: JSON.parse(row.integrationJson) as TaskRecord['integration'] }),
     budget: JSON.parse(row.budgetJson) as TaskRecord['budget'],
     spent: JSON.parse(row.spentJson) as TaskRecord['spent'],
     attempt: row.attempt,
@@ -522,6 +582,10 @@ function questionFromRow(row: QuestionRow): TaskQuestion {
     answer: JSON.parse(row.answerJson) as unknown,
     answeredAt: row.answeredAt,
   };
+}
+
+function encodeOptionalJson(value: unknown): string | null {
+  return value === undefined ? null : (JSON.stringify(value) ?? 'null');
 }
 
 function encodeNullable(value: unknown): string | null {

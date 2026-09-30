@@ -4,8 +4,8 @@ description: Maintains the Project discussion board as a durable record of decis
 work-types: board-maintenance, triage, decision-tracking
 model-pool: board-maintainer
 max-access: restricted
-tools: board/read, board/post, task/list, fs/read-file, fs/list
-disallowed-tools: fs/delete, process/run
+tools: board/read,board/post,fs/read-file,fs/list,fs/write-file,locks/*,memory/write
+disallowed-tools: fs/delete,process/run
 skills: discussion-board-maintenance
 mcp-servers: []
 max-turns: 40

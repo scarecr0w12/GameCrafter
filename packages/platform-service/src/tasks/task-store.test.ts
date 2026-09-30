@@ -57,6 +57,97 @@ describe('TaskStore', () => {
       child.taskId,
     ]);
   });
+
+  it('deduplicates active tasks when at least half of their write touches overlap', () => {
+    database = Database.open(':memory:');
+    migrate(database, projectMigrations);
+    store = new TaskStore(database);
+    const task = createTask({
+      goalHash: 'd'.repeat(64),
+      touches: [
+        { resource: 'file:docs/canon/aria.md', intent: 'write' },
+        { resource: 'file:game/README.md', intent: 'write' },
+      ],
+    });
+    store.insert(task);
+
+    expect(
+      store.findActiveTouchDuplicate(task.goalHash, [
+        { resource: 'file:docs/canon/aria.md', intent: 'write' },
+        { resource: 'file:game/README.md', intent: 'read' },
+      ])?.taskId,
+    ).toBe(task.taskId);
+    expect(
+      store.findActiveTouchDuplicate(task.goalHash, [
+        { resource: 'file:game/other.md', intent: 'write' },
+      ]),
+    ).toBeUndefined();
+    store.transition(task.taskId, 'ready', 'test', 'test');
+    store.transition(task.taskId, 'claimed', 'test', 'test');
+    store.transition(task.taskId, 'running', 'test', 'test');
+    store.transition(task.taskId, 'succeeded', 'test', 'test', {
+      result: { summary: 'done', artifacts: [], evidence: [] },
+    });
+    expect(
+      store.findActiveTouchDuplicate(task.goalHash, [
+        { resource: 'file:docs/canon/aria.md', intent: 'write' },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it('finds active duplicates with matching goals and overlapping write touches', () => {
+    database = Database.open(':memory:');
+    migrate(database, projectMigrations);
+    store = new TaskStore(database);
+    const task = createTask({
+      goalHash: 'd'.repeat(64),
+      touches: [
+        { resource: 'file:docs/canon/aria.md', intent: 'write' },
+        { resource: 'file:game/README.md', intent: 'write' },
+      ],
+    });
+    store.insert(task);
+
+    expect(
+      store.findActiveTouchDuplicate(task.goalHash, [
+        { resource: 'file:docs/canon/aria.md', intent: 'write' },
+        { resource: 'file:other.md', intent: 'write' },
+      ])?.taskId,
+    ).toBe(task.taskId);
+    expect(
+      store.findActiveTouchDuplicate('e'.repeat(64), [
+        { resource: 'file:docs/canon/aria.md', intent: 'write' },
+      ]),
+    ).toBeUndefined();
+    expect(
+      store.findActiveTouchDuplicate(task.goalHash, [
+        { resource: 'file:docs/canon/aria.md', intent: 'read' },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it('persists optional WP18 task coordination metadata', () => {
+    database = Database.open(':memory:');
+    migrate(database, projectMigrations);
+    store = new TaskStore(database);
+    const task = createTask({
+      touches: [{ resource: 'file:game/README.md', intent: 'write' }],
+      role: 'programmer',
+      isolation: 'worktree',
+      contract: { required: ['static-check'], validators: [] },
+      integration: null,
+    });
+
+    store.insert(task);
+
+    expect(store.get(task.taskId)).toMatchObject({
+      touches: [{ resource: 'file:game/README.md', intent: 'write' }],
+      role: 'programmer',
+      isolation: 'worktree',
+      contract: { required: ['static-check'], validators: [] },
+      integration: null,
+    });
+  });
 });
 
 function createTask(patch: Partial<TaskRecord> = {}): TaskRecord {

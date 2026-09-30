@@ -4,6 +4,11 @@ import { inject, injectable } from '@theia/core/shared/inversify';
 import {
   type AccessMode,
   type ApprovalRequest,
+  type ChangeRequest,
+  type FeedbackInput,
+  type ImpactResult,
+  type IntegrationRecord,
+  type ResourceLock,
   type BackupArchiveEntry,
   type BackupDestination,
   type BackupIdentity,
@@ -65,6 +70,7 @@ import {
   type ServiceInfo,
   type SideEffect,
   type TaskCreateInput,
+  type TaskQuestion,
   type TaskRecord,
   type ToolCallRecord,
   type ToolDefinition,
@@ -101,6 +107,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   private removeBackupRunChangedListener?: () => void;
   private removeKnowledgeIndexChangedListener?: () => void;
   private removeKnowledgeRecordChangedListener?: () => void;
+  private removeChangeLockChangedListener?: () => void;
+  private removeChangeIntegrationChangedListener?: () => void;
+  private removeChangeRequestChangedListener?: () => void;
   private removeServiceStatusListener?: () => void;
 
   constructor(
@@ -131,6 +140,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeBackupRunChangedListener?.();
     this.removeKnowledgeIndexChangedListener?.();
     this.removeKnowledgeRecordChangedListener?.();
+    this.removeChangeLockChangedListener?.();
+    this.removeChangeIntegrationChangedListener?.();
+    this.removeChangeRequestChangedListener?.();
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
@@ -206,6 +218,16 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeKnowledgeRecordChangedListener = this.platformConnection.onKnowledgeRecordChanged(
       (event) => this.client?.onKnowledgeRecordChanged(event),
     );
+    this.removeChangeLockChangedListener = this.platformConnection.onChangeLockChanged((event) =>
+      this.client?.onChangeLockChanged(event),
+    );
+    this.removeChangeIntegrationChangedListener =
+      this.platformConnection.onChangeIntegrationChanged((event) =>
+        this.client?.onChangeIntegrationChanged(event),
+      );
+    this.removeChangeRequestChangedListener = this.platformConnection.onChangeRequestChanged(
+      (event) => this.client?.onChangeRequestChanged(event),
+    );
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
     });
@@ -274,6 +296,20 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   async listTasks(projectId: string): Promise<TaskRecord[]> {
     const client = await this.getPlatformClient();
     return (await client.call('task/list', { projectId, limit: 200 })).tasks;
+  }
+
+  async getTaskTree(projectId: string, rootTaskId: string): Promise<TaskRecord[]> {
+    const client = await this.getPlatformClient();
+    return (await client.call('task/tree', { projectId, rootTaskId })).tasks;
+  }
+
+  async listTaskEvents(params: RpcParams<'task/events'>): Promise<RpcResult<'task/events'>> {
+    return (await this.getPlatformClient()).call('task/events', params);
+  }
+
+  async listTaskQuestions(pendingOnly = true): Promise<TaskQuestion[]> {
+    const result = await (await this.getPlatformClient()).call('task/questions', { pendingOnly });
+    return result.questions;
   }
 
   async createTask(input: TaskCreateInput): Promise<{ task: TaskRecord; deduplicated: boolean }> {
@@ -928,6 +964,54 @@ export class ControlRoomServiceImpl implements ControlRoomService {
 
   async getPluginModules(): Promise<PluginModulesResult> {
     return (await this.getPlatformClient()).call('plugin/modules', {});
+  }
+
+  async requestChange(params: RpcParams<'change/request'>): Promise<ChangeRequest> {
+    return (await this.getPlatformClient()).call('change/request', params);
+  }
+
+  async listChangeRequests(params: RpcParams<'change/requests'>): Promise<ChangeRequest[]> {
+    return (await (await this.getPlatformClient()).call('change/requests', params)).requests;
+  }
+
+  async getChangeImpact(params: RpcParams<'change/impact'>): Promise<ImpactResult> {
+    return (await this.getPlatformClient()).call('change/impact', params);
+  }
+
+  async getChangeGraph(params: RpcParams<'change/graph'>): Promise<RpcResult<'change/graph'>> {
+    return (await this.getPlatformClient()).call('change/graph', params);
+  }
+
+  async rebuildChangeGraph(projectId: string): Promise<RpcResult<'change/rebuildGraph'>> {
+    return (await this.getPlatformClient()).call('change/rebuildGraph', { projectId });
+  }
+
+  async listResourceLocks(projectId: string): Promise<ResourceLock[]> {
+    return (await (await this.getPlatformClient()).call('change/locks', { projectId })).locks;
+  }
+
+  async releaseResourceLock(projectId: string, lockId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('change/releaseLock', { projectId, lockId });
+  }
+
+  async listIntegrations(params: RpcParams<'change/integrations'>): Promise<IntegrationRecord[]> {
+    return (await (await this.getPlatformClient()).call('change/integrations', params))
+      .integrations;
+  }
+
+  async integrateTask(projectId: string, taskId: string): Promise<IntegrationRecord> {
+    return (await this.getPlatformClient()).call('change/integrate', { projectId, taskId });
+  }
+
+  async abortIntegration(projectId: string, integrationId: string): Promise<IntegrationRecord> {
+    return (await this.getPlatformClient()).call('change/abortIntegration', {
+      projectId,
+      integrationId,
+    });
+  }
+
+  async submitFeedback(params: FeedbackInput): Promise<RpcResult<'change/feedback'>> {
+    return (await this.getPlatformClient()).call('change/feedback', params);
   }
 
   async listBoardThreads(params: RpcParams<'board/threads'>): Promise<RpcResult<'board/threads'>> {

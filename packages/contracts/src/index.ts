@@ -3,6 +3,7 @@ export * from './board';
 export * from './engines';
 export * from './assets';
 export * from './backup';
+export * from './change';
 export * from './dcc';
 export * from './models';
 export * from './knowledge';

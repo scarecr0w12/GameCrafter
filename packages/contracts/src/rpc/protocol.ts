@@ -38,6 +38,19 @@ import {
   BackupVerifyResultSchema,
 } from '../backup';
 import {
+  ChangeEdgeSchema,
+  ChangeNodeKindSchema,
+  ChangeNodeRefSchema,
+  ChangeNodeSchema,
+  ChangeRequestSchema,
+  FeedbackInputSchema,
+  ImpactResultSchema,
+  IntegrationRecordSchema,
+  IntegrationStatusSchema,
+  ResourceLockSchema,
+  TaskTouchSchema,
+} from '../change';
+import {
   DccCapabilityReportSchema,
   DccInstallationKindSchema,
   DccInstallationSchema,
@@ -52,6 +65,7 @@ import {
   SettingsScope,
 } from '../settings/schema';
 import {
+  TaskBudgetSchema,
   TaskCreateInputSchema,
   TaskEventSchema,
   TaskQuestionSchema,
@@ -985,6 +999,123 @@ export const RpcMethods = {
     ),
     result: Type.Object(
       { questions: Type.Array(TaskQuestionSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'change/request': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        text: Type.String({ minLength: 1 }),
+        role: Type.Optional(Type.String()),
+        touches: Type.Optional(Type.Array(TaskTouchSchema)),
+        budget: Type.Optional(TaskBudgetSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: ChangeRequestSchema,
+  },
+  'change/requests': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        limit: Type.Optional(Type.Integer({ minimum: 1 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { requests: Type.Array(ChangeRequestSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'change/impact': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        seeds: Type.Array(ChangeNodeRefSchema, { minItems: 1 }),
+        maxDepth: Type.Optional(Type.Integer({ minimum: 0 })),
+        threshold: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: ImpactResultSchema,
+  },
+  'change/graph': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        kinds: Type.Optional(Type.Array(ChangeNodeKindSchema)),
+        limit: Type.Optional(Type.Integer({ minimum: 1 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { nodes: Type.Array(ChangeNodeSchema), edges: Type.Array(ChangeEdgeSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'change/rebuildGraph': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { nodes: Type.Integer({ minimum: 0 }), edges: Type.Integer({ minimum: 0 }) },
+      { additionalProperties: false },
+    ),
+  },
+  'change/locks': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ locks: Type.Array(ResourceLockSchema) }, { additionalProperties: false }),
+  },
+  'change/releaseLock': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), lockId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ released: Type.Literal(true) }, { additionalProperties: false }),
+  },
+  'change/integrations': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        status: Type.Optional(IntegrationStatusSchema),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { integrations: Type.Array(IntegrationRecordSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'change/integrate': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), taskId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: IntegrationRecordSchema,
+  },
+  'change/abortIntegration': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        integrationId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: IntegrationRecordSchema,
+  },
+  'change/feedback': {
+    params: FeedbackInputSchema,
+    result: Type.Object(
+      {
+        reopenedTaskIds: Type.Array(Type.String({ format: 'uuid' })),
+        revalidateTaskIds: Type.Array(Type.String({ format: 'uuid' })),
+        threadId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+      },
       { additionalProperties: false },
     ),
   },
@@ -1933,6 +2064,24 @@ export const RpcNotifications = {
   },
   'mcp/stateChanged': { params: McpConnectionStateChangedSchema },
   'mcp/inputRequired': { params: McpInputRequiredSchema },
+  'change/lockChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), lock: ResourceLockSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'change/integrationChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), integration: IntegrationRecordSchema },
+      { additionalProperties: false },
+    ),
+  },
+  'change/requestChanged': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }), request: ChangeRequestSchema },
+      { additionalProperties: false },
+    ),
+  },
   'engine/capabilitiesChanged': {
     params: Type.Object(
       { projectId: Type.String({ format: 'uuid' }), report: EngineCapabilityReportSchema },
@@ -2109,6 +2258,15 @@ export const RpcErrorCode = {
   DccOperationUnavailable: -32118,
   DccRunNotFound: -32119,
   DccScriptRejected: -32120,
+  LockConflict: -32121,
+  LockNotHeld: -32122,
+  IntegrationConflict: -32123,
+  IntegrationNotReady: -32124,
+  CompletionContractUnmet: -32125,
+  WorktreeUnavailable: -32126,
+  RoleToolDenied: -32127,
+  AgentBudgetExceeded: -32128,
+  AgentTurnLimit: -32129,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

@@ -1,20 +1,9 @@
-import {
-  RpcError,
-  RpcErrorCode,
-  type BoardLink,
-  type BoardMessageType,
-  type ToolDefinition,
-} from '@gamecrafter/contracts';
-import type { RoleRegistry } from '../roles/role-registry';
-import { ToolRegistry, type ToolContext } from '../tools/tool-registry';
+import { type BoardLink, type BoardMessageType, type ToolDefinition } from '@gamecrafter/contracts';
+import { ToolRegistry } from '../tools/tool-registry';
 import type { BoardService } from './board-service';
 import type { BoardMaintenanceService } from './board-maintenance-service';
 
-export function registerBoardTools(
-  registry: ToolRegistry,
-  board: BoardService,
-  roles: RoleRegistry,
-): void {
+export function registerBoardTools(registry: ToolRegistry, board: BoardService): void {
   registry.register(
     definition(
       'board/read',
@@ -35,7 +24,6 @@ export function registerBoardTools(
       ['board.read'],
     ),
     (context, input) => {
-      authorizeRoleTool(context, roles, 'board/read');
       const args = input as {
         threadId?: string;
         afterSeq?: number;
@@ -92,7 +80,6 @@ export function registerBoardTools(
       ['board.post'],
     ),
     (context, input) => {
-      authorizeRoleTool(context, roles, 'board/post');
       const args = input as {
         threadId?: string;
         title?: string;
@@ -139,7 +126,6 @@ export function registerBoardTools(
       ['board.propose'],
     ),
     (context, input) => {
-      authorizeRoleTool(context, roles, 'board/propose-decision');
       const args = input as {
         threadId: string;
         title: string;
@@ -217,25 +203,4 @@ function definition(
     capabilities,
     source: 'builtin',
   };
-}
-
-function authorizeRoleTool(context: ToolContext, roles: RoleRegistry, toolId: string): void {
-  if (!context.agentRole) return;
-  let role;
-  try {
-    role = roles.get(context.agentRole, context.projectId);
-  } catch {
-    throw new RpcError(`Role cannot use ${toolId}`, RpcErrorCode.ToolDenied);
-  }
-  const permissionToolId = toolId === 'board/propose-decision' ? 'board/post' : toolId;
-  const allowed = role.tools.some((pattern) => matchesTool(pattern, permissionToolId));
-  const denied = role.disallowedTools.some((pattern) => matchesTool(pattern, permissionToolId));
-  if (!allowed || denied) {
-    throw new RpcError(`Role ${context.agentRole} cannot use ${toolId}`, RpcErrorCode.ToolDenied);
-  }
-}
-
-function matchesTool(pattern: string, toolId: string): boolean {
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*');
-  return new RegExp(`^${escaped}$`).test(toolId);
 }

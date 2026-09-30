@@ -82,6 +82,15 @@ export class PlatformServiceConnection {
   private readonly knowledgeRecordChangedListeners = new Set<
     (event: RpcNotificationParams<'knowledge/recordChanged'>) => void
   >();
+  private readonly changeLockChangedListeners = new Set<
+    (event: RpcNotificationParams<'change/lockChanged'>) => void
+  >();
+  private readonly changeIntegrationChangedListeners = new Set<
+    (event: RpcNotificationParams<'change/integrationChanged'>) => void
+  >();
+  private readonly changeRequestChangedListeners = new Set<
+    (event: RpcNotificationParams<'change/requestChanged'>) => void
+  >();
   private readonly statusListeners = new Set<
     (status: { connected: boolean; message?: string }) => void
   >();
@@ -240,6 +249,27 @@ export class PlatformServiceConnection {
     return () => this.knowledgeRecordChangedListeners.delete(listener);
   }
 
+  onChangeLockChanged(
+    listener: (event: RpcNotificationParams<'change/lockChanged'>) => void,
+  ): () => void {
+    this.changeLockChangedListeners.add(listener);
+    return () => this.changeLockChangedListeners.delete(listener);
+  }
+
+  onChangeIntegrationChanged(
+    listener: (event: RpcNotificationParams<'change/integrationChanged'>) => void,
+  ): () => void {
+    this.changeIntegrationChangedListeners.add(listener);
+    return () => this.changeIntegrationChangedListeners.delete(listener);
+  }
+
+  onChangeRequestChanged(
+    listener: (event: RpcNotificationParams<'change/requestChanged'>) => void,
+  ): () => void {
+    this.changeRequestChangedListeners.add(listener);
+    return () => this.changeRequestChangedListeners.delete(listener);
+  }
+
   onServiceStatus(
     listener: (status: { connected: boolean; message?: string }) => void,
   ): () => void {
@@ -327,6 +357,15 @@ export class PlatformServiceConnection {
         });
         client.onNotification('knowledge/recordChanged', (event) => {
           for (const listener of this.knowledgeRecordChangedListeners) listener(event);
+        });
+        client.onNotification('change/lockChanged', (event) => {
+          for (const listener of this.changeLockChangedListeners) listener(event);
+        });
+        client.onNotification('change/integrationChanged', (event) => {
+          for (const listener of this.changeIntegrationChangedListeners) listener(event);
+        });
+        client.onNotification('change/requestChanged', (event) => {
+          for (const listener of this.changeRequestChangedListeners) listener(event);
         });
         client.onClose(() => {
           if (this.client === client) {

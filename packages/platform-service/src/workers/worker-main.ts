@@ -72,6 +72,7 @@ async function run(payload: WorkerRunPayload): Promise<void> {
     const result = await handler({
       task: payload.task,
       input: payload.input,
+      tools: payload.tools ?? [],
       initialCheckpoint: payload.checkpoint,
       signal: activeController.signal,
       progress: (message, percent) => {

@@ -1,6 +1,14 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { TaskCreateInput, TaskEvent, TaskQuestion, TaskRecord } from '@gamecrafter/contracts';
+import {
+  minAccessMode,
+  type RoleRecord,
+  type TaskCreateInput,
+  type TaskEvent,
+  type TaskQuestion,
+  type TaskRecord,
+} from '@gamecrafter/contracts';
+import { requireExistingProjectPath } from '../assets/path-utils';
 import type { ProfileStore } from '../profile/profile-store';
 import { ProjectDatabases } from '../projects/project-databases';
 import { SettingsService } from '../settings/settings-service';
@@ -36,6 +44,7 @@ export class TaskService {
   private readonly runtimes = new Map<string, ProjectTaskRuntime>();
   private readonly externalQuestions = new Map<string, ExternalQuestionWaiter>();
   private supervisor?: TaskSupervisorPort;
+  private roleResolver?: (roleName: string, projectId: string) => RoleRecord;
 
   constructor(
     private readonly profile: ProfileStore,
@@ -47,6 +56,10 @@ export class TaskService {
 
   setSupervisor(supervisor: TaskSupervisorPort): void {
     this.supervisor = supervisor;
+  }
+
+  setRoleResolver(resolver: (roleName: string, projectId: string) => RoleRecord): void {
+    this.roleResolver = resolver;
   }
 
   projectIds(): string[] {
@@ -84,10 +97,120 @@ export class TaskService {
     return runtime;
   }
 
-  create(input: TaskCreateInput): CreatedTask {
-    const result = this.runtime(input.projectId).graph.create(input);
-    void this.supervisor?.schedule();
+  create(input: TaskCreateInput, options: { deferStart?: boolean } = {}): CreatedTask {
+    const roleName = input.role ?? (input.kind === 'agent.run' ? input.assignee?.role : undefined);
+    const role = roleName ? this.roleResolver?.(roleName, input.projectId) : undefined;
+    const project = role ? this.profile.getById(input.projectId) : undefined;
+    const projectInstructionsPath = project ? path.join(project.path, 'AGENTS.md') : undefined;
+    const memoryPath =
+      project && role?.memory === 'project'
+        ? path.join(project.path, '.gamecrafter', 'agent-memory', role.name, 'MEMORY.md')
+        : undefined;
+    const normalizedInput = role
+      ? {
+          ...input,
+          role: role.name,
+          isolation: input.isolation ?? role.isolation,
+          assignee: {
+            ...input.assignee,
+            role: role.name,
+            accessCeiling: input.assignee?.accessCeiling
+              ? minAccessMode(input.assignee.accessCeiling, role.maxAccess)
+              : role.maxAccess,
+          },
+          input: {
+            ...asRecord(input.input),
+            role,
+            ...(projectInstructionsPath && existsSync(projectInstructionsPath)
+              ? {
+                  projectInstructions: readFileSync(
+                    requireExistingProjectPath(project!.path, 'AGENTS.md'),
+                    'utf8',
+                  ),
+                }
+              : {}),
+            ...(memoryPath && existsSync(memoryPath)
+              ? {
+                  memory: readFileSync(
+                    requireExistingProjectPath(
+                      project!.path,
+                      path.relative(project!.path, memoryPath),
+                    ),
+                    'utf8',
+                  ).slice(0, 64_000),
+                }
+              : {}),
+            agentSettings: {
+              defaultMaxTurns: this.settings.resolve('coordination.defaultMaxTurns', {
+                projectId: input.projectId,
+              }).value,
+              maxTranscriptTokens: this.settings.resolve('coordination.maxTranscriptTokens', {
+                projectId: input.projectId,
+              }).value,
+            },
+          },
+        }
+      : input;
+    const result = this.runtime(input.projectId).graph.create(normalizedInput, {
+      deferReady: options.deferStart,
+    });
+    if (!options.deferStart) void this.supervisor?.schedule();
     return result;
+  }
+
+  createAttempt(original: TaskRecord, feedback: string): TaskRecord {
+    const created = this.create(
+      {
+        projectId: original.projectId,
+        kind: original.kind,
+        title: `${original.title} (attempt ${original.attempt + 1})`,
+        goal: original.goal,
+        parentTaskId: original.parentTaskId ?? undefined,
+        dependsOn: original.dependsOn,
+        priority: original.priority,
+        budget: original.budget,
+        maxAttempts: original.maxAttempts,
+        ...(original.assignee === null ? {} : { assignee: original.assignee }),
+        ...(original.touches === undefined ? {} : { touches: original.touches }),
+        ...(original.role === undefined ? {} : { role: original.role }),
+        ...(original.isolation === undefined ? {} : { isolation: original.isolation }),
+        ...(original.contract === undefined ? {} : { contract: original.contract }),
+        integration: null,
+        input: { ...asRecord(original.input), feedback },
+      },
+      { deferStart: true },
+    );
+    if (created.deduplicated) return created.task;
+    const graph = this.runtime(original.projectId).graph;
+    let attempt = graph.update(created.task.taskId, { attempt: original.attempt + 1 });
+    if (attempt.state === 'pending') {
+      const dependencies = attempt.dependsOn.map((taskId) => graph.get(taskId));
+      if (dependencies.every((dependency) => dependency.state === 'succeeded')) {
+        attempt = graph.transition(attempt.taskId, 'ready', 'feedback_attempt_ready', 'service');
+      }
+    }
+    void this.supervisor?.schedule();
+    return attempt;
+  }
+
+  activateDeferred(projectId: string, taskId: string): TaskRecord {
+    const graph = this.runtime(projectId).graph;
+    const task = graph.get(taskId);
+    if (task.state !== 'pending') return task;
+    const dependencies = task.dependsOn.map((dependencyId) => graph.get(dependencyId));
+    if (
+      dependencies.some((dependency) =>
+        ['failed', 'cancelled', 'blocked'].includes(dependency.state),
+      )
+    ) {
+      return graph.transition(taskId, 'blocked', 'dependency_failed', 'service');
+    }
+    if (dependencies.every((dependency) => dependency.state === 'succeeded')) {
+      const ready = graph.transition(taskId, 'ready', 'dependencies_satisfied', 'service');
+      void this.supervisor?.schedule();
+      return ready;
+    }
+    return task;
   }
 
   get(projectId: string, taskId: string): TaskRecord {
@@ -179,6 +302,12 @@ export class TaskService {
       .flatMap((projectId) => this.runtime(projectId).graph.questions(pendingOnly))
       .sort((left, right) => left.askedAt.localeCompare(right.askedAt));
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function abortError(reason: unknown): Error {

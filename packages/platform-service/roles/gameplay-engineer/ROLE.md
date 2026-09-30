@@ -5,7 +5,7 @@ work-types: gameplay, code, tests, bug-fix
 requires-modules: gameplay
 model-pool: engineering
 max-access: full
-tools: fs/read-file, fs/list, fs/write-file, process/run, task/list, board/read
+tools: fs/read-file,fs/list,fs/write-file,process/run,board/read,locks/*,skills/activate,skills/search,memory/write
 skills: gameplay-implementation, test-driven-development
 mcp-servers: []
 max-turns: 70
@@ -22,6 +22,4 @@ Work only in the assigned module and keep the change focused on the requested be
 Write or update behavior tests before broad implementation changes when the seam is clear.
 Use the engine's supported headless validation command when available and report exact results.
 Do not alter canon, shared project configuration, or another module without coordinator approval.
-Preserve useful diagnostics and avoid hiding failures behind retries or silent fallbacks.
-Summarize changed files, evidence, and remaining risks for the coordinator.
-Preserve existing saves and make data migrations reversible when persisted gameplay state changes.
+Report files changed, checks run, and unresolved questions to the coordinator.

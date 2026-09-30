@@ -4,11 +4,23 @@ import {
   PROTOCOL_VERSION,
   RpcError,
   RpcErrorCode,
+  isTerminal,
+  type IntegrationRecord,
   type ProjectCloneInput,
   type ProjectCreateInput,
+  type DccTool,
   type TaskCreateInput,
 } from '@gamecrafter/contracts';
 import { Database } from './db/database';
+import { registerAgentTools } from './agents/agent-tools';
+import { ChangeGraph } from './change/change-graph';
+import { ChangeGraphStore } from './change/change-graph-store';
+import { ChangeService } from './change/change-service';
+import { registerChangeTools } from './change/change-tools';
+import { IntegrationService } from './change/integration-service';
+import { FeedbackService } from './change/feedback-service';
+import { LockManager } from './change/lock-manager';
+import { WorktreeManager } from './change/worktree-manager';
 import { IpcServer, type RpcHandlers } from './ipc/server';
 import { migrate } from './db/migrator';
 import type { ServicePaths } from './paths';
@@ -23,6 +35,7 @@ import { SettingsService } from './settings/settings-service';
 import { TaskService } from './tasks/task-service';
 import {
   HandlerRegistry,
+  registerAgentHandlers,
   registerBoardMaintenanceHandlers,
   registerBuiltinHandlers,
   registerKnowledgeHandlers,
@@ -100,6 +113,8 @@ export class PlatformService {
     private readonly knowledgeService: KnowledgeService,
     private readonly assetService: AssetService,
     private readonly backupService: BackupService,
+    private readonly changeGraph: ChangeGraph,
+    private readonly integrationService: IntegrationService,
     paths: ServicePaths,
     startedAt: string,
   ) {
@@ -122,6 +137,9 @@ export class PlatformService {
     const builtins = createBuiltinSettings();
     settingsRegistry.register('builtin', builtins.groups, builtins.definitions);
     const settingsService = new SettingsService(settingsRegistry, database, projectDatabases);
+    const lockManager = new LockManager(projectDatabases, settingsService);
+    const worktrees = new WorktreeManager(profile, settingsService);
+    const integrationRef: { service?: IntegrationService } = {};
     const credentials = new CredentialStore(database, paths.profileDir);
     const modelProviders = createBuiltinModelProviders();
     const modelRegistry = new ModelRegistry(database, credentials, modelProviders);
@@ -142,14 +160,33 @@ export class PlatformService {
     registerBuiltinHandlers(handlerRegistry);
     registerBoardMaintenanceHandlers(handlerRegistry);
     registerKnowledgeHandlers(handlerRegistry);
+    registerAgentHandlers(handlerRegistry);
     const taskService = new TaskService(
       profile,
       projectDatabases,
       settingsService,
       handlerRegistry,
       {
-        taskChanged: (projectId, task) => server.broadcast('task/changed', { projectId, task }),
-        taskEvent: (projectId, event) => server.broadcast('task/event', { projectId, event }),
+        taskChanged: (projectId, task) => {
+          server.broadcast('task/changed', { projectId, task });
+          changeGraphRef.service?.scheduleRebuild(projectId);
+          if (isTerminal(task.state)) lockManager.releaseTask(projectId, task.taskId);
+          if (task.state === 'succeeded')
+            void integrationRef.service?.processTask(task).catch((error: unknown) =>
+              log('warn', 'Task integration processing failed', {
+                projectId,
+                taskId: task.taskId,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            );
+        },
+        taskEvent: (projectId, event) => {
+          server.broadcast('task/event', { projectId, event });
+          const payload = event.payload as { reason?: unknown };
+          if (event.kind === 'task.retry' && payload.reason === 'lease_expired' && event.taskId)
+            lockManager.releaseTask(projectId, event.taskId);
+          changeGraphRef.service?.scheduleRebuild(projectId);
+        },
         taskQuestion: (projectId, question) =>
           server.broadcast('task/question', { projectId, question }),
       },
@@ -167,6 +204,7 @@ export class PlatformService {
       profileDir: paths.profileDir,
       pluginRoleDirectories: (projectId) => pluginRegistry.roleDirectories(projectId),
     });
+    taskService.setRoleResolver((roleName, projectId) => roleRegistry.get(roleName, projectId));
     const skillCatalog = new SkillCatalog({
       registry: skillRegistry,
       workspace,
@@ -186,18 +224,78 @@ export class PlatformService {
       readOnlyRoots: (projectId) => skillService.readableSkillRoots(projectId),
     });
     registerSkillTools(toolRegistry, skillService);
+    registerAgentTools(toolRegistry, {
+      completion: completionService,
+      tasks: taskService,
+      roles: roleRegistry,
+      projects: profile,
+      locks: lockManager,
+    });
     const toolBroker = new ToolBroker({
       registry: toolRegistry,
       settings: settingsService,
       projectDatabases,
       projects: profile,
       tasks: taskService,
+      roles: roleRegistry,
+      locks: lockManager,
+      requiredLocks: async (request, tool, task) => {
+        if (!task) return [];
+        const input = asRecord(request.input);
+        const required: { resource: string; mode: 'shared' | 'exclusive' }[] = [];
+        if (request.toolId === 'fs/write-file' && task.isolation !== 'worktree') {
+          const filePath = normalizeResourcePath(stringValue(input.path));
+          if (filePath) {
+            const resource = `file:${filePath}`;
+            const activeTasks = taskService.list(request.projectId, {
+              states: ['pending', 'ready', 'claimed', 'running', 'waiting_input'],
+              limit: 5_000,
+            });
+            const overlaps = activeTasks.some(
+              (candidate) =>
+                candidate.taskId !== task.taskId &&
+                candidate.touches?.some(
+                  (touch) => touch.intent === 'write' && touch.resource === resource,
+                ),
+            );
+            if (overlaps) required.push({ resource, mode: 'exclusive' });
+          }
+        }
+        if (request.toolId.startsWith('engine/') && tool.executionMode === 'live-editor') {
+          const report = await engines().capabilities(request.projectId);
+          const connectionId = report.liveBridge?.connectionId;
+          if (connectionId)
+            required.push({ resource: `engine-session:${connectionId}`, mode: 'exclusive' });
+        }
+        if (request.toolId.startsWith('dcc/')) {
+          const dccTool = stringValue(input.tool) as DccTool | undefined;
+          if (dccTool) {
+            const report = await dcc().capabilities(request.projectId, dccTool);
+            const connectionId = report.layers['live-bridge'].connectionId;
+            if (connectionId)
+              required.push({ resource: `dcc-session:${dccTool}`, mode: 'exclusive' });
+          }
+        }
+        if (request.toolId === 'asset/import') {
+          const configured = settingsService.resolve('assets.importDirectory', {
+            projectId: request.projectId,
+          }).value;
+          const destination = normalizeResourcePath(
+            stringValue(input.destinationDir) ?? String(configured ?? 'game/assets/generated'),
+          );
+          if (destination) required.push({ resource: `asset:${destination}`, mode: 'exclusive' });
+        }
+        return required;
+      },
       events: {
         approvalRequested: (projectId, approval) =>
           server.broadcast('broker/approvalRequested', { projectId, approval }),
         approvalResolved: (projectId, approval) =>
           server.broadcast('broker/approvalResolved', { projectId, approval }),
-        toolCalled: (projectId, call) => server.broadcast('tool/called', { projectId, call }),
+        toolCalled: (projectId, call) => {
+          server.broadcast('tool/called', { projectId, call });
+          changeGraphRef.service?.scheduleRebuild(projectId);
+        },
       },
       isToolAvailable: (tool, projectId) => {
         if (!tool.source.startsWith('plugin:')) return true;
@@ -214,9 +312,18 @@ export class PlatformService {
       settings: settingsService,
       handlers: handlerRegistry,
       tools: toolBroker,
+      worktrees,
+      validateResult: (task, result) =>
+        integrationRef.service &&
+        (task.kind === 'agent.run' || task.isolation === 'worktree' || task.contract !== undefined)
+          ? integrationRef.service.validateResult(task, result)
+          : Promise.resolve({ result }),
       onWorkerStarted: options.onWorkerStarted,
       onWorkerFinalMessage: options.onWorkerFinalMessage,
       onWorkerExited: options.onWorkerExited,
+      onLeaseRenewed: (projectId, taskId, workerId) =>
+        lockManager.renewTask(projectId, taskId, workerId),
+      onTaskLeaseExpired: (projectId, taskId) => lockManager.releaseTask(projectId, taskId),
       onScheduleSnapshot: options.onWorkerScheduleSnapshot,
     });
     taskService.setSupervisor(workerSupervisor);
@@ -260,6 +367,21 @@ export class PlatformService {
     const knowledge = (): KnowledgeService => {
       if (!knowledgeRef.service) throw new Error('Knowledge service is not initialized');
       return knowledgeRef.service;
+    };
+    const changeGraphRef: { service?: ChangeGraph } = {};
+    const changeGraph = (): ChangeGraph => {
+      if (!changeGraphRef.service) throw new Error('Change graph is not initialized');
+      return changeGraphRef.service;
+    };
+    const changeServiceRef: { service?: ChangeService } = {};
+    const changes = (): ChangeService => {
+      if (!changeServiceRef.service) throw new Error('Change service is not initialized');
+      return changeServiceRef.service;
+    };
+    const feedbackRef: { service?: FeedbackService } = {};
+    const feedbackService = (): FeedbackService => {
+      if (!feedbackRef.service) throw new Error('Feedback service is not initialized');
+      return feedbackRef.service;
     };
     const handlers: RpcHandlers = {
       'service/info': () => ({
@@ -434,6 +556,60 @@ export class PlatformService {
           projectId: params.projectId,
           sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
         }),
+      'change/request': (input) => {
+        const request = changes().request(input);
+        server.broadcast('change/requestChanged', { projectId: request.projectId, request });
+        return request;
+      },
+      'change/requests': ({ projectId, limit }) => ({
+        requests: changes().requests(projectId, limit ?? 200),
+      }),
+      'change/impact': ({ projectId, seeds, maxDepth, threshold }) =>
+        changeGraph().impact(projectId, seeds, { maxDepth, threshold }),
+      'change/graph': ({ projectId, kinds, limit }) =>
+        changeGraph().graph(projectId, { kinds, limit }),
+      'change/rebuildGraph': ({ projectId }) => changeGraph().rebuildGraph(projectId),
+      'change/locks': ({ projectId }) => ({ locks: lockManager.list(projectId) }),
+      'change/releaseLock': ({ projectId, lockId }) => {
+        const lock = lockManager.release(projectId, lockId, undefined, true);
+        taskService.runtime(projectId).store.appendEvent(
+          null,
+          'change.lockReleased',
+          {
+            lockId,
+            resource: lock.resource,
+            taskId: lock.taskId,
+          },
+          'user',
+        );
+        server.broadcast('change/lockChanged', { projectId, lock });
+        return { released: true };
+      },
+      'change/integrations': ({ projectId, status }) => ({
+        integrations: changes().integrations(projectId, status),
+      }),
+      'change/integrate': async ({ projectId, taskId }, context) => {
+        const call = await toolBroker.call(
+          { projectId, toolId: 'change/integrate', input: { taskId } },
+          { sessionId: context.sessionId },
+        );
+        if (call.status !== 'completed')
+          throw new RpcError('Integration did not complete.', RpcErrorCode.IntegrationNotReady);
+        return call.output as IntegrationRecord;
+      },
+      'change/abortIntegration': async ({ projectId, integrationId }, context) => {
+        const call = await toolBroker.call(
+          { projectId, toolId: 'change/abortIntegration', input: { integrationId } },
+          { sessionId: context.sessionId },
+        );
+        if (call.status !== 'completed')
+          throw new RpcError(
+            'Integration abort did not complete.',
+            RpcErrorCode.IntegrationNotReady,
+          );
+        return call.output as IntegrationRecord;
+      },
+      'change/feedback': (input) => feedbackService().apply(input),
       'task/create': (input: TaskCreateInput) => taskService.create(input),
       'task/get': ({ projectId, taskId }) => taskService.get(projectId, taskId),
       'task/list': ({ projectId, states, parentTaskId, rootTaskId, limit }) => ({
@@ -668,6 +844,9 @@ export class PlatformService {
       onSessionOpened: (sessionId) => settingsService.openSession(sessionId),
       onSessionClosed: (sessionId) => settingsService.closeSession(sessionId),
     });
+    lockManager.setChangeListener((projectId, lock) =>
+      server.broadcast('change/lockChanged', { projectId, lock }),
+    );
     boardRef.service = new BoardService({
       projectDatabases,
       settings: settingsService,
@@ -714,7 +893,7 @@ export class PlatformService {
       scheduler: boardMaintenance(),
       canonSync,
     });
-    registerBoardTools(toolRegistry, board(), roleRegistry);
+    registerBoardTools(toolRegistry, board());
     registerBoardMaintenanceTool(toolRegistry, boardMaintenanceService);
     const mcpConnections = new McpConnectionManager({
       database,
@@ -831,13 +1010,68 @@ export class PlatformService {
       toolBroker,
       toolRegistry,
       events: {
-        indexChanged: (projectId, status) =>
-          server.broadcast('knowledge/indexChanged', { projectId, status }),
+        indexChanged: (projectId, status) => {
+          server.broadcast('knowledge/indexChanged', { projectId, status });
+          changeGraphRef.service?.scheduleRebuild(projectId);
+        },
         recordChanged: (projectId, record) =>
           server.broadcast('knowledge/recordChanged', { projectId, record }),
       },
       vectorStoreFactory: options.knowledgeVectorStoreFactory,
     });
+    changeGraphRef.service = new ChangeGraph({
+      storeForProject: (projectId) => new ChangeGraphStore(projectDatabases.get(projectId)),
+      sources: {
+        projectPath: (projectId) => {
+          const project = profile.getById(projectId);
+          if (!project)
+            throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
+          return project.path;
+        },
+        canonRecords: (projectId) =>
+          knowledge().records(projectId, { includeInactive: true }).records,
+        tasks: (projectId) => taskService.list(projectId, { limit: 5_000 }),
+        toolCalls: (projectId) => toolBroker.listCalls(projectId, { limit: 5_000 }),
+      },
+      onRebuildError: (projectId, error) =>
+        log('warn', 'Change graph rebuild failed', {
+          projectId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+    });
+    changeServiceRef.service = new ChangeService(
+      projectDatabases,
+      profile,
+      taskService,
+      changeGraph(),
+      settingsService,
+      board(),
+    );
+    integrationRef.service = new IntegrationService({
+      projects: profile,
+      projectDatabases,
+      tasks: taskService,
+      roles: roleRegistry,
+      changes: changes(),
+      locks: lockManager,
+      worktrees,
+      tools: toolBroker,
+      settings: settingsService,
+      onChanged: (integration) =>
+        server.broadcast('change/integrationChanged', {
+          projectId: integration.projectId,
+          integration,
+        }),
+    });
+    feedbackRef.service = new FeedbackService({
+      tasks: taskService,
+      changes: changes(),
+      graph: changeGraph(),
+      integrations: integrationRef.service,
+      board: board(),
+      settings: settingsService,
+    });
+    registerChangeTools(toolRegistry, changeGraph(), changes(), integrationRef.service);
     settingsService.onChanged((event) => {
       if (event.key.startsWith('engine.')) void engines().onSettingChanged(event);
       if (event.key.startsWith('dcc.')) void dcc().onSettingChanged(event);
@@ -865,6 +1099,8 @@ export class PlatformService {
       knowledge(),
       assets(),
       backups(),
+      changeGraph(),
+      integrationRef.service!,
       paths,
       startedAt,
     );
@@ -900,6 +1136,8 @@ export class PlatformService {
     await this.workerSupervisor.stopAll({ checkpoint });
     await this.toolBroker.stopAll();
     await this.mcpConnections.stop();
+    await this.integrationService.stop();
+    this.changeGraph.stop();
     await this.server.close();
     this.projectDatabases.close();
     this.database.close();
@@ -928,6 +1166,27 @@ function loadOrCreateToken(paths: ServicePaths): string {
     return readFileSync(paths.tokenPath, 'utf8').trim();
   }
   return token;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+function normalizeResourcePath(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value
+    .replaceAll('\\', '/')
+    .replace(/\/{2,}/g, '/')
+    .replace(/^\.\//, '');
+  if (normalized.startsWith('/') || normalized === '..' || normalized.startsWith('../'))
+    return undefined;
+  return normalized;
 }
 
 function isCode(error: unknown, code: string): boolean {

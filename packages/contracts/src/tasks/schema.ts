@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
 import { Static, Type } from '@sinclair/typebox';
+import {
+  CompletionClaimKindSchema,
+  IntegrationRecordSchema,
+  TaskCompletionContractSchema,
+  TaskTouchSchema,
+} from '../change';
 import { AccessModeSchema } from '../tools/schema';
 
 export const TaskStateSchema = Type.Union([
@@ -101,6 +107,21 @@ export const TaskResultSchema = Type.Object(
     summary: Type.String(),
     artifacts: Type.Array(TaskArtifactSchema),
     evidence: Type.Array(TaskEvidenceSchema),
+    reviewStatus: Type.Optional(
+      Type.Union([
+        Type.Literal('accepted'),
+        Type.Literal('revision-requested'),
+        Type.Literal('rejected'),
+      ]),
+    ),
+    claims: Type.Optional(
+      Type.Array(
+        Type.Object(
+          { kind: CompletionClaimKindSchema, ref: Type.String() },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
   },
   { additionalProperties: false },
 );
@@ -118,6 +139,7 @@ export type TaskError = Static<typeof TaskErrorSchema>;
 
 const NullableUuid = Type.Union([Type.String({ format: 'uuid' }), Type.Null()]);
 
+// Coordination metadata stays optional so persisted schemaVersion 1 tasks remain compatible.
 export const TaskRecordSchema = Type.Object(
   {
     schemaVersion: Type.Literal(1),
@@ -134,6 +156,11 @@ export const TaskRecordSchema = Type.Object(
     priority: Type.Integer({ minimum: 0, maximum: 100, default: 50 }),
     dependsOn: Type.Array(Type.String({ format: 'uuid' })),
     assignee: Type.Union([TaskAssigneeSchema, Type.Null()]),
+    touches: Type.Optional(Type.Array(TaskTouchSchema)),
+    role: Type.Optional(Type.String()),
+    isolation: Type.Optional(Type.Union([Type.Literal('none'), Type.Literal('worktree')])),
+    contract: Type.Optional(TaskCompletionContractSchema),
+    integration: Type.Optional(Type.Union([IntegrationRecordSchema, Type.Null()])),
     budget: TaskBudgetSchema,
     spent: TaskSpentSchema,
     attempt: Type.Integer({ minimum: 1 }),
@@ -164,6 +191,11 @@ export const TaskCreateInputSchema = Type.Object(
     budget: Type.Optional(TaskBudgetSchema),
     maxAttempts: Type.Optional(Type.Integer({ minimum: 1 })),
     assignee: Type.Optional(TaskAssigneeSchema),
+    touches: Type.Optional(Type.Array(TaskTouchSchema)),
+    role: Type.Optional(Type.String()),
+    isolation: Type.Optional(Type.Union([Type.Literal('none'), Type.Literal('worktree')])),
+    contract: Type.Optional(TaskCompletionContractSchema),
+    integration: Type.Optional(Type.Union([IntegrationRecordSchema, Type.Null()])),
     input: Type.Optional(Type.Unknown()),
   },
   { additionalProperties: false },
@@ -182,6 +214,7 @@ export const TaskEventKind = {
   Failed: 'task.failed',
   Retry: 'task.retry',
   Cancelled: 'task.cancelled',
+  Feedback: 'task.feedback',
 } as const;
 export type TaskEventKind = (typeof TaskEventKind)[keyof typeof TaskEventKind];
 

@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PROJECT_MANIFEST_FILENAME, projectManifest } from '@gamecrafter/contracts';
+import { PROJECT_MANIFEST_FILENAME, RpcErrorCode, projectManifest } from '@gamecrafter/contracts';
 import { connect } from '@gamecrafter/service-client';
 import { Database } from './db/database';
 import { resolvePaths } from './paths';
@@ -61,8 +61,8 @@ describe('platform service integration', () => {
     expect(client.sessionId).toMatch(/^[0-9a-f-]{36}$/i);
 
     const settingsDescription = await client.call('settings/describe', {});
-    expect(settingsDescription.groups).toHaveLength(15);
-    expect(settingsDescription.definitions).toHaveLength(64);
+    expect(settingsDescription.groups).toHaveLength(16);
+    expect(settingsDescription.definitions).toHaveLength(70);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
     let resolveCloned: (value: unknown) => void = () => undefined;
@@ -107,7 +107,7 @@ describe('platform service integration', () => {
       path.join(project.path, '.gamecrafter', 'project.sqlite'),
     );
     try {
-      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(9);
+      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(11);
       expect(
         projectDatabase.prepare('SELECT kind FROM events WHERE kind = ?').all('project.created'),
       ).toHaveLength(1);
@@ -201,7 +201,7 @@ describe('platform service integration', () => {
         input: { threadId: boardThread.thread.threadId, type: 'comment', body: 'not allowed' },
         accessCeiling: 'restricted',
       }),
-    ).rejects.toMatchObject({ code: -32031 });
+    ).rejects.toMatchObject({ code: RpcErrorCode.RoleToolDenied });
     const designerTask = await client.call('task/create', {
       projectId: project.projectId,
       kind: 'noop.sleep',

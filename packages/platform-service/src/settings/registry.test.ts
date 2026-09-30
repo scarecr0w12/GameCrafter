@@ -9,8 +9,8 @@ describe('SettingsRegistry', () => {
     registry.register('builtin', builtins.groups, builtins.definitions);
 
     const description = registry.describe();
-    expect(description.groups).toHaveLength(15);
-    expect(description.definitions).toHaveLength(64);
+    expect(description.groups).toHaveLength(16);
+    expect(description.definitions).toHaveLength(70);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({

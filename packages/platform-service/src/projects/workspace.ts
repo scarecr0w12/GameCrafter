@@ -140,7 +140,7 @@ export class ProjectWorkspace {
       );
       writeFileSync(
         path.join(projectPath, '.gitignore'),
-        '.gamecrafter/cache/\n.gamecrafter/logs/\n.gamecrafter/engine-runs/\n.gamecrafter/*.sqlite\n*.sqlite-wal\n*.sqlite-shm\n*.sqlite-journal\n',
+        '.gamecrafter/cache/\n.gamecrafter/logs/\n.gamecrafter/engine-runs/\n.gamecrafter/worktrees/\n.gamecrafter/agent-memory/\n.gamecrafter/*.sqlite\n*.sqlite-wal\n*.sqlite-shm\n*.sqlite-journal\n',
         'utf8',
       );
       mkdirSync(path.join(projectPath, 'docs'), { recursive: true });
@@ -428,6 +428,8 @@ function ensureProjectOperationalGitignore(projectPath: string): void {
     '.gamecrafter/cache/',
     '.gamecrafter/logs/',
     '.gamecrafter/engine-runs/',
+    '.gamecrafter/worktrees/',
+    '.gamecrafter/agent-memory/',
     '.gamecrafter/*.sqlite',
     '*.sqlite-wal',
     '*.sqlite-shm',

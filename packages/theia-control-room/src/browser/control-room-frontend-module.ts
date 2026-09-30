@@ -29,6 +29,8 @@ import { BackupsWidget } from './backups-widget';
 import { BackupsViewContribution } from './backups-view-contribution';
 import { KnowledgeWidget } from './knowledge-widget';
 import { KnowledgeViewContribution } from './knowledge-view-contribution';
+import { SwarmWidget } from './swarm-widget';
+import { SwarmViewContribution } from './swarm-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -60,6 +62,7 @@ export default new ContainerModule((bind) => {
   bind(AssetsWidget).toSelf().inSingletonScope();
   bind(BackupsWidget).toSelf().inSingletonScope();
   bind(KnowledgeWidget).toSelf().inSingletonScope();
+  bind(SwarmWidget).toSelf().inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -132,6 +135,12 @@ export default new ContainerModule((bind) => {
       createWidget: () => context.container.get(KnowledgeWidget),
     }))
     .inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: SwarmWidget.ID,
+      createWidget: () => context.container.get(SwarmWidget),
+    }))
+    .inSingletonScope();
   bindViewContribution(bind, ProjectHomeContribution);
   bind(FrontendApplicationContribution).toService(ProjectHomeContribution);
   bindViewContribution(bind, SettingsViewContribution);
@@ -145,6 +154,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, AssetsViewContribution);
   bindViewContribution(bind, BackupsViewContribution);
   bindViewContribution(bind, KnowledgeViewContribution);
+  bindViewContribution(bind, SwarmViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();
