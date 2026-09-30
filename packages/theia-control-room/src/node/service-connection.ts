@@ -397,15 +397,18 @@ export class PlatformServiceConnection {
   }
 
   private startService(): void {
-    const servicePackage = localRequire.resolve('@gamecrafter/platform-service/package.json');
-    const cli = path.join(path.dirname(servicePackage), 'lib', 'cli.js');
-    const child = spawn(process.execPath, [cli, 'start'], {
+    const child = spawn(process.execPath, [resolvePlatformServiceCli(), 'start'], {
       detached: true,
       stdio: 'ignore',
       env: process.env,
     });
     child.unref();
   }
+}
+
+export function resolvePlatformServiceCli(): string {
+  const servicePackage = localRequire.resolve('@gamecrafter/platform-service/package.json');
+  return path.join(path.dirname(servicePackage), 'lib', 'cli.js');
 }
 
 function isUnavailable(error: unknown): boolean {

@@ -16,4 +16,5 @@ export * from './skills';
 export * from './settings/schema';
 export * from './tasks';
 export * from './tools';
+export * from './updates';
 export * from './validation';

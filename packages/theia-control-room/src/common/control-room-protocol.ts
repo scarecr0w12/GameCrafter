@@ -75,6 +75,7 @@ import type {
   TaskRecord,
   ToolCallRecord,
   ToolDefinition,
+  UpdateState,
 } from '@gamecrafter/contracts';
 
 export const ControlRoomService = Symbol('ControlRoomService');
@@ -82,6 +83,12 @@ export const CONTROL_ROOM_SERVICE_PATH = '/services/gamecrafter/control-room';
 
 export interface ControlRoomService {
   getServiceInfo(): Promise<ServiceInfo>;
+  getUpdateState(): Promise<UpdateState>;
+  checkUpdates(): Promise<UpdateState>;
+  downloadUpdate(version?: string): Promise<UpdateState>;
+  installUpdate(): Promise<RpcResult<'update/install'>>;
+  rollbackUpdate(): Promise<RpcResult<'update/rollback'>>;
+  dismissUpdate(version: string): Promise<UpdateState>;
   listProjects(): Promise<ProjectSummary[]>;
   createProject(input: ProjectCreateInput): Promise<ProjectSummary>;
   openProject(path: string): Promise<ProjectSummary>;

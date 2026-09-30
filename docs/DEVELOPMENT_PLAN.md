@@ -203,7 +203,7 @@ flowchart TD
 - **Depends on:** WP4.
 - **Scope:** Windows and Linux installers, checksums/signing, update checking with user-controlled installation and rollback, tested distribution matrix.
 - **Done when:** CI produces verifiable Windows and Linux packages from a tagged commit.
-- **Status:** Not started.
+- **Status:** In progress: Electron Builder targets and a tagged Linux/Windows draft-release workflow are present in the working tree. The update manager now checks releases, filters by platform/schema compatibility, downloads to the profile with SHA-256 and optional Ed25519 checksum-signature verification, persists dismissal, and exposes user-facing controls. Installation is deliberately manual; rollback package capture/restore is not yet implemented. Signing-key provisioning, hosted Windows release validation, and installer/update/rollback drills remain incomplete. Do not mark WP19 implemented until those paths are tested.
 
 ## Cross-cutting rules
 

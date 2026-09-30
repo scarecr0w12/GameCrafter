@@ -318,4 +318,15 @@ export const profileMigrations: Migration[] = [
       CREATE INDEX dcc_installations_tool_source_idx ON dcc_installations(tool, source);
     `,
   },
+  {
+    id: 11,
+    name: 'create stable update state store',
+    up: `
+      CREATE TABLE update_states (
+        channel TEXT PRIMARY KEY,
+        state_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

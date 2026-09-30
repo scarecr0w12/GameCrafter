@@ -9,8 +9,8 @@ describe('SettingsRegistry', () => {
     registry.register('builtin', builtins.groups, builtins.definitions);
 
     const description = registry.describe();
-    expect(description.groups).toHaveLength(16);
-    expect(description.definitions).toHaveLength(70);
+    expect(description.groups).toHaveLength(17);
+    expect(description.definitions).toHaveLength(75);
     expect(
       description.definitions.find((definition) => definition.key === 'mcp.autoConnect'),
     ).toMatchObject({
@@ -63,6 +63,10 @@ describe('SettingsRegistry', () => {
         (definition) => definition.key === 'dcc.allowUnrestrictedScripts',
       ),
     ).toMatchObject({ group: 'dcc', default: false, scopes: ['platform'] });
+    expect(description.groups[16]?.id).toBe('updates');
+    expect(
+      description.definitions.find((definition) => definition.key === 'updates.checkOnStart'),
+    ).toMatchObject({ group: 'updates', default: false, scopes: ['platform'] });
   });
 
   it('rejects duplicate keys', () => {

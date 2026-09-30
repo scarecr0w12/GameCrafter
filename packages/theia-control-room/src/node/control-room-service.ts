@@ -74,6 +74,7 @@ import {
   type TaskRecord,
   type ToolCallRecord,
   type ToolDefinition,
+  type UpdateState,
   type SettingDefinition,
   type SettingGroup,
   type SettingsScope,
@@ -242,6 +243,30 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       message: `Connected to platform service v${info.serviceVersion}`,
     });
     return info;
+  }
+
+  async getUpdateState(): Promise<UpdateState> {
+    return (await this.getPlatformClient()).call('update/state', {});
+  }
+
+  async checkUpdates(): Promise<UpdateState> {
+    return (await this.getPlatformClient()).call('update/check', {});
+  }
+
+  async downloadUpdate(version?: string): Promise<UpdateState> {
+    return (await this.getPlatformClient()).call('update/download', { version });
+  }
+
+  async installUpdate(): Promise<RpcResult<'update/install'>> {
+    return (await this.getPlatformClient()).call('update/install', {});
+  }
+
+  async rollbackUpdate(): Promise<RpcResult<'update/rollback'>> {
+    return (await this.getPlatformClient()).call('update/rollback', {});
+  }
+
+  async dismissUpdate(version: string): Promise<UpdateState> {
+    return (await this.getPlatformClient()).call('update/dismiss', { version });
   }
 
   async listProjects(): Promise<ProjectSummary[]> {

@@ -106,6 +106,12 @@ export function createBuiltinSettings(): BuiltinSettings {
       description: 'Change impact, agent execution, resource locks, and worktree integration.',
       order: 15,
     },
+    {
+      id: 'updates',
+      title: 'Updates',
+      description: 'Release checks, downloads, and user-controlled update installation.',
+      order: 16,
+    },
   ];
   const definitions: SettingDefinition[] = [
     setting(
@@ -772,6 +778,51 @@ export function createBuiltinSettings(): BuiltinSettings {
       { type: 'integer', minimum: 1, maximum: 1000 },
       60,
       ['platform', 'project'],
+    ),
+    setting(
+      'updates.checkOnStart',
+      'Check for updates on startup',
+      'Check the stable release channel after the Control Room starts.',
+      'updates',
+      { type: 'boolean' },
+      false,
+      ['platform'],
+    ),
+    setting(
+      'updates.releasesUrl',
+      'Stable releases URL',
+      'GitHub latest-release API URL or a direct gamecrafter-release.json URL.',
+      'updates',
+      { type: 'string', format: 'uri', minLength: 1 },
+      'https://api.github.com/repos/scarecr0w12/GameCrafter/releases/latest',
+      ['platform'],
+    ),
+    setting(
+      'updates.autoDownload',
+      'Download updates automatically',
+      'Download a compatible release after checking; installation always remains user-controlled.',
+      'updates',
+      { type: 'boolean' },
+      false,
+      ['platform'],
+    ),
+    setting(
+      'updates.checkIntervalHours',
+      'Update check interval (hours)',
+      'Interval between background stable-channel checks.',
+      'updates',
+      { type: 'integer', minimum: 1, maximum: 720 },
+      24,
+      ['platform'],
+    ),
+    setting(
+      'updates.signingPublicKey',
+      'Release signing public key',
+      'Ed25519 public key used to verify the detached release checksum signature.',
+      'updates',
+      { type: 'string' },
+      '',
+      ['platform'],
     ),
   ];
 

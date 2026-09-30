@@ -1,0 +1,44 @@
+appId: ai.gamecrafter.controlroom
+productName: GameCrafter
+artifactName: ${productName}-${version}-${arch}.${ext}
+asar: false
+npmRebuild: true
+files:
+  - lib/**/*
+  - src-gen/**/*
+  - package.json
+  - node_modules/**/*
+  - '!node_modules/**/*.map'
+  - '!node_modules/**/test{,/**/*}'
+  - '!node_modules/**/tests{,/**/*}'
+  - '!node_modules/**/__tests__{,/**/*}'
+  - '!node_modules/**/examples{,/**/*}'
+  - '!node_modules/**/src{,/**/*}'
+extraResources:
+  - from: ../../plugins
+    to: plugins
+    filter:
+      - '**/*'
+directories:
+  output: dist
+linux:
+  category: Development
+  maintainer: GameCrafter
+  executableName: gamecrafter
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+publish: null

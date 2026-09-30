@@ -6,6 +6,21 @@ export interface Migration {
   up: string;
 }
 
+export function currentMigrationVersion(db: Database): number {
+  const table = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'")
+    .get<{ name: string }>();
+  if (!table) return 0;
+  const row = db
+    .prepare('SELECT COALESCE(MAX(id), 0) AS version FROM schema_migrations')
+    .get<{ version: number }>();
+  return Number(row?.version ?? 0);
+}
+
+export function latestMigrationVersion(migrations: Migration[]): number {
+  return migrations.reduce((latest, migration) => Math.max(latest, migration.id), 0);
+}
+
 export function migrate(db: Database, migrations: Migration[]): { applied: number[] } {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (

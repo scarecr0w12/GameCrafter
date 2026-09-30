@@ -103,6 +103,7 @@ import {
   SkillRecordSchema,
   SkillValidationResultSchema,
 } from '../skills';
+import { UpdateStateSchema } from '../updates';
 import {
   BindingDecisionSchema,
   BoardAuthorSchema,
@@ -1974,6 +1975,42 @@ export const RpcMethods = {
     params: EmptyParams,
     result: PluginModulesResultSchema,
   },
+  'update/state': {
+    params: EmptyParams,
+    result: UpdateStateSchema,
+  },
+  'update/check': {
+    params: EmptyParams,
+    result: UpdateStateSchema,
+  },
+  'update/download': {
+    params: Type.Object(
+      { version: Type.Optional(Type.String({ minLength: 1 })) },
+      { additionalProperties: false },
+    ),
+    result: UpdateStateSchema,
+  },
+  'update/install': {
+    params: EmptyParams,
+    result: Type.Object(
+      { launched: Type.Boolean(), instructions: Type.String() },
+      { additionalProperties: false },
+    ),
+  },
+  'update/rollback': {
+    params: EmptyParams,
+    result: Type.Object(
+      { launched: Type.Boolean(), instructions: Type.String() },
+      { additionalProperties: false },
+    ),
+  },
+  'update/dismiss': {
+    params: Type.Object(
+      { version: Type.String({ minLength: 1 }) },
+      { additionalProperties: false },
+    ),
+    result: UpdateStateSchema,
+  },
 } as const satisfies Record<string, { params: TSchema; result: TSchema }>;
 
 export const RpcNotifications = {
@@ -2118,6 +2155,9 @@ export const RpcNotifications = {
   },
   'backup/runChanged': {
     params: Type.Object({ run: BackupRunSchema }, { additionalProperties: false }),
+  },
+  'update/stateChanged': {
+    params: Type.Object({ state: UpdateStateSchema }, { additionalProperties: false }),
   },
   'knowledge/indexChanged': {
     params: Type.Object(
@@ -2267,6 +2307,10 @@ export const RpcErrorCode = {
   RoleToolDenied: -32127,
   AgentBudgetExceeded: -32128,
   AgentTurnLimit: -32129,
+  UpdateSourceUnavailable: -32130,
+  UpdateVerificationFailed: -32131,
+  UpdateIncompatible: -32132,
+  UpdateNotDownloaded: -32133,
   InvalidParams: -32602,
 } as const;
 export type RpcErrorCode = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];

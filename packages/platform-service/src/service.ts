@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   PROTOCOL_VERSION,
   RpcError,
@@ -22,7 +23,8 @@ import { FeedbackService } from './change/feedback-service';
 import { LockManager } from './change/lock-manager';
 import { WorktreeManager } from './change/worktree-manager';
 import { IpcServer, type RpcHandlers } from './ipc/server';
-import { migrate } from './db/migrator';
+import { latestMigrationVersion, migrate } from './db/migrator';
+import { snapshotBeforeMigrations } from './db/migration-snapshot';
 import type { ServicePaths } from './paths';
 import { profileMigrations } from './profile/migrations';
 import { CredentialStore } from './profile/credential-store';
@@ -72,6 +74,10 @@ import { AssetService } from './assets/asset-service';
 import { BackupService } from './backup/backup-service';
 import { KnowledgeService } from './knowledge/knowledge-service';
 import type { VectorStore } from './knowledge/vector-store';
+import { UpdateStore } from './updates/update-store';
+import { UpdateService } from './updates/update-service';
+import { SqliteUpdateDismissalStore } from './updates/update-dismissal-store';
+import { projectMigrations } from './projects/migrations';
 
 export interface PlatformServiceOptions {
   paths: ServicePaths;
@@ -88,6 +94,7 @@ export interface PlatformServiceOptions {
   onWorkerScheduleSnapshot?: (snapshot: WorkerScheduleSnapshot) => void;
   approvalTimeoutOverrideMs?: number;
   backupNow?: () => Date;
+  updateFetch?: typeof fetch;
   pluginLaunchers?: {
     linux?: IsolationLauncher;
     win32?: IsolationLauncher;
@@ -100,6 +107,7 @@ export class PlatformService {
   readonly socketPath: string;
   readonly startedAt: string;
   private stopped = false;
+  private updateTimer?: NodeJS.Timeout;
 
   private constructor(
     private readonly server: IpcServer,
@@ -129,6 +137,7 @@ export class PlatformService {
     mkdirSync(paths.logDir, { recursive: true, mode: 0o700 });
     const token = loadOrCreateToken(paths);
     const database = Database.open(paths.profileDbPath);
+    snapshotBeforeMigrations(database, paths.profileDir, profileMigrations);
     migrate(database, profileMigrations);
     const profile = new ProfileStore(database);
     const workspace = new ProjectWorkspace({ profile, platformVersion });
@@ -137,6 +146,25 @@ export class PlatformService {
     const builtins = createBuiltinSettings();
     settingsRegistry.register('builtin', builtins.groups, builtins.definitions);
     const settingsService = new SettingsService(settingsRegistry, database, projectDatabases);
+    const createUpdateService = () =>
+      new UpdateService({
+        store: new UpdateStore(database, platformVersion),
+        dismissals: new SqliteUpdateDismissalStore(database),
+        currentVersion: platformVersion,
+        releasesUrl: String(settingsService.resolve('updates.releasesUrl', {}).value),
+        updatesDir: path.join(paths.profileDir, 'updates'),
+        profileSchemaVersion: latestMigrationVersion(profileMigrations),
+        projectSchemaVersion: latestMigrationVersion(projectMigrations),
+        platform: {
+          os: process.platform === 'win32' ? 'windows' : 'linux',
+          arch: process.arch === 'arm64' ? 'arm64' : 'x64',
+        },
+        signaturePublicKeyPem:
+          String(settingsService.resolve('updates.signingPublicKey', {}).value).trim() || undefined,
+        fetch: options.updateFetch,
+      });
+    let updateService = createUpdateService();
+    let scheduleUpdateChecks: () => void = () => undefined;
     const lockManager = new LockManager(projectDatabases, settingsService);
     const worktrees = new WorktreeManager(profile, settingsService);
     const integrationRef: { service?: IntegrationService } = {};
@@ -392,6 +420,24 @@ export class PlatformService {
         startedAt,
         projectCount: profile.list().length,
       }),
+      'update/state': () => updateService.getState(),
+      'update/check': async () => {
+        const state = await updateService.check();
+        server.broadcast('update/stateChanged', { state });
+        return state;
+      },
+      'update/download': async ({ version }) => {
+        const state = await updateService.download(version);
+        server.broadcast('update/stateChanged', { state });
+        return state;
+      },
+      'update/install': () => updateService.install(),
+      'update/rollback': () => updateService.rollback(),
+      'update/dismiss': ({ version }) => {
+        const state = updateService.dismiss(version);
+        server.broadcast('update/stateChanged', { state });
+        return state;
+      },
       'project/create': async (input: ProjectCreateInput) => {
         const project = await workspace.create(input);
         server.broadcast('project/changed', { kind: 'created', project });
@@ -1078,6 +1124,12 @@ export class PlatformService {
       if (event.key.startsWith('assets.')) assets().onSettingChanged(event);
       if (event.key.startsWith('backup.')) backups().onSettingChanged(event.key);
       if (event.key.startsWith('knowledge.')) knowledge().onSettingChanged(event);
+      if (event.key === 'updates.releasesUrl' || event.key === 'updates.signingPublicKey') {
+        updateService = createUpdateService();
+      }
+      if (event.key === 'updates.checkOnStart' || event.key === 'updates.checkIntervalHours') {
+        scheduleUpdateChecks();
+      }
       server.broadcast('settings/changed', event);
       void plugins()
         .settingsChanged(event)
@@ -1104,6 +1156,33 @@ export class PlatformService {
       paths,
       startedAt,
     );
+    const checkForUpdates = async (): Promise<void> => {
+      let state = await updateService.check();
+      if (settingsService.resolve('updates.autoDownload', {}).value === true && state.available) {
+        state = await updateService.download(state.available.version);
+      }
+      server.broadcast('update/stateChanged', { state });
+    };
+    scheduleUpdateChecks = () => {
+      if (settingsService.resolve('updates.checkOnStart', {}).value !== true) {
+        platformService.setUpdateTimer(undefined);
+        return;
+      }
+      const hours = Number(settingsService.resolve('updates.checkIntervalHours', {}).value);
+      const timer = setInterval(
+        () => {
+          void checkForUpdates().catch((error: unknown) =>
+            log('warn', 'Scheduled update check failed', {
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
+        },
+        hours * 60 * 60 * 1000,
+      );
+      timer.unref();
+      platformService.setUpdateTimer(timer);
+    };
+    scheduleUpdateChecks();
 
     try {
       await toolBroker.recoverOnStart();
@@ -1122,12 +1201,20 @@ export class PlatformService {
     await assets().start();
     await backups().start();
     await knowledge().start();
+    if (settingsService.resolve('updates.checkOnStart', {}).value === true) {
+      void checkForUpdates().catch((error: unknown) =>
+        log('warn', 'Startup update check failed', {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
     return platformService;
   }
 
   async stop(checkpoint = true): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
+    if (this.updateTimer) clearInterval(this.updateTimer);
     await this.assetService.stop();
     await this.backupService.stop();
     this.knowledgeService.stop();
@@ -1141,6 +1228,11 @@ export class PlatformService {
     await this.server.close();
     this.projectDatabases.close();
     this.database.close();
+  }
+
+  setUpdateTimer(timer: NodeJS.Timeout | undefined): void {
+    if (this.updateTimer) clearInterval(this.updateTimer);
+    this.updateTimer = timer;
   }
 }
 

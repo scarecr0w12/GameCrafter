@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,6 +22,69 @@ afterEach(async () => {
 });
 
 describe('platform service integration', () => {
+  it('checks, downloads, verifies, and dismisses a release through update RPCs', async () => {
+    const profileDir = makeTemporaryDirectory('gc-update-profile-');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const artifact = Buffer.from('verified package bytes');
+    const manifest = {
+      schemaVersion: 1,
+      version: '0.2.0',
+      tag: 'v0.2.0',
+      commit: 'a'.repeat(40),
+      builtAt: '2026-09-30T00:00:00.000Z',
+      platforms: [
+        {
+          os: 'linux',
+          arch: 'x64',
+          asset: 'GameCrafter-0.2.0.AppImage',
+          sha256: createHash('sha256').update(artifact).digest('hex'),
+          kind: 'appimage',
+        },
+      ],
+      compatibility: {
+        profileSchemaVersion: 11,
+        projectSchemaVersion: 11,
+        minUpgradeFromVersion: '0.1.0',
+      },
+      notes: 'Release test.',
+    };
+    const updateFetch: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.endsWith('gamecrafter-release.json'))
+        return new Response(JSON.stringify(manifest), { status: 200 });
+      if (url.endsWith('GameCrafter-0.2.0.AppImage'))
+        return new Response(artifact, { status: 200 });
+      return new Response('not found', { status: 404 });
+    };
+    service = await PlatformService.start({ paths, platformVersion: '0.1.0', updateFetch });
+    const client = await connect({
+      socketPath: service.socketPath,
+      token: readFileSync(paths.tokenPath, 'utf8').trim(),
+      clientName: 'update-test',
+      clientVersion: '0.1.0',
+    });
+    await client.call('settings/set', {
+      key: 'updates.releasesUrl',
+      scope: 'platform',
+      value: 'https://updates.test/gamecrafter-release.json',
+    });
+
+    const checked = await client.call('update/check', {});
+    expect(checked.available?.version).toBe('0.2.0');
+    expect(checked.compatibility).toEqual({ ok: true, reasons: [] });
+
+    const downloaded = await client.call('update/download', { version: '0.2.0' });
+    expect(downloaded.downloaded).toMatchObject({
+      version: '0.2.0',
+      verified: { sha256: true, signature: 'unavailable' },
+    });
+
+    const dismissed = await client.call('update/dismiss', { version: '0.2.0' });
+    expect(dismissed.available).toBeNull();
+    expect((await client.call('update/check', {})).available).toBeNull();
+    await client.close();
+  });
+
   it('authenticates clients and manages a complete local Project lifecycle', async () => {
     const profileDir = makeTemporaryDirectory('gc-profile-');
     const projectsDirectory = makeTemporaryDirectory('gc-projects-');
@@ -61,8 +125,8 @@ describe('platform service integration', () => {
     expect(client.sessionId).toMatch(/^[0-9a-f-]{36}$/i);
 
     const settingsDescription = await client.call('settings/describe', {});
-    expect(settingsDescription.groups).toHaveLength(16);
-    expect(settingsDescription.definitions).toHaveLength(70);
+    expect(settingsDescription.groups).toHaveLength(17);
+    expect(settingsDescription.definitions).toHaveLength(75);
 
     let resolveChanged: (value: unknown) => void = () => undefined;
     let resolveCloned: (value: unknown) => void = () => undefined;
