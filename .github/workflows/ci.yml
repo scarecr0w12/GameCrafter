@@ -18,11 +18,14 @@ jobs:
           node-version: 24
           cache: npm
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap libx11-dev libxkbfile-dev libsecret-1-dev
       - if: runner.os == 'Windows'
         uses: ./.github/actions/ensure-windows-spectre
-      - run: npm ci
-      - run: npx turbo run build typecheck lint test
+      - if: runner.os == 'Linux'
+        run: npm ci
+      - if: runner.os == 'Windows'
+        run: npm ci --foreground-scripts
+      - run: npx turbo run build typecheck lint test --concurrency=1
 
   theia-build:
     runs-on: ubuntu-latest

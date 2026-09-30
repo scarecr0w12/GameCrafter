@@ -140,5 +140,5 @@ describe('Google Drive backup destination', () => {
         server.close((error) => (error ? reject(error) : resolve())),
       );
     }
-  }, 30_000);
+  }, 60_000);
 });

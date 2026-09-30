@@ -29,7 +29,10 @@ jobs:
         uses: ./.github/actions/ensure-windows-spectre
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbfile-dev libsecret-1-dev
-      - run: npm ci
+      - if: runner.os == 'Linux'
+        run: npm ci
+      - if: runner.os == 'Windows'
+        run: npm ci --foreground-scripts
       - run: npx turbo run build --filter=@gamecrafter/control-room^...
       - run: npm run download:plugins
       - run: npm run package:${{ matrix.target }} -w @gamecrafter/control-room
