@@ -43,7 +43,7 @@ describe('platform service integration', () => {
       ],
       compatibility: {
         profileSchemaVersion: 11,
-        projectSchemaVersion: 11,
+        projectSchemaVersion: 12,
         minUpgradeFromVersion: '0.1.0',
       },
       notes: 'Release test.',
@@ -171,13 +171,49 @@ describe('platform service integration', () => {
       path.join(project.path, '.gamecrafter', 'project.sqlite'),
     );
     try {
-      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(11);
+      expect(projectDatabase.prepare('SELECT id FROM schema_migrations').all()).toHaveLength(12);
       expect(
         projectDatabase.prepare('SELECT kind FROM events WHERE kind = ?').all('project.created'),
       ).toHaveLength(1);
     } finally {
       projectDatabase.close();
     }
+    const chat = await client.call('chat/create', {
+      projectId: project.projectId,
+      title: 'Review the dungeon layout',
+    });
+    const userMessage = await client.call('chat/append', {
+      projectId: project.projectId,
+      conversationId: chat.conversationId,
+      role: 'user',
+      content: 'How should this room flow?',
+    });
+    const assistantMessage = await client.call('chat/append', {
+      projectId: project.projectId,
+      conversationId: chat.conversationId,
+      role: 'assistant',
+      content: 'Give the player a clear route through the room.',
+      modelId: 'test/model',
+      usage: { inputTokens: 12, outputTokens: 9, costUsd: 0.001 },
+    });
+    expect(await client.call('chat/list', { projectId: project.projectId })).toMatchObject({
+      conversations: [{ conversationId: chat.conversationId, title: chat.title }],
+    });
+    expect(
+      await client.call('chat/messages', {
+        projectId: project.projectId,
+        conversationId: chat.conversationId,
+      }),
+    ).toMatchObject({ messages: [userMessage, assistantMessage] });
+    expect(
+      await client.call('chat/delete', {
+        projectId: project.projectId,
+        conversationId: chat.conversationId,
+      }),
+    ).toEqual({ deleted: true });
+    expect(await client.call('chat/list', { projectId: project.projectId })).toEqual({
+      conversations: [],
+    });
     expect(
       execFileSync('git', ['log', '--oneline'], { cwd: project.path, encoding: 'utf8' })
         .trim()
@@ -390,6 +426,52 @@ describe('platform service integration', () => {
 
     client.close();
   }, 30000);
+
+  it('persists chat history across platform-service restarts', async () => {
+    const profileDir = makeTemporaryDirectory('gc-chat-profile-');
+    const projectsDirectory = makeTemporaryDirectory('gc-chat-projects-');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
+    let client = await connect({
+      socketPath: service.socketPath,
+      token: readFileSync(paths.tokenPath, 'utf8').trim(),
+      clientName: 'chat-persistence-test',
+      clientVersion: '0.1.0',
+    });
+    const project = await client.call('project/create', {
+      name: 'Chat Persistence',
+      engine: { family: 'godot' },
+      genres: [],
+      parentDirectory: projectsDirectory,
+    });
+    const conversation = await client.call('chat/create', {
+      projectId: project.projectId,
+      title: 'Persistent conversation',
+    });
+    const message = await client.call('chat/append', {
+      projectId: project.projectId,
+      conversationId: conversation.conversationId,
+      role: 'user',
+      content: 'Remember this after restart.',
+    });
+    await client.close();
+    await service.stop();
+
+    service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
+    client = await connect({
+      socketPath: service.socketPath,
+      token: readFileSync(paths.tokenPath, 'utf8').trim(),
+      clientName: 'chat-persistence-test',
+      clientVersion: '0.1.0',
+    });
+    expect(
+      await client.call('chat/messages', {
+        projectId: project.projectId,
+        conversationId: conversation.conversationId,
+      }),
+    ).toEqual({ messages: [message] });
+    await client.close();
+  });
 
   it('clears session-scoped settings when a client disconnects', async () => {
     const profileDir = makeTemporaryDirectory('gc-session-profile-');

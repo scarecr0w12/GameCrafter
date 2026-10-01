@@ -82,11 +82,14 @@ export class GameCrafterSettingsWidget extends ReactWidget {
     return (
       <div className="gamecrafter-settings">
         <header className="gamecrafter-settings-header">
-          <h1>GameCrafter Settings</h1>
+          <div>
+            <h1>Settings</h1>
+            <p>Configure the platform once, then override values for individual Projects.</p>
+          </div>
         </header>
         <div className="gamecrafter-settings-toolbar">
           <label className="gamecrafter-settings-project">
-            <span>Project</span>
+            <span>Project overrides</span>
             <select
               aria-label="Project"
               value={this.selectedProjectId ?? ''}
@@ -140,12 +143,21 @@ export class GameCrafterSettingsWidget extends ReactWidget {
                 }}
               >
                 <span>{group.title}</span>
-                <span>{definitions.length}</span>
+                <span className="gamecrafter-settings-count">{definitions.length}</span>
               </button>
             ))}
           </nav>
           <section className="gamecrafter-settings-content">
-            {activeGroup ? <h2>{activeGroup.group.title}</h2> : <h2>Settings</h2>}
+            {activeGroup ? (
+              <>
+                <h2>{activeGroup.group.title}</h2>
+                <p className="gamecrafter-settings-group-description">
+                  {activeGroup.group.description}
+                </p>
+              </>
+            ) : (
+              <h2>Settings</h2>
+            )}
             {activeDefinitions.length === 0 ? (
               <p>No settings in this group match the current search.</p>
             ) : (
@@ -172,42 +184,49 @@ export class GameCrafterSettingsWidget extends ReactWidget {
         <div>
           <strong>{definition.title}</strong>
           <div className="gamecrafter-setting-description">{definition.description}</div>
-          <code>{definition.key}</code>
+          <details className="gamecrafter-setting-advanced">
+            <summary>Scope and setting ID</summary>
+            <div className="gamecrafter-setting-advanced-content">
+              <label>
+                Save override to
+                <select
+                  aria-label={`${definition.title} scope`}
+                  value={scope}
+                  onChange={(event) => {
+                    this.scopes.set(definition.key, event.currentTarget.value as SettingsScope);
+                    this.update();
+                  }}
+                >
+                  {scopes.map((candidate) => (
+                    <option
+                      disabled={candidate === 'project' && !this.selectedProjectId}
+                      key={candidate}
+                      value={candidate}
+                    >
+                      {sourceLabels[candidate]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <code>{definition.key}</code>
+            </div>
+          </details>
         </div>
         <div className="gamecrafter-setting-control">
           {this.renderControl(definition, value, scope, disabled)}
-          <label>
-            <span>Scope</span>
-            <select
-              aria-label={`${definition.title} scope`}
-              value={scope}
-              onChange={(event) => {
-                this.scopes.set(definition.key, event.currentTarget.value as SettingsScope);
-                this.update();
-              }}
+          <div className="gamecrafter-setting-value-meta">
+            <span className="gamecrafter-setting-source">
+              Effective from {sourceLabels[effective?.source ?? 'default']}
+            </span>
+            <button
+              className="gamecrafter-settings-reset"
+              type="button"
+              disabled={disabled || !hasOverride}
+              onClick={() => void this.saveSetting(definition, scope, null)}
             >
-              {scopes.map((candidate) => (
-                <option
-                  disabled={candidate === 'project' && !this.selectedProjectId}
-                  key={candidate}
-                  value={candidate}
-                >
-                  {sourceLabels[candidate]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="gamecrafter-setting-source">
-            {sourceLabels[effective?.source ?? 'default']}
-          </span>
-          <button
-            className="gamecrafter-settings-reset"
-            type="button"
-            disabled={disabled || !hasOverride}
-            onClick={() => void this.saveSetting(definition, scope, null)}
-          >
-            Reset to inherit
-          </button>
+              Reset
+            </button>
+          </div>
         </div>
       </article>
     );

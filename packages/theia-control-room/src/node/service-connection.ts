@@ -19,6 +19,9 @@ export class PlatformServiceConnection {
   private readonly projectChangedListeners = new Set<
     (event: RpcNotificationParams<'project/changed'>) => void
   >();
+  private readonly modelDeltaListeners = new Set<
+    (event: RpcNotificationParams<'model/delta'>) => void
+  >();
   private readonly settingsChangedListeners = new Set<
     (event: RpcNotificationParams<'settings/changed'>) => void
   >();
@@ -110,6 +113,11 @@ export class PlatformServiceConnection {
   ): () => void {
     this.projectChangedListeners.add(listener);
     return () => this.projectChangedListeners.delete(listener);
+  }
+
+  onModelDelta(listener: (event: RpcNotificationParams<'model/delta'>) => void): () => void {
+    this.modelDeltaListeners.add(listener);
+    return () => this.modelDeltaListeners.delete(listener);
   }
 
   onSettingsChanged(
@@ -294,6 +302,9 @@ export class PlatformServiceConnection {
         this.notifyStatus({ connected: true, message: 'Connected to platform service' });
         client.onNotification('project/changed', (event) => {
           for (const listener of this.projectChangedListeners) listener(event);
+        });
+        client.onNotification('model/delta', (event) => {
+          for (const listener of this.modelDeltaListeners) listener(event);
         });
         client.onNotification('settings/changed', (event) => {
           for (const listener of this.settingsChangedListeners) listener(event);

@@ -2,6 +2,9 @@ import type {
   AccessMode,
   ApprovalRequest,
   ChangeRequest,
+  ChatConversation,
+  ChatEntry,
+  ChatResponse,
   FeedbackInput,
   ImpactResult,
   IntegrationRecord,
@@ -82,6 +85,12 @@ export const ControlRoomService = Symbol('ControlRoomService');
 export const CONTROL_ROOM_SERVICE_PATH = '/services/gamecrafter/control-room';
 
 export interface ControlRoomService {
+  listChatConversations(projectId: string): Promise<ChatConversation[]>;
+  createChatConversation(projectId: string, title: string): Promise<ChatConversation>;
+  listChatMessages(projectId: string, conversationId: string): Promise<ChatEntry[]>;
+  appendChatMessage(input: RpcParams<'chat/append'>): Promise<ChatEntry>;
+  deleteChatConversation(projectId: string, conversationId: string): Promise<void>;
+  completeChat(input: RpcParams<'model/complete'>): Promise<ChatResponse>;
   getServiceInfo(): Promise<ServiceInfo>;
   getUpdateState(): Promise<UpdateState>;
   checkUpdates(): Promise<UpdateState>;
@@ -408,6 +417,7 @@ export interface ControlRoomService {
 }
 
 export interface ControlRoomClient {
+  onModelDelta(event: RpcNotificationParams<'model/delta'>): void;
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void;
   onSettingsChanged(event: RpcNotificationParams<'settings/changed'>): void;
   onTaskChanged(event: { projectId: string; task: TaskRecord }): void;

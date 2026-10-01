@@ -511,4 +511,28 @@ export const projectMigrations: Migration[] = [
       CREATE INDEX change_requests_project_created_idx ON change_requests(project_id, created_at DESC);
     `,
   },
+  {
+    id: 12,
+    name: 'create persistent chat conversations',
+    up: `
+      CREATE TABLE chat_conversations (
+        conversation_id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX chat_conversations_updated_idx
+        ON chat_conversations(updated_at DESC);
+      CREATE TABLE chat_messages (
+        message_id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES chat_conversations(conversation_id) ON DELETE CASCADE,
+        project_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        message_json TEXT NOT NULL
+      );
+      CREATE INDEX chat_messages_conversation_created_idx
+        ON chat_messages(conversation_id, created_at);
+    `,
+  },
 ];

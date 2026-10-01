@@ -33,6 +33,8 @@ import { SwarmWidget } from './swarm-widget';
 import { SwarmViewContribution } from './swarm-view-contribution';
 import { UpdatesWidget } from './updates-widget';
 import { UpdatesViewContribution } from './updates-view-contribution';
+import { ChatWidget } from './chat-widget';
+import { ChatViewContribution } from './chat-view-contribution';
 import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
@@ -66,6 +68,13 @@ export default new ContainerModule((bind) => {
   bind(KnowledgeWidget).toSelf().inSingletonScope();
   bind(SwarmWidget).toSelf().inSingletonScope();
   bind(UpdatesWidget).toSelf().inSingletonScope();
+  bind(ChatWidget).toSelf().inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: ChatWidget.ID,
+      createWidget: () => context.container.get(ChatWidget),
+    }))
+    .inSingletonScope();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ProjectHomeWidget.ID,
@@ -165,6 +174,7 @@ export default new ContainerModule((bind) => {
   bindViewContribution(bind, KnowledgeViewContribution);
   bindViewContribution(bind, SwarmViewContribution);
   bindViewContribution(bind, UpdatesViewContribution);
+  bindViewContribution(bind, ChatViewContribution);
   bind(TaskQuestionHandler).toSelf().inSingletonScope();
   bind(FrontendApplicationContribution).toService(TaskQuestionHandler);
   bind(ToolApprovalHandler).toSelf().inSingletonScope();

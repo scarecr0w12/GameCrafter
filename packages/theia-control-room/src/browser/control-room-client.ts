@@ -8,6 +8,7 @@ export const ControlRoomClientToken = Symbol('ControlRoomClient');
 @injectable()
 export class ControlRoomClientEvents implements ControlRoomClient {
   private readonly projectChangedEmitter = new Emitter<RpcNotificationParams<'project/changed'>>();
+  private readonly modelDeltaEmitter = new Emitter<RpcNotificationParams<'model/delta'>>();
   private readonly settingsChangedEmitter = new Emitter<
     RpcNotificationParams<'settings/changed'>
   >();
@@ -76,6 +77,7 @@ export class ControlRoomClientEvents implements ControlRoomClient {
   }>();
 
   readonly projectChanged = this.projectChangedEmitter.event;
+  readonly modelDelta = this.modelDeltaEmitter.event;
   readonly settingsChanged = this.settingsChangedEmitter.event;
   readonly taskChanged = this.taskChangedEmitter.event;
   readonly taskQuestion = this.taskQuestionEmitter.event;
@@ -104,6 +106,10 @@ export class ControlRoomClientEvents implements ControlRoomClient {
 
   onProjectChanged(event: RpcNotificationParams<'project/changed'>): void {
     this.projectChangedEmitter.fire(event);
+  }
+
+  onModelDelta(event: RpcNotificationParams<'model/delta'>): void {
+    this.modelDeltaEmitter.fire(event);
   }
 
   onSettingsChanged(event: RpcNotificationParams<'settings/changed'>): void {

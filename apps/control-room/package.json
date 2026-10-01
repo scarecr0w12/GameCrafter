@@ -29,7 +29,7 @@
       "config": {
         "applicationName": "GameCrafter",
         "defaultTheme": {
-          "light": "light",
+          "light": "dark",
           "dark": "dark"
         }
       }

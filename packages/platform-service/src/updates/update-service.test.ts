@@ -76,7 +76,7 @@ function manifest(overrides: Partial<ReleaseManifest> = {}): ReleaseManifest {
     ],
     compatibility: {
       profileSchemaVersion: 11,
-      projectSchemaVersion: 11,
+      projectSchemaVersion: 12,
       minUpgradeFromVersion: '0.1.0',
     },
     notes: 'Release notes',
@@ -130,7 +130,7 @@ function createService(options: {
     releasesUrl: options.releasesUrl ?? MANIFEST_URL,
     updatesDir: updatesDir(),
     profileSchemaVersion: options.profileSchemaVersion ?? 11,
-    projectSchemaVersion: options.projectSchemaVersion ?? 11,
+    projectSchemaVersion: options.projectSchemaVersion ?? 12,
     platform: options.platform ?? { os: 'linux', arch: 'x64' },
     fetch: options.fetch,
     now: () => new Date(NOW),
@@ -220,7 +220,7 @@ describe('update compatibility', () => {
       manifest: manifest(),
       currentVersion: CURRENT_VERSION,
       profileSchemaVersion: 11,
-      projectSchemaVersion: 11,
+      projectSchemaVersion: 12,
       assetReason: null,
     });
     expect(compatibility).toEqual({ ok: true, reasons: [] });
@@ -248,7 +248,7 @@ describe('update compatibility', () => {
     expect(compatibility.ok).toBe(false);
     expect(compatibility.reasons).toEqual([
       'Profile schema version 12 is newer than release schema version 11',
-      'Project schema version 13 is newer than release schema version 11',
+      'Project schema version 13 is newer than release schema version 12',
     ]);
   });
 
@@ -257,13 +257,13 @@ describe('update compatibility', () => {
       manifest: manifest({
         compatibility: {
           profileSchemaVersion: 11,
-          projectSchemaVersion: 11,
+          projectSchemaVersion: 12,
           minUpgradeFromVersion: '0.2.0',
         },
       }),
       currentVersion: CURRENT_VERSION,
       profileSchemaVersion: 11,
-      projectSchemaVersion: 11,
+      projectSchemaVersion: 12,
       assetReason: null,
     });
     expect(compatibility.ok).toBe(false);
@@ -277,7 +277,7 @@ describe('update compatibility', () => {
       manifest: manifest(),
       currentVersion: CURRENT_VERSION,
       profileSchemaVersion: 11,
-      projectSchemaVersion: 11,
+      projectSchemaVersion: 12,
       assetReason: 'Release does not include an asset for linux/x64',
     });
     expect(compatibility.ok).toBe(false);

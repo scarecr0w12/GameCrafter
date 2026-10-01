@@ -25,6 +25,7 @@ import { DCC_OPEN_COMMAND_ID } from './dcc-view-contribution';
 import { KNOWLEDGE_OPEN_COMMAND_ID } from './knowledge-view-contribution';
 import { ASSETS_OPEN_COMMAND_ID } from './assets-view-contribution';
 import { BACKUPS_OPEN_COMMAND_ID } from './backups-view-contribution';
+import { CHAT_OPEN_COMMAND_ID } from './chat-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ReactWidget {
@@ -108,6 +109,13 @@ export class ProjectHomeWidget extends ReactWidget {
           <button
             className="theia-button"
             type="button"
+            onClick={() => void this.commandService.executeCommand(CHAT_OPEN_COMMAND_ID)}
+          >
+            Chat
+          </button>
+          <button
+            className="theia-button"
+            type="button"
             onClick={() => void this.commandService.executeCommand(SKILLS_OPEN_COMMAND_ID)}
           >
             Skills &amp; Roles
@@ -178,6 +186,66 @@ export class ProjectHomeWidget extends ReactWidget {
             Backups
           </button>
         </div>
+        <section className="gamecrafter-home-guides" aria-label="Getting started">
+          <article>
+            <span className="gamecrafter-home-guide-kicker">01 · Models</span>
+            <h2>Set up an LLM</h2>
+            <p>
+              Add a provider and discover a model in Models &amp; Routing, then chat here for
+              Project-aware help or switch to Agent mode to delegate a change request to Swarm.
+            </p>
+            <p className="gamecrafter-home-guide-note">
+              External IDE clients such as Copilot, Devin, and Kilo cannot call GameCrafter tools
+              directly yet; their MCP server integration is still pending.
+            </p>
+            <div className="gamecrafter-home-guide-actions">
+              <button
+                className="theia-button secondary"
+                type="button"
+                onClick={() => void this.commandService.executeCommand(MODELS_OPEN_COMMAND_ID)}
+              >
+                Configure Models
+              </button>
+              <button
+                className="theia-button"
+                type="button"
+                onClick={() => void this.commandService.executeCommand(SWARM_OPEN_COMMAND_ID)}
+              >
+                Open Swarm
+              </button>
+              <button
+                className="theia-button secondary"
+                type="button"
+                onClick={() => void this.commandService.executeCommand(CHAT_OPEN_COMMAND_ID)}
+              >
+                Open Chat
+              </button>
+            </div>
+          </article>
+          <article>
+            <span className="gamecrafter-home-guide-kicker">02 · Engine</span>
+            <h2>Connect the game project</h2>
+            <p>
+              A GameCrafter Project is the game folder plus platform records. Native files belong in
+              its <code>game/</code> directory. Unreal detection needs a valid{' '}
+              <code>.uproject</code> there; registering an Unreal executable alone does not connect
+              a separate project.
+            </p>
+            <p className="gamecrafter-home-guide-note">
+              To try it now, create/open the GameCrafter Project, create the Unreal project inside{' '}
+              <code>{'<Project>/game/'}</code>, then register <code>RunUAT.bat</code> and{' '}
+              <code>UnrealEditor-Cmd.exe</code> in Engine. Importing an existing project folder
+              directly is not supported yet.
+            </p>
+            <button
+              className="theia-button secondary"
+              type="button"
+              onClick={() => void this.commandService.executeCommand(ENGINE_OPEN_COMMAND_ID)}
+            >
+              Open Engine setup
+            </button>
+          </article>
+        </section>
         {this.projects.length === 0 ? (
           <p className="gamecrafter-project-home-empty">
             No Projects yet. Create a Project to get started.

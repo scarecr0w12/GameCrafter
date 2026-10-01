@@ -56,7 +56,7 @@ describe('release tools', () => {
       ],
       compatibility: {
         profileSchemaVersion: 11,
-        projectSchemaVersion: 11,
+        projectSchemaVersion: 12,
         minUpgradeFromVersion: '0.1.0',
       },
       notes: 'Fixes and improvements.',

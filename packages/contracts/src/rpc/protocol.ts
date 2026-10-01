@@ -104,6 +104,7 @@ import {
   SkillValidationResultSchema,
 } from '../skills';
 import { UpdateStateSchema } from '../updates';
+import { ChatConversationSchema, ChatEntrySchema } from '../chat';
 import {
   BindingDecisionSchema,
   BoardAuthorSchema,
@@ -1416,6 +1417,60 @@ export const RpcMethods = {
   'model/complete': {
     params: ModelCompleteParamsSchema,
     result: ChatResponseSchema,
+  },
+  'chat/list': {
+    params: Type.Object(
+      { projectId: Type.String({ format: 'uuid' }) },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      { conversations: Type.Array(ChatConversationSchema) },
+      { additionalProperties: false },
+    ),
+  },
+  'chat/create': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        title: Type.String({ minLength: 1, maxLength: 200 }),
+      },
+      { additionalProperties: false },
+    ),
+    result: ChatConversationSchema,
+  },
+  'chat/messages': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        conversationId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ messages: Type.Array(ChatEntrySchema) }, { additionalProperties: false }),
+  },
+  'chat/append': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        conversationId: Type.String({ format: 'uuid' }),
+        role: Type.Union([Type.Literal('user'), Type.Literal('assistant'), Type.Literal('system')]),
+        content: Type.String(),
+        modelId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+        usage: Type.Optional(Type.Union([ModelUsageSchema, Type.Null()])),
+      },
+      { additionalProperties: false },
+    ),
+    result: ChatEntrySchema,
+  },
+  'chat/delete': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        conversationId: Type.String({ format: 'uuid' }),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ deleted: Type.Boolean() }, { additionalProperties: false }),
   },
   'model/embed': {
     params: Type.Object(

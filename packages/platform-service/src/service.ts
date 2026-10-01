@@ -20,6 +20,7 @@ import { ChangeService } from './change/change-service';
 import { registerChangeTools } from './change/change-tools';
 import { IntegrationService } from './change/integration-service';
 import { FeedbackService } from './change/feedback-service';
+import { ChatService } from './chat/chat-service';
 import { LockManager } from './change/lock-manager';
 import { WorktreeManager } from './change/worktree-manager';
 import { IpcServer, type RpcHandlers } from './ipc/server';
@@ -177,6 +178,7 @@ export class PlatformService {
       settings: settingsService,
     });
     const completionService = new CompletionService(modelRegistry, modelRouter);
+    const chatService = new ChatService(projectDatabases);
     const pluginInstaller = new PluginInstaller({
       database,
       profileDir: paths.profileDir,
@@ -740,6 +742,15 @@ export class PlatformService {
           sessionId: context.sessionId,
           notify: context.notify,
         }),
+      'chat/list': ({ projectId }) => ({ conversations: chatService.list(projectId) }),
+      'chat/create': ({ projectId, title }) => chatService.create(projectId, title),
+      'chat/messages': ({ projectId, conversationId }) => ({
+        messages: chatService.messages(projectId, conversationId),
+      }),
+      'chat/append': (input) => chatService.append(input),
+      'chat/delete': ({ projectId, conversationId }) => ({
+        deleted: chatService.delete(projectId, conversationId),
+      }),
       'model/embed': ({ modelId, inputs }) => completionService.embed(modelId, inputs),
       'skills/install': async ({ source, name, force }) => ({
         installed: await skillService.install(source, name, force ?? false),

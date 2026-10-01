@@ -87,6 +87,7 @@ import { PlatformServiceConnection } from './service-connection';
 export class ControlRoomServiceImpl implements ControlRoomService {
   private client?: ControlRoomClient;
   private removeProjectChangedListener?: () => void;
+  private removeModelDeltaListener?: () => void;
   private removeSettingsChangedListener?: () => void;
   private removeTaskChangedListener?: () => void;
   private removeTaskQuestionListener?: () => void;
@@ -118,8 +119,35 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     private readonly platformConnection: PlatformServiceConnection,
   ) {}
 
+  async listChatConversations(projectId: string) {
+    return (await (await this.getPlatformClient()).call('chat/list', { projectId })).conversations;
+  }
+
+  async createChatConversation(projectId: string, title: string) {
+    return (await this.getPlatformClient()).call('chat/create', { projectId, title });
+  }
+
+  async listChatMessages(projectId: string, conversationId: string) {
+    return (
+      await (await this.getPlatformClient()).call('chat/messages', { projectId, conversationId })
+    ).messages;
+  }
+
+  async appendChatMessage(input: RpcParams<'chat/append'>) {
+    return (await this.getPlatformClient()).call('chat/append', input);
+  }
+
+  async deleteChatConversation(projectId: string, conversationId: string): Promise<void> {
+    await (await this.getPlatformClient()).call('chat/delete', { projectId, conversationId });
+  }
+
+  async completeChat(input: RpcParams<'model/complete'>) {
+    return (await this.getPlatformClient()).call('model/complete', input);
+  }
+
   setClient(client: ControlRoomClient): void {
     this.removeProjectChangedListener?.();
+    this.removeModelDeltaListener?.();
     this.removeSettingsChangedListener?.();
     this.removeTaskChangedListener?.();
     this.removeTaskQuestionListener?.();
@@ -148,6 +176,9 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
       this.client?.onProjectChanged(event);
+    });
+    this.removeModelDeltaListener = this.platformConnection.onModelDelta((event) => {
+      this.client?.onModelDelta(event);
     });
     this.removeSettingsChangedListener = this.platformConnection.onSettingsChanged((event) => {
       this.client?.onSettingsChanged(event);
