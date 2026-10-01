@@ -4,6 +4,8 @@ artifactName: ${productName}-${version}-${arch}.${ext}
 asar: false
 # Theia rebuilds for the host; electron-builder must rebuild native addons for the target OS.
 npmRebuild: true
+electronFuses:
+  runAsNode: true
 files:
   - lib/**/*
   - src-gen/**/*

@@ -30,6 +30,7 @@
     "@gamecrafter/platform-service": "0.1.0",
     "@gamecrafter/service-client": "0.1.0",
     "@theia/core": "1.75.0",
+    "@theia/workspace": "1.75.0",
     "@types/three": "0.186.0",
     "three": "0.186.0"
   }

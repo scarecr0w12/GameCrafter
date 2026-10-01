@@ -3,6 +3,9 @@ import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandService } from '@theia/core/lib/common/command';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import URI from '@theia/core/lib/common/uri';
+import { MessageService } from '@theia/core/lib/common/message-service';
+import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import type { EngineCapabilityReport, ProjectSummary } from '@gamecrafter/contracts';
 import {
   ControlRoomService,
@@ -38,6 +41,10 @@ export class ProjectHomeWidget extends ReactWidget {
     private readonly clientEvents: ControlRoomClientEvents,
     @inject(CommandService)
     private readonly commandService: CommandService,
+    @inject(WorkspaceService)
+    private readonly workspaceService: WorkspaceService,
+    @inject(MessageService)
+    private readonly messageService: MessageService,
   ) {
     super();
     this.id = ProjectHomeWidget.ID;
@@ -182,6 +189,7 @@ export class ProjectHomeWidget extends ReactWidget {
                 <th>Name</th>
                 <th>Engine</th>
                 <th>Engine layers</th>
+                <th>Action</th>
                 <th>Genres</th>
                 <th>Path</th>
                 <th>Created</th>
@@ -193,6 +201,15 @@ export class ProjectHomeWidget extends ReactWidget {
                   <td>{project.name}</td>
                   <td>{project.engine.family}</td>
                   <td>{this.renderEngineStatus(project.projectId)}</td>
+                  <td>
+                    <button
+                      className="theia-button"
+                      type="button"
+                      onClick={() => void this.openProject(project)}
+                    >
+                      Open
+                    </button>
+                  </td>
                   <td>{project.genres.join(', ')}</td>
                   <td>{project.path}</td>
                   <td>{new Date(project.createdAt).toLocaleString()}</td>
@@ -213,19 +230,46 @@ export class ProjectHomeWidget extends ReactWidget {
           Checking layers…
         </span>
       );
+    const layers = ['project-file', 'headless-process', 'live-editor'] as const;
+    const explanations = [
+      report.projectIdentity.proven
+        ? 'Native engine project files detected'
+        : `No native ${report.family} project file detected`,
+      report.engineVersion.detected
+        ? `${report.family} ${report.engineVersion.detected} detected`
+        : `${report.family} version not detected`,
+      'Use Engine to register an installation or connect an editor',
+    ];
     return (
       <div className="gamecrafter-project-engine-layers">
-        {(['project-file', 'headless-process', 'live-editor'] as const).map((layer) => (
+        {layers.map((layer) => (
           <span
             className={`gamecrafter-engine-status gamecrafter-engine-status-${report.layers[layer].status}`}
             key={layer}
             title={`${layer}: ${report.layers[layer].detail}`}
+            aria-label={`${layer}: ${report.layers[layer].status}. ${report.layers[layer].detail}`}
           >
             {layer}: {report.layers[layer].status}
           </span>
         ))}
+        {explanations.length > 0 && (
+          <small className="gamecrafter-project-engine-details">{explanations.join(' ')}</small>
+        )}
       </div>
     );
+  }
+
+  private async openProject(project: ProjectSummary): Promise<void> {
+    try {
+      await this.controlRoomService.openProject(project.path);
+      await this.workspaceService.openWorkspace(URI.fromFilePath(project.path), {
+        preserveWindow: true,
+      });
+    } catch (error) {
+      await this.messageService.error(
+        `Could not open ${project.name}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private async refresh(): Promise<void> {

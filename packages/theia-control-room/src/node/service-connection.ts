@@ -400,7 +400,7 @@ export class PlatformServiceConnection {
     const child = spawn(process.execPath, [resolvePlatformServiceCli(), 'start'], {
       detached: true,
       stdio: 'ignore',
-      env: process.env,
+      env: createPlatformServiceEnvironment(process.env),
     });
     child.unref();
   }
@@ -409,6 +409,10 @@ export class PlatformServiceConnection {
 export function resolvePlatformServiceCli(): string {
   const servicePackage = localRequire.resolve('@gamecrafter/platform-service/package.json');
   return path.join(path.dirname(servicePackage), 'lib', 'cli.js');
+}
+
+export function createPlatformServiceEnvironment(inherited: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...inherited, ELECTRON_RUN_AS_NODE: '1' };
 }
 
 function isUnavailable(error: unknown): boolean {

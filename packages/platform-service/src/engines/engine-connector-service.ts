@@ -167,6 +167,14 @@ export class EngineConnectorService {
     const selected = connector.selectInstallation('check', installations);
     const identity = await connector.proveIdentity(context.gamePath);
     const bridge = await this.probeLiveBridge(projectId, context.projectPath, identity);
+    const headlessDetails = [
+      !identity.proven ? 'Project identity is unproven.' : null,
+      selected
+        ? `${context.family} installation ${selected.version ?? selected.executable} is available.`
+        : `No ${context.family} installation is available.`,
+    ]
+      .filter((detail): detail is string => detail !== null)
+      .join(' ');
     const baseContext: EngineCapabilityContext = {
       ...context,
       installation: selected,
@@ -196,11 +204,7 @@ export class EngineConnectorService {
         },
         'headless-process': {
           status: !identity.proven ? 'unavailable' : selected ? 'ready' : 'unavailable',
-          detail: !identity.proven
-            ? 'Project identity is unproven.'
-            : selected
-              ? `${context.family} installation ${selected.version ?? selected.executable} is available.`
-              : `No ${context.family} installation is available.`,
+          detail: headlessDetails,
           checkedAt,
         },
         'live-editor': {

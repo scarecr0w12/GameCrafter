@@ -3,6 +3,19 @@
   gap: 8px;
 }
 
+.gamecrafter-project-engine-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 520px;
+}
+
+.gamecrafter-project-engine-details {
+  color: var(--theia-descriptionForeground);
+  flex-basis: 100%;
+  white-space: normal;
+}
+
 .gamecrafter-backups {
   color: var(--theia-foreground);
   display: flex;

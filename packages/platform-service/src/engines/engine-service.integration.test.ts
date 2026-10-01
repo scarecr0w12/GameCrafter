@@ -168,6 +168,18 @@ describe('engine connector integration', () => {
       parentDirectory: path.join(temporaryDirectories[0]!, 'projects'),
       folderName: 'unidentified-unity',
     });
+    const capabilities = await client!.call('engine/capabilities', {
+      projectId: project.projectId,
+      refresh: true,
+    });
+    expect(capabilities.layers['project-file']).toMatchObject({
+      status: 'unavailable',
+      detail: 'Engine project identity could not be proven from project files.',
+    });
+    expect(capabilities.layers['headless-process']).toMatchObject({
+      status: 'unavailable',
+      detail: expect.stringContaining('Project identity is unproven.'),
+    });
     await expect(
       client!.call('engine/run', { projectId: project.projectId, operation: 'build' }),
     ).rejects.toMatchObject({ code: RpcErrorCode.EngineProjectIdentityUnproven });
