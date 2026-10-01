@@ -7,7 +7,7 @@
   "author": "GameCrafter",
   "homepage": "https://github.com/scarecr0w12/GameCrafter",
   "desktopName": "GameCrafter",
-  "main": "lib/backend/main.js",
+  "main": "lib/backend/electron-main.js",
   "scripts": {
     "prebuild": "node -e \"require('node:fs').chmodSync('../../node_modules/@electron/rebuild/lib/cli.js', 0o755)\"",
     "prebuild:prod": "node -e \"require('node:fs').chmodSync('../../node_modules/@electron/rebuild/lib/cli.js', 0o755)\"",

@@ -1,13 +1,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const appDir = path.join(__dirname, '..', 'dist', 'win-unpacked', 'resources', 'app');
+const appPackage = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
+const electronMain = 'lib/backend/electron-main.js';
+if (appPackage.main !== electronMain || !fs.existsSync(path.join(appDir, electronMain))) {
+  throw new Error(`Windows package must launch Theia's Electron main entry: ${electronMain}`);
+}
+
 const addonPath = path.join(
-  __dirname,
-  '..',
-  'dist',
-  'win-unpacked',
-  'resources',
-  'app',
+  appDir,
   'node_modules',
   'drivelist',
   'build',
