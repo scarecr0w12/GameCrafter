@@ -1,7 +1,7 @@
 # GameCrafter Development Plan: Work Packages by Dependency
 
 **Status:** Living plan. Ordering below is **technical dependency**, not product phasing: a work package appears after the packages whose interfaces it consumes. Every package targets the complete system described in [PLATFORM_DESIGN.md](PLATFORM_DESIGN.md); none of them is a milestone, release, or "first game".  
-**Last updated:** 2026-09-30
+**Last updated:** 2026-10-01
 **Related records:** [technical architecture](TECHNICAL_ARCHITECTURE.md), [decision register](OPEN_DECISIONS.md), [skills, roles, and tools](SKILLS_AGENTS_AND_TOOLS.md).
 
 Each work package lists the design sections and register entries it implements, its hard dependencies, its "done when" criteria, and its current status. Status values: **Not started**, **In progress**, **Implemented (unit/integration-tested)**, **Verified (live)**. Only behaviour covered by tests in this repository may be marked Implemented; connectors reach Verified only after tests against the real engine, tool, or server.
@@ -203,7 +203,7 @@ flowchart TD
 - **Depends on:** WP4.
 - **Scope:** Windows and Linux installers, checksums/signing, update checking with user-controlled installation and rollback, tested distribution matrix.
 - **Done when:** CI produces verifiable Windows and Linux packages from a tagged commit.
-- **Status:** In progress: Electron Builder targets and a tagged Linux/Windows draft-release workflow are present in the working tree. The update manager now checks releases, filters by platform/schema compatibility, downloads to the profile with SHA-256 and optional Ed25519 checksum-signature verification, persists dismissal, and exposes user-facing controls. Local native Windows x64 packaging and app startup were verified; the Linux/Wine cross-build had shipped an ELF `drivelist.node`, so Windows packaging now rebuilds target-native modules and rejects a non-PE addon. The hosted Linux/Windows package matrix passed (run 36737107583), but its tag-triggered signed draft-release job has not run. Installation is deliberately manual; rollback package capture/restore is not yet implemented. Signing-key provisioning and installer/update/rollback drills remain incomplete. Do not mark WP19 implemented until those paths are tested.
+- **Status:** In progress: Electron Builder targets and a tagged Linux/Windows draft-release workflow are present. The update manager checks releases, filters by platform/schema compatibility, downloads to the profile with SHA-256 and optional Ed25519 checksum-signature verification, persists dismissal, and exposes user-facing controls. Windows packaging rebuilds target-native modules, rejects a non-PE addon, and launches Theia's Electron main entry; the platform-service CLI is spawned in Electron Node mode. The E-drive app was verified to create and open a Project in the current window, and Project Home explains unavailable native engine layers. Hosted CI (run 36804234526) and the Linux/Windows package matrix (run 36804268127) passed. The tag-triggered signed draft-release job has not run. Installation remains manual; rollback package capture/restore is not yet implemented. Signing-key provisioning and installer/update/rollback drills remain incomplete. Do not mark WP19 implemented until those paths are tested.
 
 ## Cross-cutting rules
 
