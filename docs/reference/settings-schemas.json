@@ -1,0 +1,1121 @@
+{
+  "groups": [
+    {
+      "id": "general",
+      "title": "General & background behaviour",
+      "description": "General settings for the Control Room and background service.",
+      "order": 0
+    },
+    {
+      "id": "projects",
+      "title": "Projects, genres & modules",
+      "description": "Project creation and organization defaults.",
+      "order": 1
+    },
+    {
+      "id": "agents",
+      "title": "Agents, swarms & skills",
+      "description": "Agent delegation and skill behavior.",
+      "order": 2
+    },
+    {
+      "id": "models",
+      "title": "Model providers & routing",
+      "description": "Model selection and task budgets.",
+      "order": 3
+    },
+    {
+      "id": "connections",
+      "title": "Engine, asset & tool connections",
+      "description": "Connections to game engines, asset services, and tools.",
+      "order": 4
+    },
+    {
+      "id": "access",
+      "title": "Access & security",
+      "description": "Access controls and security policies.",
+      "order": 5
+    },
+    {
+      "id": "board",
+      "title": "Discussion board",
+      "description": "Discussion board behavior and maintenance routed through the board-maintainer model pool.",
+      "order": 6
+    },
+    {
+      "id": "plugins",
+      "title": "Plugins & updates",
+      "description": "Platform plugin installation and update behavior.",
+      "order": 7
+    },
+    {
+      "id": "storage",
+      "title": "Storage, search & backup",
+      "description": "Search indexes, backup, and storage behavior.",
+      "order": 8
+    },
+    {
+      "id": "logs",
+      "title": "Logs & audit",
+      "description": "Logging and audit retention.",
+      "order": 9
+    },
+    {
+      "id": "engine",
+      "title": "Engine connectors",
+      "description": "Engine detection, capability reporting, and operation behavior.",
+      "order": 10
+    },
+    {
+      "id": "knowledge",
+      "title": "Knowledge & search",
+      "description": "Canon records, indexing, semantic search, and retrieval behavior.",
+      "order": 11
+    },
+    {
+      "id": "assets",
+      "title": "Assets",
+      "description": "External generation, asset imports, previews, and cache behavior.",
+      "order": 12
+    },
+    {
+      "id": "backup",
+      "title": "Backups",
+      "description": "Encrypted Project and profile backup, verification, restore, and retention.",
+      "order": 13
+    },
+    {
+      "id": "dcc",
+      "title": "DCC tools",
+      "description": "DCC installation detection, scripted operations, and preview rendering.",
+      "order": 14
+    },
+    {
+      "id": "coordination",
+      "title": "Coordination",
+      "description": "Change impact, agent execution, resource locks, and worktree integration.",
+      "order": 15
+    },
+    {
+      "id": "updates",
+      "title": "Updates",
+      "description": "Release checks, downloads, and user-controlled update installation.",
+      "order": 16
+    }
+  ],
+  "definitions": [
+    {
+      "key": "window.closeBehavior",
+      "title": "Window close behavior",
+      "description": "Choose whether closing the window leaves work running or stops after checkpointing.",
+      "group": "general",
+      "schema": {
+        "type": "string",
+        "enum": ["continue", "stop-and-checkpoint"]
+      },
+      "default": "continue",
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "projects.defaultParentDirectory",
+      "title": "Default Project parent directory",
+      "description": "Default directory used when creating Projects.",
+      "group": "projects",
+      "schema": {
+        "type": "string"
+      },
+      "default": "<home>/GameCrafterProjects",
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "agents.maxSpawnDepth",
+      "title": "Maximum agent spawn depth",
+      "description": "Maximum number of nested agent delegation levels.",
+      "group": "agents",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 16
+      },
+      "default": 4,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "agents.maxConcurrentPerProject",
+      "title": "Maximum concurrent agents per Project",
+      "description": "Maximum number of agents that can work concurrently on one Project.",
+      "group": "agents",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 64
+      },
+      "default": 8,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "access.mode",
+      "title": "Access mode",
+      "description": "Controls how tool operations are authorized.",
+      "group": "access",
+      "schema": {
+        "type": "string",
+        "enum": ["full", "restricted", "ask-always"]
+      },
+      "default": "ask-always",
+      "scopes": ["platform", "project", "session"],
+      "source": "builtin"
+    },
+    {
+      "key": "access.restricted.allowedSideEffects",
+      "title": "Allowed restricted-mode side effects",
+      "description": "Side-effect categories permitted without an explicit tool allowlist.",
+      "group": "access",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "none",
+            "internal-write",
+            "workspace-write",
+            "external-write",
+            "paid",
+            "destructive"
+          ]
+        },
+        "uniqueItems": true
+      },
+      "default": ["none", "internal-write", "workspace-write"],
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "access.restricted.allowedTools",
+      "title": "Allowed restricted-mode tools",
+      "description": "Tool ID globs permitted while access is restricted.",
+      "group": "access",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      },
+      "default": [],
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "access.askAlways.approvalTimeoutMinutes",
+      "title": "Approval timeout (minutes)",
+      "description": "How long approval requests remain pending.",
+      "group": "access",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 30,
+      "scopes": ["platform", "project", "session"],
+      "source": "builtin"
+    },
+    {
+      "key": "models.autoRouting.quality",
+      "title": "Automatic routing quality policy",
+      "description": "Select the quality, balance, or cost priority for automatic model routing.",
+      "group": "models",
+      "schema": {
+        "type": "string",
+        "enum": ["quality-first", "balanced", "cost-first"]
+      },
+      "default": "quality-first",
+      "scopes": ["platform", "project", "session"],
+      "source": "builtin"
+    },
+    {
+      "key": "models.autoRouting.maxLatencyMs",
+      "title": "Maximum routing latency (ms)",
+      "description": "Set zero for no maximum latency constraint.",
+      "group": "models",
+      "schema": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "default": 0,
+      "scopes": ["platform", "project", "session"],
+      "source": "builtin"
+    },
+    {
+      "key": "models.exploration.rate",
+      "title": "Model exploration rate",
+      "description": "Probability of exploring a less-observed eligible model.",
+      "group": "models",
+      "schema": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "default": 0.1,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "models.exploration.budgetUsdPerDay",
+      "title": "Daily model exploration budget (USD)",
+      "description": "Maximum daily spend on exploration picks.",
+      "group": "models",
+      "schema": {
+        "type": "number",
+        "minimum": 0
+      },
+      "default": 1,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "models.budget.maxCostPerTaskUsd",
+      "title": "Maximum cost per task (USD)",
+      "description": "Maximum model spend allowed for a single task.",
+      "group": "models",
+      "schema": {
+        "type": "number",
+        "minimum": 0
+      },
+      "default": 5,
+      "scopes": ["platform", "project", "session"],
+      "source": "builtin"
+    },
+    {
+      "key": "skills.catalog.maxEntries",
+      "title": "Maximum skill catalog entries",
+      "description": "Maximum number of eligible skills shown before search is needed.",
+      "group": "agents",
+      "schema": {
+        "type": "integer",
+        "minimum": 5
+      },
+      "default": 40,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "skills.compatibilityScan.enabled",
+      "title": "Scan compatible skill directories",
+      "description": "Offer skills discovered in compatible agent-tool directories for trusted Projects.",
+      "group": "agents",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "skills.installLimits.archiveMiB",
+      "title": "Maximum skill archive size (MiB)",
+      "description": "Maximum compressed archive size accepted by the skill installer.",
+      "group": "plugins",
+      "schema": {
+        "type": "integer"
+      },
+      "default": 10,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "skills.installLimits.extractedMiB",
+      "title": "Maximum extracted skill size (MiB)",
+      "description": "Maximum total extracted size accepted by the skill installer.",
+      "group": "plugins",
+      "schema": {
+        "type": "integer"
+      },
+      "default": 25,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "skills.installLimits.maxFiles",
+      "title": "Maximum files in a skill archive",
+      "description": "Maximum number of files extracted by the skill installer.",
+      "group": "plugins",
+      "schema": {
+        "type": "integer"
+      },
+      "default": 1000,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "plugins.allowUnisolatedInFullAccess",
+      "title": "Allow unisolated plugins in Full access",
+      "description": "Permit plugin workers without OS isolation only for Projects in Full access mode.",
+      "group": "plugins",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "plugins.maxRestarts",
+      "title": "Maximum plugin worker restarts",
+      "description": "Maximum automatic restart attempts after a plugin worker crashes.",
+      "group": "plugins",
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      },
+      "default": 3,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "plugins.workerIdleStopMinutes",
+      "title": "Stop idle plugin workers after (minutes)",
+      "description": "Idle duration before a plugin worker is stopped; zero disables idle stopping.",
+      "group": "plugins",
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1440
+      },
+      "default": 30,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "plugins.autoStart",
+      "title": "Start enabled plugins automatically",
+      "description": "Start enabled plugin workers when a Project is opened.",
+      "group": "plugins",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "mcp.autoConnect",
+      "title": "Connect enabled MCP servers automatically",
+      "description": "Automatically connect enabled platform and Project MCP connections.",
+      "group": "connections",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "mcp.reconnectBackoffSeconds",
+      "title": "MCP reconnection backoff (seconds)",
+      "description": "Delay before retrying a disconnected MCP connection.",
+      "group": "connections",
+      "schema": {
+        "type": "integer"
+      },
+      "default": 10,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "board.auditIntervalMinutes",
+      "title": "Board audit interval (minutes)",
+      "description": "Interval for the board-maintainer model pool to audit open threads and decisions.",
+      "group": "board",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 240,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "board.archiveAfterDays",
+      "title": "Archive resolved threads after (days)",
+      "description": "Age after which resolved threads are summarized and archived with their history retained.",
+      "group": "board",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 30,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "board.auditMinMessages",
+      "title": "Minimum thread messages for audit",
+      "description": "Only open threads with at least this many messages are sent for maintenance audit.",
+      "group": "board",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 5,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "board.maxSyncAttempts",
+      "title": "Maximum decision sync attempts",
+      "description": "Maximum automatic retries for a binding decision canon synchronization.",
+      "group": "board",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 5,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "board.allowPermanentDeletion",
+      "title": "Allow permanent board deletion",
+      "description": "Allow permanent thread deletion; otherwise board history may only be archived.",
+      "group": "board",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "board.maintenanceEnabled",
+      "title": "Enable board maintenance",
+      "description": "Enable scheduled board-maintainer audits and archive cleanup.",
+      "group": "board",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "search.vector.enabled",
+      "title": "Enable semantic vector search",
+      "description": "Enable the configured vector-store adapter for semantic retrieval.",
+      "group": "storage",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.encryption.enabled",
+      "title": "Encrypt backups",
+      "description": "Encrypted by default; disabling is not recommended.",
+      "group": "storage",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "logs.retentionDays",
+      "title": "Log retention (days)",
+      "description": "Number of days to retain service logs.",
+      "group": "logs",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 30,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "engine.operationTimeoutSeconds",
+      "title": "Engine operation timeout (seconds)",
+      "description": "Maximum time an engine process may run before it is terminated.",
+      "group": "engine",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 86400
+      },
+      "default": 1800,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "engine.autoDetectInstallations",
+      "title": "Automatically detect engine installations",
+      "description": "Detect engine executables from environment paths and common installation directories.",
+      "group": "engine",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "engine.postVersionMismatchToBoard",
+      "title": "Post engine version mismatches to the board",
+      "description": "Post one finding to the Engine board thread when the detected version changes out of compatibility.",
+      "group": "engine",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.vectorStore.kind",
+      "title": "Vector store kind",
+      "description": "Select Qdrant for semantic retrieval or none for lexical-only search.",
+      "group": "knowledge",
+      "schema": {
+        "type": "string",
+        "enum": ["none", "qdrant"]
+      },
+      "default": "none",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.vectorStore.url",
+      "title": "Vector store URL",
+      "description": "Base URL for the Qdrant vector store.",
+      "group": "knowledge",
+      "schema": {
+        "type": "string",
+        "format": "uri"
+      },
+      "default": "http://127.0.0.1:6333",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.vectorStore.apiKeyRef",
+      "title": "Vector store credential reference",
+      "description": "Optional reference to an encrypted credential in the platform credential store.",
+      "group": "knowledge",
+      "schema": {
+        "type": "string"
+      },
+      "default": "",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.vectorStore.collectionPrefix",
+      "title": "Vector store collection prefix",
+      "description": "Prefix used for Project-isolated Qdrant collections.",
+      "group": "knowledge",
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": "gamecrafter",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.vectorStore.timeoutMs",
+      "title": "Vector store timeout (ms)",
+      "description": "Request timeout for the configured vector store.",
+      "group": "knowledge",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 5000,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.embeddingBatchSize",
+      "title": "Embedding batch size",
+      "description": "Number of new chunks embedded in one provider request.",
+      "group": "knowledge",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 256
+      },
+      "default": 32,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.reconcileIntervalMinutes",
+      "title": "Knowledge reconcile interval (minutes)",
+      "description": "Periodic full reconciliation interval for Project knowledge indexes.",
+      "group": "knowledge",
+      "schema": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "default": 60,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.indexCode",
+      "title": "Index Project code",
+      "description": "Include allowlisted source files under game/ in the knowledge index.",
+      "group": "knowledge",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.indexBoard",
+      "title": "Index discussion board",
+      "description": "Include board threads and messages in the knowledge index.",
+      "group": "knowledge",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "knowledge.codeExtensions",
+      "title": "Indexed code extensions",
+      "description": "Allowlisted text/source extensions indexed from game/. Binary assets are never indexed as content.",
+      "group": "knowledge",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      },
+      "default": [
+        "cs",
+        "cpp",
+        "h",
+        "hpp",
+        "gd",
+        "tscn",
+        "tres",
+        "py",
+        "ts",
+        "js",
+        "json",
+        "ini",
+        "cfg",
+        "shader",
+        "hlsl",
+        "glsl",
+        "usf",
+        "ush",
+        "md",
+        "txt"
+      ],
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "assets.pollIntervalSeconds",
+      "title": "Asset job poll interval (seconds)",
+      "description": "Default delay between polling external asset generation jobs.",
+      "group": "assets",
+      "schema": {
+        "type": "integer",
+        "minimum": 2,
+        "maximum": 120
+      },
+      "default": 5,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "assets.maxDownloadMb",
+      "title": "Maximum asset download size (MB)",
+      "description": "Reject provider output downloads larger than this limit.",
+      "group": "assets",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4096
+      },
+      "default": 200,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "assets.importDirectory",
+      "title": "Generated asset import directory",
+      "description": "Project-relative destination directory for approved generated assets.",
+      "group": "assets",
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": "game/assets/generated",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "assets.externalOpenCommand",
+      "title": "External asset authoring command",
+      "description": "Optional executable used to open assets in an authoring tool.",
+      "group": "assets",
+      "schema": {
+        "type": "string"
+      },
+      "default": "",
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "assets.previewCacheMb",
+      "title": "Asset preview cache size (MB)",
+      "description": "Maximum disk space used by disposable asset preview derivatives.",
+      "group": "assets",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 16384
+      },
+      "default": 500,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "assets.requestTimeoutMs",
+      "title": "Asset provider request timeout (ms)",
+      "description": "Timeout applied to external asset provider API requests.",
+      "group": "assets",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 300000
+      },
+      "default": 30000,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.excludeGlobs",
+      "title": "Backup exclusion patterns",
+      "description": "Additional simple glob patterns excluded from Project backups.",
+      "group": "backup",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      },
+      "default": [],
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.includeAssetJobs",
+      "title": "Include generated asset jobs",
+      "description": "Include downloaded provider artifacts under .gamecrafter/asset-jobs in Project backups.",
+      "group": "backup",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.compressionLevel",
+      "title": "Backup compression level",
+      "description": "Gzip compression level used for backup archives.",
+      "group": "backup",
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9
+      },
+      "default": 6,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.scryptLogN",
+      "title": "Backup secret KDF cost",
+      "description": "Scrypt logN used to protect recovery identities.",
+      "group": "backup",
+      "schema": {
+        "type": "integer",
+        "minimum": 14,
+        "maximum": 20
+      },
+      "default": 15,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.drillAfterBackup",
+      "title": "Drill after backup",
+      "description": "Decrypt and hash-check each new archive before retention runs.",
+      "group": "backup",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.stagingDirectory",
+      "title": "Backup staging directory",
+      "description": "Optional directory for encrypted archive staging; empty uses the profile cache.",
+      "group": "backup",
+      "schema": {
+        "type": "string"
+      },
+      "default": "",
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "backup.maxArchiveMb",
+      "title": "Maximum archive size (MB)",
+      "description": "Zero means unlimited; otherwise fail before upload when the archive exceeds this size.",
+      "group": "backup",
+      "schema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1048576
+      },
+      "default": 0,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "dcc.searchPaths",
+      "title": "DCC executable search paths",
+      "description": "Additional directories to scan for DCC executables.",
+      "group": "dcc",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "default": [],
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "dcc.operationTimeoutSeconds",
+      "title": "DCC operation timeout (seconds)",
+      "description": "Maximum time a headless DCC operation may run before termination.",
+      "group": "dcc",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 86400
+      },
+      "default": 600,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "dcc.autoDetectInstallations",
+      "title": "Automatically detect DCC installations",
+      "description": "Detect DCC executables from PATH, common locations, and supported WSL interop paths.",
+      "group": "dcc",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": true,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "dcc.allowUnrestrictedScripts",
+      "title": "Allow unrestricted DCC scripts",
+      "description": "Allow DCC run-script calls containing subprocess or destructive filesystem operations.",
+      "group": "dcc",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "dcc.renderPreviewResolution",
+      "title": "DCC render preview resolution",
+      "description": "Resolution in pixels for generated DCC preview renders.",
+      "group": "dcc",
+      "schema": {
+        "type": "integer",
+        "minimum": 64,
+        "maximum": 4096
+      },
+      "default": 512,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "coordination.autoIntegrate",
+      "title": "Automatic integration policy",
+      "description": "Control whether validated, conflict-free worktree changes are integrated automatically.",
+      "group": "coordination",
+      "schema": {
+        "type": "string",
+        "enum": ["never", "when-validated", "always"]
+      },
+      "default": "when-validated",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "coordination.lockTimeoutSeconds",
+      "title": "Resource lock timeout (seconds)",
+      "description": "Time before an unrenewed resource lock expires.",
+      "group": "coordination",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 86400
+      },
+      "default": 300,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "coordination.worktreeDirectory",
+      "title": "Worktree directory",
+      "description": "Project-relative directory used for isolated task worktrees.",
+      "group": "coordination",
+      "schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": ".gamecrafter/worktrees",
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "coordination.impactConfidenceThreshold",
+      "title": "Impact confidence threshold",
+      "description": "Impact paths below this confidence need explicit validation.",
+      "group": "coordination",
+      "schema": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "default": 0.7,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "coordination.maxTranscriptTokens",
+      "title": "Agent transcript token limit",
+      "description": "Compact the oldest non-pinned agent turns after this estimated token count.",
+      "group": "coordination",
+      "schema": {
+        "type": "integer",
+        "minimum": 1000,
+        "maximum": 1000000
+      },
+      "default": 60000,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "coordination.defaultMaxTurns",
+      "title": "Default agent turn limit",
+      "description": "Default maximum model turns for roles without max-turns.",
+      "group": "coordination",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "default": 60,
+      "scopes": ["platform", "project"],
+      "source": "builtin"
+    },
+    {
+      "key": "updates.checkOnStart",
+      "title": "Check for updates on startup",
+      "description": "Check the stable release channel after the Control Room starts.",
+      "group": "updates",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "updates.releasesUrl",
+      "title": "Stable releases URL",
+      "description": "GitHub latest-release API URL or a direct gamecrafter-release.json URL.",
+      "group": "updates",
+      "schema": {
+        "type": "string",
+        "format": "uri",
+        "minLength": 1
+      },
+      "default": "https://api.github.com/repos/scarecr0w12/GameCrafter/releases/latest",
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "updates.autoDownload",
+      "title": "Download updates automatically",
+      "description": "Download a compatible release after checking; installation always remains user-controlled.",
+      "group": "updates",
+      "schema": {
+        "type": "boolean"
+      },
+      "default": false,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "updates.checkIntervalHours",
+      "title": "Update check interval (hours)",
+      "description": "Interval between background stable-channel checks.",
+      "group": "updates",
+      "schema": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 720
+      },
+      "default": 24,
+      "scopes": ["platform"],
+      "source": "builtin"
+    },
+    {
+      "key": "updates.signingPublicKey",
+      "title": "Release signing public key",
+      "description": "Ed25519 public key used to verify the detached release checksum signature.",
+      "group": "updates",
+      "schema": {
+        "type": "string"
+      },
+      "default": "",
+      "scopes": ["platform"],
+      "source": "builtin"
+    }
+  ]
+}

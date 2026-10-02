@@ -4,9 +4,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { uuidv7, type EmbeddingProfile } from '@gamecrafter/contracts';
 import { QdrantVectorStore } from './qdrant-vector-store';
 
-const dockerAvailable = spawnSync('docker', ['info'], { stdio: 'ignore' }).status === 0;
+const dockerInfo = spawnSync('docker', ['info', '--format', '{{.OSType}}'], {
+  encoding: 'utf8',
+  timeout: 10_000,
+});
+// Qdrant publishes a Linux image; a reachable Windows-mode daemon cannot run it.
+const dockerAvailable = dockerInfo.status === 0 && dockerInfo.stdout.trim() === 'linux';
 const qdrantSuite = dockerAvailable ? describe : describe.skip;
-if (!dockerAvailable) console.info('Skipping real Qdrant integration: docker is unavailable.');
+if (!dockerAvailable)
+  console.info('Skipping real Qdrant integration: a Linux-container Docker daemon is unavailable.');
 
 qdrantSuite('real Qdrant adapter integration', () => {
   const containerName = `gc-wp14-qdrant-${process.pid}`;

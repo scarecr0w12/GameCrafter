@@ -26,6 +26,7 @@ jobs:
       - if: runner.os == 'Windows'
         run: npm ci --foreground-scripts
       - run: npx turbo run build typecheck lint test --concurrency=1
+      - run: node scripts/generate-system-reference.cjs --check
       - run: npm run format:check
       - if: runner.os == 'Linux'
         run: bash scripts/check-links.sh
@@ -59,7 +60,8 @@ jobs:
             fi
             sleep 1
           done
-          npm run test:ui
+          # This disposable hosted runner blocks Chromium user namespaces.
+          npm run test:ui -- --no-sandbox
       - if: always()
         uses: actions/upload-artifact@v4
         with:

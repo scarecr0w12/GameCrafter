@@ -10,13 +10,13 @@ This document resolves the skill, agent-role, and tool-connection contracts that
 
 The platform interoperates with the existing agent ecosystem rather than inventing its own skill or agent file formats:
 
-| Concern | Adopted external format | Platform additions |
-| --- | --- | --- |
-| Skills | **Agent Skills** (`SKILL.md` + frontmatter, agentskills.io) | Namespaced `metadata` keys for eligibility, capability requests, engine/genre tags; platform-side install and enablement records |
-| Repository/Project instructions | **AGENTS.md** | Generated `AGENTS.md` in every Project folder pointing at canon, records, and conventions |
-| Agent roles | Markdown + YAML frontmatter, modeled on the widely used subagent-definition pattern | Platform fields for work types, model pools, access ceiling, board subscriptions |
-| Tools | **MCP** (all revisions from 2025-03-26 to 2026-07-28), plus native platform tools through the broker | Capability metadata, access-mode mapping, per-operation execution mode |
-| Plugin packaging | Platform manifest (own contract, see `TECHNICAL_ARCHITECTURE.md`) | Plugins may bundle skills, roles, MCP server definitions, and connectors |
+| Concern                         | Adopted external format                                                                              | Platform additions                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Skills                          | **Agent Skills** (`SKILL.md` + frontmatter, agentskills.io)                                          | Namespaced `metadata` keys for eligibility, capability requests, engine/genre tags; platform-side install and enablement records |
+| Repository/Project instructions | **AGENTS.md**                                                                                        | Generated `AGENTS.md` in every Project folder pointing at canon, records, and conventions                                        |
+| Agent roles                     | Markdown + YAML frontmatter, modeled on the widely used subagent-definition pattern                  | Platform fields for work types, model pools, access ceiling, board subscriptions                                                 |
+| Tools                           | **MCP** (all revisions from 2025-03-26 to 2026-07-28), plus native platform tools through the broker | Capability metadata, access-mode mapping, per-operation execution mode                                                           |
+| Plugin packaging                | Platform manifest (own contract, see `TECHNICAL_ARCHITECTURE.md`)                                    | Plugins may bundle skills, roles, MCP server definitions, and connectors                                                         |
 
 Rationale: the `SKILL.md` format is already supported by dozens of agent products and has a public distribution ecosystem (skills.sh, `npx skills add`). Reusing it means every existing skill for Unity, Godot, Blender, or code review is installable into this platform without conversion, and skills authored here are usable by other tools.
 
@@ -33,13 +33,13 @@ description: Audit a Godot 4 scene tree for missing scripts, broken node paths, 
 license: MIT
 compatibility: Requires a Godot 4.x editor binary on PATH for headless checks.
 metadata:
-  gamecrafter-version: "1.2.0"
+  gamecrafter-version: '1.2.0'
   gamecrafter-engines: godot
-  gamecrafter-genres: "*"
+  gamecrafter-genres: '*'
   gamecrafter-work-types: validation,code-review
   gamecrafter-roles: validator,engine-engineer
   gamecrafter-capabilities: process.spawn:godot,fs.read:project
-  gamecrafter-min-platform: "0.1"
+  gamecrafter-min-platform: '0.1'
 ---
 ```
 
@@ -47,13 +47,13 @@ metadata:
 
 ### 2.2 Storage and scopes
 
-| Scope | Location | Notes |
-| --- | --- | --- |
-| Bundled first-party library | Packaged platform-service skill directories | 30 curated game-development skills, enabled by default per Project; source `builtin:gamecrafter`; see [library guide](GAME_DEVELOPMENT_SKILLS.md) |
-| Platform (global install) | `<profile>/skills/<name>/` | Canonical copy; the installed-skill record in the profile database stores source, version/commit, hash, install time |
-| Project enablement | Project SQLite `skill_enablement` table + `project.json` pin | Records enabled state, pinned version, per-Project eligibility overrides |
-| Project-local skills | `<project>/.agents/skills/<name>/` | Authored inside the Project, versioned in the Project Git repo, visible to external agents too |
-| Compatibility scan | `<project>/.claude/skills/`, `~/.agents/skills/`, `~/.claude/skills/` | Read-only discovery so skills installed by other tools are offered; never written to |
+| Scope                       | Location                                                              | Notes                                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bundled first-party library | Packaged platform-service skill directories                           | 30 curated game-development skills, enabled by default per Project; source `builtin:gamecrafter`; see [library guide](GAME_DEVELOPMENT_SKILLS.md) |
+| Platform (global install)   | `<profile>/skills/<name>/`                                            | Canonical copy; the installed-skill record in the profile database stores source, version/commit, hash, install time                              |
+| Project enablement          | Project SQLite `skill_enablement` table + `project.json` pin          | Records enabled state, pinned version, per-Project eligibility overrides                                                                          |
+| Project-local skills        | `<project>/.agents/skills/<name>/`                                    | Authored inside the Project, versioned in the Project Git repo, visible to external agents too                                                    |
+| Compatibility scan          | `<project>/.claude/skills/`, `~/.agents/skills/`, `~/.claude/skills/` | Read-only discovery so skills installed by other tools are offered; never written to                                                              |
 
 Precedence on name collision: Project-local > Project-enabled platform skill > compatibility-scanned; log every shadowing event to the Project diagnostics.
 
@@ -71,7 +71,7 @@ Trust rule: Project-local and compatibility-scanned skills are loaded only when 
 
 Three-tier progressive disclosure, as in the specification:
 
-1. **Catalog (tier 1).** For the current task the platform computes the *eligible set* deterministically: enabled in Project ∩ eligible for the agent role ∩ eligible for the work type ∩ engine/genre tags compatible ∩ requested capabilities permitted under the current access mode. Only that set's `name` + `description` + `location` enter context. Filtered skills are hidden entirely. If the set is empty, no catalog or activation tool is registered.
+1. **Catalog (tier 1).** For the current task the platform computes the _eligible set_ deterministically: enabled in Project ∩ eligible for the agent role ∩ eligible for the work type ∩ engine/genre tags compatible ∩ requested capabilities permitted under the current access mode. Only that set's `name` + `description` + `location` enter context. Filtered skills are hidden entirely. If the set is empty, no catalog or activation tool is registered.
 2. **Instructions (tier 2).** Activation goes through a dedicated `activate_skill(name)` broker tool whose `name` parameter is an enum of the eligible set. The tool returns the body with frontmatter stripped, wrapped in a structured `<skill_content name=… version=… dir=…>` block that lists bundled resources without reading them. Activation is recorded (task ID, skill name, version/hash, agent, model) so outcomes trace to the exact skill version.
 3. **Resources (tier 3).** Skill directories are allowlisted for read access in every access mode so `references/`, `assets/`, and `scripts/` can be read without approval prompts. `scripts/` execution is **not** implicitly allowed: it runs through the tool broker under the skill's declared `gamecrafter-capabilities` and the session's access mode.
 
@@ -101,16 +101,16 @@ name: narrative-designer
 description: Writes and revises quest, dialogue, and lore canon under the Story module. Delegate when a task changes narrative records.
 work-types: narrative,canon-edit
 requires-modules: story
-model-pool: narrative            # named pool; intersected with task-type pool per M04
-max-access: restricted           # ceiling; effective mode = min(session mode, ceiling)
+model-pool: narrative # named pool; intersected with task-type pool per M04
+max-access: restricted # ceiling; effective mode = min(session mode, ceiling)
 tools: canon.read,canon.propose,board.post,search.semantic
 disallowed-tools: engine.*,shell.*
-skills: narrative-style-guide    # preloaded in full at start
-mcp-servers: []                  # named servers from settings; inline definitions not allowed for marketplace roles
+skills: narrative-style-guide # preloaded in full at start
+mcp-servers: [] # named servers from settings; inline definitions not allowed for marketplace roles
 max-turns: 60
-memory: project                  # <project>/.gamecrafter/agent-memory/<name>/
+memory: project # <project>/.gamecrafter/agent-memory/<name>/
 board-subscriptions: narrative,canon
-isolation: none                  # or worktree (code roles)
+isolation: none # or worktree (code roles)
 ---
 System prompt body…
 ```
@@ -156,10 +156,10 @@ Access modes apply at the broker: Full executes everything within available cred
 
 Each engine connector exposes two layers behind one capability report:
 
-| Layer | Unity | Unreal | Godot |
-| --- | --- | --- | --- |
-| Headless/CLI | `-batchmode -executeMethod`, `unity` CLI build/run/test | `UnrealEditor-Cmd -run=<commandlet>` for commandlets, editor Automation for tests, `RunUAT BuildCookRun` | `godot --headless --script/--check-only/--import/--export-*` |
-| Live editor | Unity CLI `unity mcp` / Pipeline `[CliCommand]` (first-party) or community MCP servers | Epic's Editor MCP plugin (5.8, verify status) or community bridges via Python remote execution | Editor-addon MCP servers; process launch via Node MCP servers |
+| Layer        | Unity                                                                                  | Unreal                                                                                                   | Godot                                                         |
+| ------------ | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Headless/CLI | `-batchmode -executeMethod`, `unity` CLI build/run/test                                | `UnrealEditor-Cmd -run=<commandlet>` for commandlets, editor Automation for tests, `RunUAT BuildCookRun` | `godot --headless --script/--check-only/--import/--export-*`  |
+| Live editor  | Unity CLI `unity mcp` / Pipeline `[CliCommand]` (first-party) or community MCP servers | Epic's Editor MCP plugin (5.8, verify status) or community bridges via Python remote execution           | Editor-addon MCP servers; process launch via Node MCP servers |
 
 The connector reports `project-file`, `headless-process`, and `live-editor` readiness separately, with detected engine version, project identity proof (e.g. `ProjectSettings/ProjectVersion.txt`, `.uproject`, `project.godot`), and the MCP revision of any live bridge. Unity's first-party `unity mcp` is the preferred live bridge; community servers are installable as connector plugins with their code-execution tools labeled as above.
 
@@ -181,14 +181,18 @@ Each Project folder gains: `AGENTS.md` (generated, describes canon location, rec
 
 ## 6. Decision-register effects
 
-| Entry | Effect of this document |
-| --- | --- |
-| A03 | Resolved: role package format, catalog tiers, mid-task discovery, activation recording |
-| S04 (skill portion) | Resolved: skills are Agent Skills directories with `gamecrafter-*` metadata |
-| S06 | Resolved for skills/roles: CLI-compatible sources, caps, trust display; marketplace remains optional |
-| S07 | Default confirmed: pinned versions in Project, exact-reinstall offer on clone |
-| S08 | Resolved: deterministic eligibility, ranking, search tool, outcome linkage |
-| C01 | Resolved: connection record with mode, negotiated MCP revision, deprecated-feature policy |
-| C03 | Resolved: per-operation execution-mode and evidence metadata |
-| A02, S01 | Defaults recorded (limits, ceiling inheritance, side-effect taxonomy); exact prompt grouping still open |
-| S02, C04, C05 | Direction selected; remain **Verify** until tested |
+| Entry               | Effect of this document                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| A03                 | Resolved: role package format, catalog tiers, mid-task discovery, activation recording                  |
+| S04 (skill portion) | Resolved: skills are Agent Skills directories with `gamecrafter-*` metadata                             |
+| S06                 | Resolved for skills/roles: CLI-compatible sources, caps, trust display; marketplace remains optional    |
+| S07                 | Default confirmed: pinned versions in Project, exact-reinstall offer on clone                           |
+| S08                 | Resolved: deterministic eligibility, ranking, search tool, outcome linkage                              |
+| C01                 | Resolved: connection record with mode, negotiated MCP revision, deprecated-feature policy               |
+| C03                 | Resolved: per-operation execution-mode and evidence metadata                                            |
+| A02, S01            | Defaults recorded (limits, ceiling inheritance, side-effect taxonomy); exact prompt grouping still open |
+| S02, C04, C05       | Direction selected; remain **Verify** until tested                                                      |
+
+## Operational and contributor references
+
+The [integration guide](INTEGRATION_GUIDE.md) explains the current engine layers, MCP connection modes, builtin roles, skill authoring, plugin worker protocol and provider evidence boundaries. The [developer guide](DEVELOPER_GUIDE.md) covers building and contributing; generated [RPC](API_REFERENCE.md) and [settings](SETTINGS_REFERENCE.md) references expose the current service contracts. These guides supplement this target contract document and do not resolve broader community conformance or migration acceptance (Q04).

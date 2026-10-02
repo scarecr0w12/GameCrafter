@@ -6,6 +6,8 @@ This repository holds both the design and the code. The design describes the com
 
 ## Documents
 
+Start with the [complete documentation index](docs/README.md): [user workflows](docs/USER_GUIDE.md), [operations and recovery](docs/OPERATIONS_GUIDE.md), [developer guide](docs/DEVELOPER_GUIDE.md), [integrations and extensions](docs/INTEGRATION_GUIDE.md), [system architecture](docs/SYSTEM_ARCHITECTURE.md), [RPC API](docs/API_REFERENCE.md), and [settings reference](docs/SETTINGS_REFERENCE.md).
+
 - [Living platform design](docs/PLATFORM_DESIGN.md): confirmed decisions, proposed architecture, and decision log.
 - [Technical architecture](docs/TECHNICAL_ARCHITECTURE.md): the complete target stack with selected engineering defaults.
 - [Skills, agent roles, and tool connections](docs/SKILLS_AGENTS_AND_TOOLS.md): installable skills (Agent Skills format), agent role packages, MCP connections, and engine/DCC connectors.
@@ -17,14 +19,14 @@ This repository holds both the design and the code. The design describes the com
 
 ## Code
 
-| Path | Package | Purpose |
-| --- | --- | --- |
-| `packages/contracts` | `@gamecrafter/contracts` | TypeBox schemas, types, RPC method table, error codes |
-| `packages/platform-service` | `@gamecrafter/platform-service` | Local daemon: authenticated JSON-RPC over a Unix socket / named pipe, profile SQLite, Project workspaces; CLI `gamecrafter-service start\|stop\|status` |
-| `packages/service-client` | `@gamecrafter/service-client` | Typed client used by the Theia backend and tests |
-| `packages/theia-control-room` | `@gamecrafter/theia-control-room` | Theia extension: service bridge, Project Home view, Create Project flow |
-| `apps/control-room` | `@gamecrafter/control-room` | Theia Electron application (the desktop product) |
-| `apps/control-room-browser` | `@gamecrafter/control-room-browser` | Development-only browser target for UI smoke tests |
+| Path                          | Package                             | Purpose                                                                                                                                                 |
+| ----------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts`          | `@gamecrafter/contracts`            | TypeBox schemas, types, RPC method table, error codes                                                                                                   |
+| `packages/platform-service`   | `@gamecrafter/platform-service`     | Local daemon: authenticated JSON-RPC over a Unix socket / named pipe, profile SQLite, Project workspaces; CLI `gamecrafter-service start\|stop\|status` |
+| `packages/service-client`     | `@gamecrafter/service-client`       | Typed client used by the Theia backend and tests                                                                                                        |
+| `packages/theia-control-room` | `@gamecrafter/theia-control-room`   | Theia extension: service bridge, Project Home view, Create Project flow                                                                                 |
+| `apps/control-room`           | `@gamecrafter/control-room`         | Theia Electron application (the desktop product)                                                                                                        |
+| `apps/control-room-browser`   | `@gamecrafter/control-room-browser` | Development-only browser target for UI smoke tests                                                                                                      |
 
 ### Build and run
 
