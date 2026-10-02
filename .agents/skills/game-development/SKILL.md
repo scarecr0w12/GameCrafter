@@ -9,7 +9,7 @@ metadata:
 # Game development
 
 Turn a player-facing goal into an executable, evidenced change. This is an original
-GameCrafter workflow; specialist references supply engine-specific procedures.
+PlayWeld workflow; specialist references supply engine-specific procedures.
 Read [the workflow map](references/workflows.md) for task routing, example contracts,
 and integration checks. Load the relevant specialist skill before using its procedure.
 

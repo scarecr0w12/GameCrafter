@@ -1,6 +1,6 @@
-# GameCrafter versioning, releases and local Windows testing
+# PlayWeld versioning, releases and local Windows testing
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 This guide defines the current release tooling and the local testing handoff. The complete release lifecycle remains in progress in [WP19](DEVELOPMENT_PLAN.md#wp19--packaging-and-release); installer upgrade/rollback and signing acceptance are separate from producing a test build.
 
@@ -40,7 +40,7 @@ Windows Authenticode signing uses separate `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSW
 After reviewing successful checks and actual artifacts, publish the authorized testing prerelease:
 
 ```bash
-git tag -a v0.1.2 -m 'GameCrafter 0.1.2 testing prerelease'
+git tag -a v0.1.2 -m 'PlayWeld 0.1.2 testing prerelease'
 git push origin main
 git push origin v0.1.2
 # Wait for the Desktop Release workflow and inspect its draft assets.
@@ -62,12 +62,14 @@ Electron Builder writes to `apps/control-room/dist/<version>/`. This preserves p
 
 The Windows verifier checks the Electron main entry, PE native module, matching application/service versions, all thirty current bundled skills and their reference content, and Apache license/notice files. It rejects missing or stale skill assets, so a test package cannot silently substitute an older skill library.
 
+Future PlayWeld packages use the names below. Previously staged GameCrafter builds keep their original names. Use a new release version when packaging the rebrand; existing staging destinations are preserved. See [branding and compatibility](BRANDING.md).
+
 The staging command creates:
 
 ```text
 Windows-Release/<version>/
-  GameCrafter-<version>-x64.exe    NSIS installer
-  Launch-GameCrafter-Test.cmd     Launch the unpacked app with isolated test state
+  PlayWeld-<version>-x64.exe    NSIS installer
+  Launch-PlayWeld-Test.cmd     Launch the unpacked app with isolated test state
   app/GameCrafter.exe            Actual unpacked desktop executable
   app/resources/...             Required runtime files, service, skills and plugins
   local-build.json               Version, tag, source commit and installer hash
@@ -76,7 +78,7 @@ Windows-Release/<version>/
 
 Keep the complete `app/` directory together. Its executable requires the adjacent runtime files. The installer is a separate executable that installs the application.
 
-Double-click `Launch-GameCrafter-Test.cmd` for an isolated local test. It sets the profile, Theia configuration and Electron user-data directories below `%LOCALAPPDATA%\GameCrafter-Testing`, separated by version. The launcher preserves the normal GameCrafter profile. Launching `app/GameCrafter.exe` directly uses the application's ordinary environment/profile resolution instead.
+Double-click `Launch-PlayWeld-Test.cmd` for an isolated local test. It sets the profile, Theia configuration and Electron user-data directories below `%LOCALAPPDATA%\GameCrafter-Testing`, separated by version. The launcher preserves the normal PlayWeld profile. Launching `app/GameCrafter.exe` directly uses the application's ordinary environment/profile resolution instead.
 
 Staging rejects an existing `Windows-Release/<version>` destination so previous evidence/builds are preserved. It does not delete or overwrite an earlier version. Installers, unpacked apps, credentials and generated test artifacts remain ignored by Git.
 
@@ -100,4 +102,4 @@ Keep quality logs, package logs, screenshots, UI reports, metadata/checksum veri
 
 Testing prereleases do not certify production games, every engine version, live provider accounts, installer rollback or Windows plugin isolation. Read [status](STATUS.md), [operations](OPERATIONS_GUIDE.md), and the version's [release notes](releases/v0.1.2.md) for the current boundary.
 
-The publication and packaging mechanisms above are documented by [GitHub release management](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) and [Electron Builder v26 target selection](https://www.electron.build/v26/docs/targets/). Repository scripts and test evidence determine GameCrafter's actual behavior.
+The publication and packaging mechanisms above are documented by [GitHub release management](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) and [Electron Builder v26 target selection](https://www.electron.build/v26/docs/targets/). Repository scripts and test evidence determine PlayWeld's actual behavior.

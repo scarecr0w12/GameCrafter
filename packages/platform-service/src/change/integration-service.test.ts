@@ -237,15 +237,7 @@ function createFixture() {
   execFileSync('git', ['add', '-A'], { cwd: projectPath, stdio: 'ignore' });
   execFileSync(
     'git',
-    [
-      '-c',
-      'user.name=GameCrafter',
-      '-c',
-      'user.email=gamecrafter@localhost',
-      'commit',
-      '-m',
-      'base',
-    ],
+    ['-c', 'user.name=PlayWeld', '-c', 'user.email=gamecrafter@localhost', 'commit', '-m', 'base'],
     { cwd: projectPath, stdio: 'ignore' },
   );
 

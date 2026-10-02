@@ -1,6 +1,6 @@
 ---
 name: game-ai
-description: "Design, implement, or debug in-game NPC behavior, navigation, perception, tactical choices, utility scoring, behavior trees, or state machines. Use for gameplay AI behavior and testing; separate this from GameCrafter authoring agents or model routing."
+description: "Design, implement, or debug in-game NPC behavior, navigation, perception, tactical choices, utility scoring, behavior trees, or state machines. Use for gameplay AI behavior and testing; separate this from PlayWeld authoring agents or model routing."
 license: Apache-2.0
 metadata:
   gamecrafter-version: '1.0.0'
@@ -98,7 +98,7 @@ Build observable, controllable NPC behavior that serves the intended player expe
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Dependency and lifecycle principles; not an AI algorithm authority](https://docs.godotengine.org/en/stable/tutorials/best_practices/scene_organization.html).

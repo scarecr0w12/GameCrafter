@@ -132,7 +132,7 @@ export class UpdatesWidget extends ControlRoomReactWidget {
             {state.previous && (
               <section className="gamecrafter-updates-section">
                 <h3>Rollback package: {state.previous.version}</h3>
-                <p>Rollback requires closing GameCrafter and manually reinstalling this package.</p>
+                <p>Rollback requires closing PlayWeld and manually reinstalling this package.</p>
                 <button type="button" onClick={() => void this.rollback()} disabled={this.busy}>
                   Show rollback instructions
                 </button>

@@ -13,7 +13,7 @@ metadata:
 Read the Project AGENTS.md, relevant design canon, and the task's acceptance criteria.
 Inspect current edits before touching files; preserve unrelated work.
 Use the existing engine, language, plugins, and architecture unless the task changes them.
-Treat the procedures below as GameCrafter engineering recommendations.
+Treat the procedures below as PlayWeld engineering recommendations.
 Vendor facts and version boundaries are identified in the linked workflow reference.
 Read [references/workflows.md](references/workflows.md) for examples and failure diagnosis.
 

@@ -111,7 +111,7 @@ export class PluginsCatalogWidget extends ControlRoomReactWidget {
           <div>
             <h1>Plugins</h1>
             <p>
-              GameCrafter plugins run in a separate worker and use explicitly accepted capabilities.
+              PlayWeld plugins run in a separate worker and use explicitly accepted capabilities.
             </p>
           </div>
           <label>
@@ -215,7 +215,7 @@ export class PluginsCatalogWidget extends ControlRoomReactWidget {
         <h2>Theia editor extensions</h2>
         <p>
           VS Code-compatible editor extensions run in Theia&apos;s plugin host. They are separate
-          from GameCrafter platform plugins and are not governed by the platform tool broker or this
+          from PlayWeld platform plugins and are not governed by the platform tool broker or this
           catalog&apos;s capability controls.
         </p>
         <button

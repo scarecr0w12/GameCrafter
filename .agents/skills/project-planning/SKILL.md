@@ -88,7 +88,7 @@ Produce executable work with clear outcomes, dependencies, and review evidence.
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Prototype choice reduces uncertainty; planning workflow is an original recommendation](https://learn.unity.com/course/creative-core-prototyping).

@@ -477,8 +477,6 @@ export function findBundledSkillsDirectory(): string {
     existsSync(path.join(candidate, 'game-development', 'SKILL.md')),
   );
   if (!directory)
-    throw new Error(
-      'The bundled GameCrafter skill library is missing. Rebuild the platform service.',
-    );
+    throw new Error('The bundled PlayWeld skill library is missing. Rebuild the platform service.');
   return directory;
 }

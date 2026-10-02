@@ -12,14 +12,14 @@ export class SettingsViewContribution extends AbstractViewContribution<GameCraft
   constructor() {
     super({
       widgetId: GameCrafterSettingsWidget.ID,
-      widgetName: 'GameCrafter Settings',
+      widgetName: 'PlayWeld Settings',
       defaultWidgetOptions: { area: 'main' },
     });
   }
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: SETTINGS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Settings' },
+      { id: SETTINGS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Settings' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class SettingsViewContribution extends AbstractViewContribution<GameCraft
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: SETTINGS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Settings',
+      label: 'PlayWeld: Open Settings',
     });
   }
 }

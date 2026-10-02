@@ -102,7 +102,7 @@ Do not broaden edits simply because downstream logs contain many errors.
 
 ## Evidence limitations
 
-These workflows are original GameCrafter recommendations informed by official documentation.
+These workflows are original PlayWeld recommendations informed by official documentation.
 The examples are illustrative procedures, not executed engine or connector tests.
 A skill file alone provides no engine, platform module, license, templates, or device.
 The installed engine and connector determine the operations actually available.

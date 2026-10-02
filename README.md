@@ -1,8 +1,14 @@
-# GameCrafter
+# PlayWeld
 
-GameCrafter is a free, open-source, locally run game development platform: an all-in-one Game Development Control Room built on Eclipse Theia, a local platform service that owns Projects, agents, model routing, and plugins, and CLI/MCP connectors to Unity, Unreal Engine, Godot, and game-art tools. It is designed for one user first and for anyone who installs it from GitHub. Licensed under [Apache-2.0](LICENSE).
+![PlayWeld](assets/brand/banner-wide.png)
+
+PlayWeld is a free, open-source, locally run game development platform: an all-in-one Game Development Control Room built on Eclipse Theia, a local platform service that owns Projects, agents, model routing, and plugins, and CLI/MCP connectors to Unity, Unreal Engine, Godot, and game-art tools. It is designed for one user first and for anyone who installs it from GitHub. Licensed under [Apache-2.0](LICENSE).
+
+**Public identity:** PlayWeld, formerly GameCrafter. The user owns `playweld.com`; website implementation belongs to a separate project. See [branding and compatibility](docs/BRANDING.md) for retained technical identifiers.
 
 This repository holds both the design and the code. The design describes the complete intended system by architectural area; the code implements it in dependency-ordered work packages.
+
+**Artwork:** [Brand assets and usage guide](assets/brand/README.md) includes editable logos, app icons, banners, and promotional illustrations.
 
 ## Documents
 

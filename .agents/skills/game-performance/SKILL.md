@@ -98,7 +98,7 @@ Find and reduce a measured bottleneck while preserving the intended game behavio
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Target-device capture](https://docs.unity3d.com/6000.0/Documentation/Manual/profiling-target-device.html).

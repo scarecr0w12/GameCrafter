@@ -9,7 +9,7 @@ metadata:
 # Visual consistency
 
 Make assets read as one authored world through explicit visual rules and repeatable comparisons.
-These are recommended authoring procedures, not claims that GameCrafter has implemented these tools.
+These are recommended authoring procedures, not claims that PlayWeld has implemented these tools.
 Apply the workflow across engines by inspecting the actual target and installed versions.
 
 ## Required context

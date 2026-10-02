@@ -19,7 +19,7 @@ export class ConnectionsViewContribution extends AbstractViewContribution<Connec
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: CONNECTIONS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Connections' },
+      { id: CONNECTIONS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Connections' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class ConnectionsViewContribution extends AbstractViewContribution<Connec
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: CONNECTIONS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Connections',
+      label: 'PlayWeld: Open Connections',
     });
   }
 }

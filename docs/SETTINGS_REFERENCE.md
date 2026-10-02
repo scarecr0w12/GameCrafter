@@ -1,6 +1,6 @@
-# GameCrafter settings reference
+# PlayWeld settings reference
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 **Source:** Generated builtin settings from [definitions.ts](../packages/platform-service/src/settings/definitions.ts). Plugin contributions extend this catalog at runtime. Full value schemas are in [settings-schemas.json](reference/settings-schemas.json).
 

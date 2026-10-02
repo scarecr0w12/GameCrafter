@@ -1,0 +1,162 @@
+{
+  "pngExports": [
+    {
+      "file": "app-icon-1024.png",
+      "size": [1024, 1024],
+      "mode": "RGBA",
+      "sha256": "eb9ac85b133ec240f4ad0b3771adc039ba1bac32cd6c570a2591fb9fe1dc1cfb"
+    },
+    {
+      "file": "app-icon-128.png",
+      "size": [128, 128],
+      "mode": "RGBA",
+      "sha256": "e1242204326afa026ce058cd0d21a759352582bae3fd69c1cc65ef3995759a93"
+    },
+    {
+      "file": "app-icon-16.png",
+      "size": [16, 16],
+      "mode": "RGBA",
+      "sha256": "bbf80f6177535efeb1dcd92b53d1b043dc3c7e897c09a766d3d8f899cd228013"
+    },
+    {
+      "file": "app-icon-180.png",
+      "size": [180, 180],
+      "mode": "RGBA",
+      "sha256": "78858c05f5a1fde30eae91da2be0c7bfe89f8eae7856d9dc646d9ae6b4da6aae"
+    },
+    {
+      "file": "app-icon-192.png",
+      "size": [192, 192],
+      "mode": "RGBA",
+      "sha256": "47076468d439690442d7f0d2ba23cb5ec4128f96cb52f8d4cec2d6615125e599"
+    },
+    {
+      "file": "app-icon-24.png",
+      "size": [24, 24],
+      "mode": "RGBA",
+      "sha256": "9cc8f4d2aff41ff846c738efb1f4cab30860ed42a84bec68c2af5aded06fd0ec"
+    },
+    {
+      "file": "app-icon-256.png",
+      "size": [256, 256],
+      "mode": "RGBA",
+      "sha256": "865681accddbfb9f2ee96fcf127754c261ccb2bdf69458b162e0988aef900117"
+    },
+    {
+      "file": "app-icon-32.png",
+      "size": [32, 32],
+      "mode": "RGBA",
+      "sha256": "b1f723b9b1f46b157e951a269c095bfef6c71a0a8059dd5604673710ed15bfdd"
+    },
+    {
+      "file": "app-icon-48.png",
+      "size": [48, 48],
+      "mode": "RGBA",
+      "sha256": "84ed3bebe0e07e727d27554a6ff06c51c6d65dd79659e236817422572a474d31"
+    },
+    {
+      "file": "app-icon-512.png",
+      "size": [512, 512],
+      "mode": "RGBA",
+      "sha256": "ea514539d46fa1cfe98118b6f3ddf4e1d3e3a742c564f4f64d86c9f530d6db69"
+    },
+    {
+      "file": "app-icon-64.png",
+      "size": [64, 64],
+      "mode": "RGBA",
+      "sha256": "aca42fca9d2222e15d3cd526f625fb8c9b488ec59444c4cdeab5a9ce9abb6ea4"
+    },
+    {
+      "file": "apple-touch-icon.png",
+      "size": [180, 180],
+      "mode": "RGBA",
+      "sha256": "78858c05f5a1fde30eae91da2be0c7bfe89f8eae7856d9dc646d9ae6b4da6aae"
+    },
+    {
+      "file": "avatar.png",
+      "size": [192, 192],
+      "mode": "RGBA",
+      "sha256": "47076468d439690442d7f0d2ba23cb5ec4128f96cb52f8d4cec2d6615125e599"
+    },
+    {
+      "file": "banner-wide.png",
+      "size": [2400, 800],
+      "mode": "RGB",
+      "sha256": "0f6c7b84cf9618c9b11a2aa0fc619ad03f490bcfdf4d1808c1853ab8f3554b20"
+    },
+    {
+      "file": "brand-preview.png",
+      "size": [1600, 1060],
+      "mode": "RGB",
+      "sha256": "56b722167fe5932f0f48b7ea4baddaa3da91b4be8c7bcc77d77850800a32561c"
+    },
+    {
+      "file": "logo-dark.png",
+      "size": [1500, 400],
+      "mode": "RGBA",
+      "sha256": "963c20623ccf105d8d82bb43b58dfb8f8c533e83dd2f1ebf40ca55f66d90f213"
+    },
+    {
+      "file": "logo-light.png",
+      "size": [1500, 400],
+      "mode": "RGBA",
+      "sha256": "19e5d3a224510b5c20cca50002bca4bea798cec6565021235abaf3b8be82fbb4"
+    },
+    {
+      "file": "logo-white.png",
+      "size": [1500, 400],
+      "mode": "RGBA",
+      "sha256": "cec0626991f4297ffbcee043790b3867fe466f2008ae5ab8af77063e4b5f922a"
+    },
+    {
+      "file": "mark-black.png",
+      "size": [512, 512],
+      "mode": "RGBA",
+      "sha256": "a4b51eef2f6f76e4455b3cd446161c3725a075a1bf74c8c3fd1beb51e4a93746"
+    },
+    {
+      "file": "mark-white.png",
+      "size": [512, 512],
+      "mode": "RGBA",
+      "sha256": "8e5f4f59116dce9cd78fdea0389e4ffc02ca2a11568732598dbe0fd576739a59"
+    },
+    {
+      "file": "mark.png",
+      "size": [512, 512],
+      "mode": "RGBA",
+      "sha256": "a50e222f10c2f024834af1ccca81d0f3d13a4e9d526a0eb32b857412c4caae4c"
+    },
+    {
+      "file": "promo-banner.png",
+      "size": [1672, 941],
+      "mode": "RGB",
+      "sha256": "0cdaf4f6709abbbac153afff720e922b5bbf8a18ba9c5ef7055bc41523cae332"
+    },
+    {
+      "file": "social-card.png",
+      "size": [1200, 630],
+      "mode": "RGB",
+      "sha256": "96675ba2d420a6fefbb473c5a2cca39c6d39aa02379079812e1ce18546b014a5"
+    },
+    {
+      "file": "wallpaper.png",
+      "size": [1672, 941],
+      "mode": "RGB",
+      "sha256": "62c6f722951dbc8e310f317d8cde79e846190c3ead812281b18bea05d362b3fe"
+    },
+    {
+      "file": "wordmark-dark.png",
+      "size": [1180, 280],
+      "mode": "RGBA",
+      "sha256": "a88de9552a449e07652b49b02070b5eb32533d82ac19bff070e51978956cd23c"
+    },
+    {
+      "file": "wordmark-light.png",
+      "size": [1180, 280],
+      "mode": "RGBA",
+      "sha256": "0f9ee9ef6e42571d7326413afb0d443466ce5e48daec5a1ec045c7cfc20e6d6d"
+    }
+  ],
+  "icoFrames": [16, 24, 32, 48, 64, 128, 256],
+  "validation": "PNG decoding and ICO frame sizes passed with Pillow 11.1.0"
+}

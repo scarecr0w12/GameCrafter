@@ -1,6 +1,6 @@
 ---
 name: discussion-board-maintenance
-description: "Reconcile project discussion threads with decisions, tasks, dependencies, and evidence using authorized board tooling. Use when asked to organize or update the GameCrafter board; draft changes if tools are unavailable and preserve decision history without inventing a board API."
+description: "Reconcile project discussion threads with decisions, tasks, dependencies, and evidence using authorized board tooling. Use when asked to organize or update the PlayWeld board; draft changes if tools are unavailable and preserve decision history without inventing a board API."
 license: Apache-2.0
 metadata:
   gamecrafter-version: '1.0.0'
@@ -88,7 +88,7 @@ Keep discussion context usable while preserving the difference between a proposa
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - This maintenance procedure is an original recommendation based on the repository’s stated service-owned durable-state boundary; no external board API or execution result is claimed.

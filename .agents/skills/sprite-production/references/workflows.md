@@ -1,7 +1,7 @@
 # Sprite production: detailed workflows
 
 **Source review date:** 2026-10-01.
-This reference contains original GameCrafter recommendations rather than copied vendor procedures.
+This reference contains original PlayWeld recommendations rather than copied vendor procedures.
 Examples describe work to perform, not assets or integrations already tested in this repository.
 Use project budgets and creative direction; the numbers and tooling must come from actual task context.
 

@@ -225,7 +225,7 @@ export class ChatWidget extends ControlRoomReactWidget {
                       {entry.role === 'user'
                         ? 'You'
                         : entry.role === 'assistant'
-                          ? 'GameCrafter'
+                          ? 'PlayWeld'
                           : 'System'}
                     </strong>
                     <time>{new Date(entry.createdAt).toLocaleTimeString()}</time>
@@ -247,7 +247,7 @@ export class ChatWidget extends ControlRoomReactWidget {
               <article className="gamecrafter-chat-message is-assistant" aria-live="polite">
                 <header>
                   <strong>
-                    {this.pendingSend.mode === 'agent' ? 'Swarm handoff' : 'GameCrafter'}
+                    {this.pendingSend.mode === 'agent' ? 'Swarm handoff' : 'PlayWeld'}
                   </strong>
                 </header>
                 <div className="gamecrafter-chat-message-content">
@@ -306,7 +306,7 @@ export class ChatWidget extends ControlRoomReactWidget {
             <textarea
               aria-label="Message"
               placeholder={
-                this.mode === 'agent' ? 'Describe work for the Project swarm…' : 'Ask GameCrafter…'
+                this.mode === 'agent' ? 'Describe work for the Project swarm…' : 'Ask PlayWeld…'
               }
               value={this.draft}
               disabled={!this.projectId || this.busy}
@@ -552,7 +552,7 @@ export class ChatWidget extends ControlRoomReactWidget {
               {
                 role: 'system',
                 content: [
-                  'You are GameCrafter, an assistant inside a game-development IDE.',
+                  'You are PlayWeld, an assistant inside a game-development IDE.',
                   'Give practical, honest help and use the supplied Project context.',
                   'Chat mode cannot edit files or invoke tools. For implementation work, tell the user to switch to Agent mode, which delegates to the Project swarm and its existing access controls.',
                   `Project: ${project?.name ?? 'Unknown'}`,

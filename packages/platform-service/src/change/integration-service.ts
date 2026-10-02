@@ -29,7 +29,7 @@ import type { TaskWorktree, WorktreeManager } from './worktree-manager';
 const execFileAsync = promisify(execFile);
 const integrationGitIdentity = [
   '-c',
-  'user.name=GameCrafter',
+  'user.name=PlayWeld',
   '-c',
   'user.email=gamecrafter@localhost',
 ];
@@ -271,7 +271,7 @@ export class IntegrationService {
       await this.git(
         [
           '-c',
-          'user.name=GameCrafter',
+          'user.name=PlayWeld',
           '-c',
           'user.email=gamecrafter@localhost',
           'revert',
@@ -819,7 +819,7 @@ export class IntegrationService {
     await this.git(
       [
         '-c',
-        'user.name=GameCrafter',
+        'user.name=PlayWeld',
         '-c',
         'user.email=gamecrafter@localhost',
         'commit',

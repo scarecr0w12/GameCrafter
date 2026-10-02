@@ -98,7 +98,7 @@ Preserve the user’s story intent while producing coherent, playable narrative 
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Branching, joining, conditions, and endings](https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md).

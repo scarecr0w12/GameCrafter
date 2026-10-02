@@ -3,9 +3,9 @@
   "id": "sample-hello",
   "name": "Sample Hello",
   "version": "1.0.0",
-  "description": "A first-party plugin demonstrating the GameCrafter worker SDK.",
+  "description": "A first-party plugin demonstrating the PlayWeld worker SDK.",
   "publisher": {
-    "name": "GameCrafter"
+    "name": "PlayWeld"
   },
   "license": "Apache-2.0",
   "compatibility": {

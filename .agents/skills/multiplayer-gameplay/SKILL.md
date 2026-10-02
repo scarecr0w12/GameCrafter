@@ -98,7 +98,7 @@ Implement one networked gameplay path with explicit authority and failure handli
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Authority, RPC validation, and dedicated-server caveats](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html).

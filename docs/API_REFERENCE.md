@@ -1,6 +1,6 @@
-# GameCrafter RPC API reference
+# PlayWeld RPC API reference
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 **Source:** Generated from the built contract method table by [generate-system-reference.cjs](../scripts/generate-system-reference.cjs). Rebuild packages before regeneration. This is the internal local service API, not an HTTP REST API.
 

@@ -19,7 +19,7 @@ export class SkillsViewContribution extends AbstractViewContribution<SkillsWidge
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: SKILLS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Skills & Roles' },
+      { id: SKILLS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Skills & Roles' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class SkillsViewContribution extends AbstractViewContribution<SkillsWidge
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: SKILLS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Skills & Roles',
+      label: 'PlayWeld: Open Skills & Roles',
     });
   }
 }

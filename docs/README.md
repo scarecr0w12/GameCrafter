@@ -1,8 +1,10 @@
-# GameCrafter documentation
+# PlayWeld documentation
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
-GameCrafter is a local game-development workspace with a Theia desktop Control Room, a persistent platform service, model-assisted agents, and engine/DCC integrations. These guides explain the current repository. Design documents describe the complete target system; verification records identify which capabilities have actual live evidence.
+PlayWeld is a local game-development workspace with a Theia desktop Control Room, a persistent platform service, model-assisted agents, and engine/DCC integrations. These guides explain the current repository. Design documents describe the complete target system; verification records identify which capabilities have actual live evidence.
+
+**Product identity:** [PlayWeld branding and compatibility](BRANDING.md) records the name, selected domain, retained technical identifiers, and remaining identity work.
 
 ## Guides by audience
 

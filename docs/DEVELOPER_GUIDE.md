@@ -1,6 +1,6 @@
-# GameCrafter developer guide
+# PlayWeld developer guide
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 **Audience:** Contributors changing the platform, Control Room, connectors or documentation. [Documentation index](README.md).
 

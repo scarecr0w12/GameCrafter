@@ -88,7 +88,7 @@ Answer a bounded question with opened primary sources, version context, and usef
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Example primary narrative manual](https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md).

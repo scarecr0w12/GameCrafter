@@ -7,7 +7,7 @@ import { connect, discover, type ServiceClient } from '@gamecrafter/service-clie
 import type { RpcNotificationParams } from '@gamecrafter/contracts';
 
 const localRequire = createRequire(__filename);
-const CLIENT_NAME = 'GameCrafter Control Room';
+const CLIENT_NAME = 'PlayWeld Control Room';
 const CLIENT_VERSION = (localRequire('../../package.json') as { version: string }).version;
 const RETRY_INTERVAL_MS = 200;
 const CONNECTION_TIMEOUT_MS = 10_000;

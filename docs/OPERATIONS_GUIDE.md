@@ -1,6 +1,6 @@
-# GameCrafter operations and recovery guide
+# PlayWeld operations and recovery guide
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 **Audience:** Local administrators and maintainers. [Documentation index](README.md).
 

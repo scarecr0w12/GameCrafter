@@ -19,7 +19,7 @@ export class PluginsCatalogViewContribution extends AbstractViewContribution<Plu
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: PLUGINS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Plugins' },
+      { id: PLUGINS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Plugins' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class PluginsCatalogViewContribution extends AbstractViewContribution<Plu
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: PLUGINS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Plugins',
+      label: 'PlayWeld: Open Plugins',
     });
   }
 }

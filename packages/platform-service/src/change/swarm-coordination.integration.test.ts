@@ -476,7 +476,7 @@ describe('swarm coordination through the RPC harness', () => {
       'git',
       [
         '-c',
-        'user.name=GameCrafter',
+        'user.name=PlayWeld',
         '-c',
         'user.email=gamecrafter@localhost',
         'commit',
@@ -546,7 +546,7 @@ describe('swarm coordination through the RPC harness', () => {
       'git',
       [
         '-c',
-        'user.name=GameCrafter',
+        'user.name=PlayWeld',
         '-c',
         'user.email=gamecrafter@localhost',
         'commit',

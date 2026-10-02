@@ -13,7 +13,7 @@ metadata:
 Read the Project AGENTS.md, relevant design canon, and the task's acceptance criteria.
 Inspect current edits before touching files; preserve unrelated work.
 Use the existing engine, language, plugins, and architecture unless the task changes them.
-Treat the procedures below as GameCrafter engineering recommendations.
+Treat the procedures below as PlayWeld engineering recommendations.
 Vendor facts and version boundaries are identified in the linked workflow reference.
 Read [references/workflows.md](references/workflows.md) for examples and failure diagnosis.
 
@@ -86,7 +86,7 @@ Do not invent reward balance, art direction, or progression rules to fill coding
 
 Identify the existing player/controller, actor/component, scene, and data model.
 Separate simulation state from UI/audio/VFX feedback where the project architecture does.
-Keep durable records in the platform service when changing GameCrafter platform code.
+Keep durable records in the platform service when changing PlayWeld platform code.
 For a game project, use that project's established save/persistence architecture.
 Avoid turning transient animation state into the authoritative gameplay rule.
 Review authority and replication only if the project mechanic involves multiplayer.

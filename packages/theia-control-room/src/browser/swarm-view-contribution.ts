@@ -19,7 +19,7 @@ export class SwarmViewContribution extends AbstractViewContribution<SwarmWidget>
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: SWARM_OPEN_COMMAND_ID, label: 'GameCrafter: Open Swarm' },
+      { id: SWARM_OPEN_COMMAND_ID, label: 'PlayWeld: Open Swarm' },
       {
         execute: async (selection?: { projectId: string; requestId?: string }) => {
           const widget = await this.openView({ activate: true, reveal: true });
@@ -34,7 +34,7 @@ export class SwarmViewContribution extends AbstractViewContribution<SwarmWidget>
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: SWARM_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Swarm',
+      label: 'PlayWeld: Open Swarm',
     });
   }
 }

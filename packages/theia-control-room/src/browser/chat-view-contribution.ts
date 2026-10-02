@@ -12,14 +12,14 @@ export class ChatViewContribution extends AbstractViewContribution<ChatWidget> {
   constructor() {
     super({
       widgetId: ChatWidget.ID,
-      widgetName: 'GameCrafter Chat',
+      widgetName: 'PlayWeld Chat',
       defaultWidgetOptions: { area: 'right' },
     });
   }
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: CHAT_OPEN_COMMAND_ID, label: 'GameCrafter: Open Chat' },
+      { id: CHAT_OPEN_COMMAND_ID, label: 'PlayWeld: Open Chat' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class ChatViewContribution extends AbstractViewContribution<ChatWidget> {
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: CHAT_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Chat',
+      label: 'PlayWeld: Open Chat',
     });
   }
 }

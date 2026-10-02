@@ -1,7 +1,7 @@
 # Game Development Platform: Living Design
 
 **Status:** Working design, not an implementation claim.  
-**Last updated:** 2026-09-28  
+**Last updated:** 2026-10-02
 **Purpose:** Preserve decisions and open questions as we design the complete platform.
 
 **Implementation status:** [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) tracks which work packages are implemented; nothing in this document is an implementation claim.
@@ -18,6 +18,10 @@
 A free, open-source system that runs locally and coordinates game development from a natural-language request through design, narrative, gameplay, code, assets, engine changes, validation, and human feedback. It serves one user initially but should be usable by other people who install it from GitHub. The target design covers the complete system; it is not organized around a first game, milestone, or staged feature set.
 
 ## Confirmed requirements and decisions
+
+### Product identity
+
+- The public product name is **PlayWeld**. The user reports purchasing **playweld.com**. Existing technical identifiers are retained under the [branding compatibility default](BRANDING.md#compatibility-identifiers). The user authorized a full repository/desktop rebrand and creation of artwork; website code belongs to a separate project. The [visual asset treatment](../assets/brand/README.md) is an authored default, distinct from the confirmed product name.
 
 ### Projects and game knowledge
 
@@ -217,7 +221,8 @@ Use the delegated best-practice judgment for these details, record the choice, a
 | Auto continually learns from local outcomes, human feedback, and available online sources, with controlled exploration among eligible models | Confirmed | User discussion |
 | Recursive learning improves the router's model selections; it does not fine-tune LLM model weights | Confirmed | User discussion |
 | Router performance learning is shared across all local Projects, while task and Project context remain available for scoring | Confirmed | User discussion |
-| The platform is named **GameCrafter** (npm scope `@gamecrafter/*`, metadata prefix `gamecrafter-`, Project folder `.gamecrafter/`) | Confirmed | User discussion |
+| Original technical identity: **GameCrafter** (npm scope `@gamecrafter/*`, metadata prefix `gamecrafter-`, Project folder `.gamecrafter/`); public name superseded by PlayWeld below | Confirmed | User discussion |
+| Public product name: **PlayWeld**; the user reports purchasing **playweld.com**. Existing technical identifiers remain compatibility contracts; see [branding](BRANDING.md). | Confirmed | User discussion, 2026-10-02 |
 | Platform code, SDK, and documentation are licensed under Apache-2.0; sample/game assets are licensed separately | Confirmed | User discussion |
 | Code and design documents share one monorepo; the development plan orders work packages by technical dependency only | Confirmed | User discussion |
 | Adopt the Agent Skills (`SKILL.md`) open format for installable skills, with platform metadata under namespaced keys | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |

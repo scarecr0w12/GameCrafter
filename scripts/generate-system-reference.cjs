@@ -43,9 +43,9 @@ function safe(s) {
   return String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 const out = [
-  '# GameCrafter RPC API reference',
+  '# PlayWeld RPC API reference',
   '',
-  '**Last updated:** 2026-10-01',
+  '**Last updated:** 2026-10-02',
   '',
   '**Source:** Generated from the built contract method table by [generate-system-reference.cjs](../scripts/generate-system-reference.cjs). Rebuild packages before regeneration. This is the internal local service API, not an HTTP REST API.',
   '',
@@ -117,9 +117,9 @@ emit(
 );
 const settings = createBuiltinSettings();
 const lines = [
-  '# GameCrafter settings reference',
+  '# PlayWeld settings reference',
   '',
-  '**Last updated:** 2026-10-01',
+  '**Last updated:** 2026-10-02',
   '',
   '**Source:** Generated builtin settings from [definitions.ts](../packages/platform-service/src/settings/definitions.ts). Plugin contributions extend this catalog at runtime. Full value schemas are in [settings-schemas.json](reference/settings-schemas.json).',
   '',

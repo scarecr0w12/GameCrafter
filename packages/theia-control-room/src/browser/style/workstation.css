@@ -319,9 +319,11 @@
   align-items: center;
   gap: 22px;
 }
-.gamecrafter-home-brand > .codicon {
-  font-size: 64px;
-  color: var(--gc-accent);
+.gamecrafter-home-brand > .playweld-brand-mark {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  fill: var(--gc-accent);
 }
 .gamecrafter-home-header .gamecrafter-primary-action {
   display: flex;
@@ -351,8 +353,9 @@
     align-items: flex-start;
     flex-direction: column;
   }
-  .gamecrafter-home-brand > .codicon {
-    font-size: 44px;
+  .gamecrafter-home-brand > .playweld-brand-mark {
+    width: 48px;
+    height: 48px;
   }
 }
 

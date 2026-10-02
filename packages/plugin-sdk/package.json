@@ -1,6 +1,6 @@
 {
   "name": "@gamecrafter/plugin-sdk",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "license": "Apache-2.0",
   "main": "lib/index.js",
@@ -12,6 +12,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gamecrafter/contracts": "0.1.3"
+    "@gamecrafter/contracts": "0.1.4"
   }
 }

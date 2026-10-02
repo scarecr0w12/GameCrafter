@@ -1,4 +1,5 @@
 import React from 'react';
+import { PLAYWELD_RIBBON, PLAYWELD_SPARK } from './brand-geometry';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandService } from '@theia/core/lib/common/command';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
@@ -84,9 +85,12 @@ export class ProjectHomeWidget extends ControlRoomReactWidget {
       <div className="gamecrafter-project-home gamecrafter-surface">
         <header className="gamecrafter-home-header">
           <div className="gamecrafter-home-brand">
-            <span className="codicon codicon-package" aria-hidden="true" />
+            <svg className="playweld-brand-mark" viewBox="0 0 512 512" aria-hidden="true">
+              <path d={PLAYWELD_RIBBON} />
+              <path d={PLAYWELD_SPARK} />
+            </svg>
             <div>
-              <h1>GameCrafter</h1>
+              <h1>PlayWeld</h1>
               <p className="gamecrafter-home-subtitle">Your game development workspace.</p>
               <p role="status">{this.serviceStatus}</p>
             </div>
@@ -121,7 +125,7 @@ export class ProjectHomeWidget extends ControlRoomReactWidget {
               Project-aware help or switch to Agent mode to delegate a change request to Swarm.
             </p>
             <p className="gamecrafter-home-guide-note">
-              External IDE clients such as Copilot, Devin, and Kilo cannot call GameCrafter tools
+              External IDE clients such as Copilot, Devin, and Kilo cannot call PlayWeld tools
               directly yet; their MCP server integration is still pending.
             </p>
             <div className="gamecrafter-home-guide-actions">
@@ -152,13 +156,13 @@ export class ProjectHomeWidget extends ControlRoomReactWidget {
             <span className="gamecrafter-home-guide-kicker">02 · Engine</span>
             <h2>Connect the game project</h2>
             <p>
-              A GameCrafter Project is the game folder plus platform records. Native files belong in
+              A PlayWeld Project is the game folder plus platform records. Native files belong in
               its <code>game/</code> directory. Unreal detection needs a valid{' '}
               <code>.uproject</code> there; registering an Unreal executable alone does not connect
               a separate project.
             </p>
             <p className="gamecrafter-home-guide-note">
-              To try it now, create/open the GameCrafter Project, create the Unreal project inside{' '}
+              To try it now, create/open the PlayWeld Project, create the Unreal project inside{' '}
               <code>{'<Project>/game/'}</code>, then register <code>RunUAT.bat</code> and{' '}
               <code>UnrealEditor-Cmd.exe</code> in Engine. Importing an existing project folder
               directly is not supported yet.

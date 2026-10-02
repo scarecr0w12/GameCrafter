@@ -19,7 +19,7 @@ export class BackupsViewContribution extends AbstractViewContribution<BackupsWid
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: BACKUPS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Backups' },
+      { id: BACKUPS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Backups' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class BackupsViewContribution extends AbstractViewContribution<BackupsWid
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: BACKUPS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Backups',
+      label: 'PlayWeld: Open Backups',
     });
   }
 }

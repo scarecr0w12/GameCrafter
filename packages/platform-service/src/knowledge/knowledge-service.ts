@@ -303,7 +303,7 @@ export class KnowledgeService {
       );
     }
     const probe = await this.options.completion.embed(modelId, [
-      'GameCrafter embedding dimension probe',
+      'PlayWeld embedding dimension probe',
     ]);
     const dimensions = probe.vectors[0]?.length ?? 0;
     if (dimensions < 1) {

@@ -1,7 +1,7 @@
 # Technical Architecture: Proposed Stack
 
 **Status:** Complete target-stack recommendation. User-confirmed choices appear in `PLATFORM_DESIGN.md`; other selections here are engineering defaults authorized for best-practice judgment. Which parts exist as tested code is tracked in [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md); this document is not an implementation claim.  
-**Last updated:** 2026-09-28
+**Last updated:** 2026-10-02
 
 This describes the complete target system. It is organized by component, not by milestone or release phase.
 
@@ -14,6 +14,10 @@ This describes the complete target system. It is organized by component, not by 
 **MCP server setup:** The platform can launch a local command, connect to an existing endpoint, or launch a configured local Docker container and connect to its MCP transport. Docker is optional and is not used as a required plugin runtime.
 
 **Agent orchestration:** The local platform service runs a durable scheduler using Project-local SQLite. Supervised worker processes execute agents and tools; no separate workflow server is required.
+
+## Public identity and compatibility
+
+The public name is **PlayWeld**, with `playweld.com` selected by the user. Retaining existing application, package, storage, plugin, and release-feed identifiers is the engineering default for compatibility; see [the identity contract](BRANDING.md). A future identifier migration requires its own design and validation. The [brand asset family](../assets/brand/README.md) supplies the canonical UI mark, favicon, and package icons; website code remains outside this repository rebrand.
 
 ## Recommended core stack
 
@@ -109,7 +113,7 @@ The 2026-10-01 review selects an exact Electron `42.10.0` root override over The
 
 ## Control Room appearance and review surfaces
 
-The user requested a modern gaming appearance, dark violet surfaces, and neon green accents. The selectable `GameCrafter Neon Green` theme applies these colors through Theia/Monaco semantic theme keys. It is the default for profiles without an explicit theme preference; explicit user, workspace, folder, and session choices remain respected. Shared widget styling follows semantic colors so alternate and high-contrast themes remain usable.
+The user requested a modern gaming appearance, dark violet surfaces, and neon green accents. The selectable `PlayWeld Neon Green` theme applies these colors through Theia/Monaco semantic theme keys. It is the default for profiles without an explicit theme preference; explicit user, workspace, folder, and session choices remain respected. Shared widget styling follows semantic colors so alternate and high-contrast themes remain usable.
 
 Settings import and Audit & History use the platform RPC bridge. Import state and audit filters are transient frontend state; imported overrides and audit records remain service-owned. Audit export is explicitly a page of events plus recent calls, not an export of every historical record. Retention/deletion policy and approval grouping remain open.
 

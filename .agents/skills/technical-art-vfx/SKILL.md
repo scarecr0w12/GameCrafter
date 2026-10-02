@@ -9,7 +9,7 @@ metadata:
 # Technical art and VFX
 
 Make effects communicate game events clearly while respecting rendering and simulation constraints.
-These are recommended authoring procedures, not claims that GameCrafter has implemented these tools.
+These are recommended authoring procedures, not claims that PlayWeld has implemented these tools.
 Apply the workflow across engines by inspecting the actual target and installed versions.
 
 ## Required context

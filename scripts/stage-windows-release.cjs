@@ -10,7 +10,7 @@ const version = JSON.parse(
 const output = path.join(root, 'Windows-Release', version);
 const source = path.join(root, 'apps/control-room/dist', version);
 const unpacked = path.join(source, 'win-unpacked');
-const installerName = `GameCrafter-${version}-x64.exe`;
+const installerName = `PlayWeld-${version}-x64.exe`;
 const installer = path.join(source, installerName);
 if (!fs.existsSync(installer)) throw new Error(`Missing installer: ${installer}`);
 const check = spawnSync(
@@ -38,7 +38,7 @@ const launch = [
   `start "" "%~dp0app\\GameCrafter.exe" "--user-data-dir=%LOCALAPPDATA%\\GameCrafter-Testing\\desktop\\${version}"`,
   '',
 ].join('\r\n');
-fs.writeFileSync(path.join(output, 'Launch-GameCrafter-Test.cmd'), launch);
+fs.writeFileSync(path.join(output, 'Launch-PlayWeld-Test.cmd'), launch);
 const sha256 = createHash('sha256').update(fs.readFileSync(installer)).digest('hex');
 const provenance = {
   schemaVersion: 1,
@@ -52,7 +52,7 @@ const provenance = {
   sha256,
   signing: 'unsigned unless separately verified',
   bundledSkills: 30,
-  launcher: 'Launch-GameCrafter-Test.cmd',
+  launcher: 'Launch-PlayWeld-Test.cmd',
 };
 fs.writeFileSync(path.join(output, 'local-build.json'), JSON.stringify(provenance, null, 2) + '\n');
 fs.writeFileSync(path.join(output, 'SHA256SUMS.txt'), `${sha256}  ${installerName}\n`);

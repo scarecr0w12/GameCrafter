@@ -9,7 +9,7 @@ export interface ServiceLock {
 
 export class AlreadyRunningError extends Error {
   constructor(readonly lock: ServiceLock) {
-    super(`GameCrafter service is already running with pid ${lock.pid}`);
+    super(`PlayWeld service is already running with pid ${lock.pid}`);
     this.name = 'AlreadyRunningError';
   }
 }

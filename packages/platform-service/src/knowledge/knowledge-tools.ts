@@ -157,7 +157,7 @@ function definition(
   return {
     toolId,
     title,
-    description: `GameCrafter Project knowledge: ${title.toLowerCase()}.`,
+    description: `PlayWeld Project knowledge: ${title.toLowerCase()}.`,
     inputSchema,
     ...(outputSchema ? { outputSchema } : {}),
     executionMode: 'project-file',

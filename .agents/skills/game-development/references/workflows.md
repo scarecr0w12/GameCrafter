@@ -1,7 +1,7 @@
 # Integrated workflows
 
 Last source review: 2026-10-01. The contracts and procedures below are original
-GameCrafter recommendations; linked documents describe particular engine facilities.
+PlayWeld recommendations; linked documents describe particular engine facilities.
 
 ## Example: add a checkpoint interaction
 

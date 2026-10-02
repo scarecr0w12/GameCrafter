@@ -1,6 +1,6 @@
 # Game code review matrix
 
-Source review: 2026-10-01. The matrix and examples are original GameCrafter
+Source review: 2026-10-01. The matrix and examples are original PlayWeld
 recommendations. Engine references document specific integration/testing facilities.
 
 ## Evidence-ranked finding

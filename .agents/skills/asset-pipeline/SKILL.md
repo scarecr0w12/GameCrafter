@@ -9,7 +9,7 @@ metadata:
 # Asset pipeline
 
 Carry an asset from editable source to a measured target-engine result with traceable evidence.
-These are recommended authoring procedures, not claims that GameCrafter has implemented these tools.
+These are recommended authoring procedures, not claims that PlayWeld has implemented these tools.
 Apply the workflow across engines by inspecting the actual target and installed versions.
 
 ## Required context

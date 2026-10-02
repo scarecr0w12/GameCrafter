@@ -1,6 +1,6 @@
 # Bundled game-development skills
 
-GameCrafter ships 30 first-party Agent Skills, with detailed workflows and examples
+PlayWeld ships 30 first-party Agent Skills, with detailed workflows and examples
 in each skill's `references/workflows.md`. These are original Apache-2.0 instructions,
 not copies of engine manuals. Research notes preserve sources and edition boundaries.
 
@@ -83,7 +83,7 @@ Last researched: **2026-10-01**.
 These reference editions are reproducible research baselines, not assertions about
 latest releases or versions installed on a user's machine. Procedures require actual
 version and capability discovery. Research-supported instructions do not establish
-that an engine/DCC operation was executed successfully by GameCrafter.
+that an engine/DCC operation was executed successfully by PlayWeld.
 
 ## Maintenance and validation
 

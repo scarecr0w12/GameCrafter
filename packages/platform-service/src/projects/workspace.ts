@@ -50,7 +50,7 @@ export interface ProjectWorkspaceOptions {
 }
 
 export function renderProjectAgentsMd(manifest: ProjectManifest): string {
-  return `# GameCrafter Project Instructions
+  return `# PlayWeld Project Instructions
 
 ## What this Project is
 
@@ -178,12 +178,12 @@ export class ProjectWorkspace {
         await this.git.run(
           [
             '-c',
-            'user.name=GameCrafter',
+            'user.name=PlayWeld',
             '-c',
             'user.email=gamecrafter@localhost',
             'commit',
             '-m',
-            'Initialize GameCrafter Project',
+            'Initialize PlayWeld Project',
           ],
           projectPath,
         );
@@ -327,7 +327,7 @@ export class ProjectWorkspace {
         await this.git.run(
           [
             '-c',
-            'user.name=GameCrafter',
+            'user.name=PlayWeld',
             '-c',
             'user.email=gamecrafter@localhost',
             'commit',

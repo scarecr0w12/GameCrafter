@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: packages-win
-          path: apps/control-room/dist/${{ needs.validate.outputs.version }}/GameCrafter-*.exe
+          path: apps/control-room/dist/${{ needs.validate.outputs.version }}/PlayWeld-*.exe
           if-no-files-found: error
           retention-days: 7
 

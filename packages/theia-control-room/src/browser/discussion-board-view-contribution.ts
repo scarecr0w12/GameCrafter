@@ -19,7 +19,7 @@ export class DiscussionBoardViewContribution extends AbstractViewContribution<Di
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: DISCUSSION_BOARD_OPEN_COMMAND_ID, label: 'GameCrafter: Open Discussion Board' },
+      { id: DISCUSSION_BOARD_OPEN_COMMAND_ID, label: 'PlayWeld: Open Discussion Board' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class DiscussionBoardViewContribution extends AbstractViewContribution<Di
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: DISCUSSION_BOARD_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Discussion Board',
+      label: 'PlayWeld: Open Discussion Board',
     });
   }
 }

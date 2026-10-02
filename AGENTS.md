@@ -4,7 +4,7 @@ Instructions for coding agents working in this repository.
 
 ## What this repository is
 
-The monorepo for **GameCrafter**, a free, open-source, locally run game development platform: a Theia-based desktop Control Room, a local Node/TypeScript platform service, a multi-agent swarm, installable plugins and skills, and CLI/MCP connectors to Unity, Unreal, Godot, and DCC tools. Licensed under Apache-2.0 (`LICENSE`, `NOTICE`).
+The monorepo for **PlayWeld**, a free, open-source, locally run game development platform: a Theia-based desktop Control Room, a local Node/TypeScript platform service, a multi-agent swarm, installable plugins and skills, and CLI/MCP connectors to Unity, Unreal, Godot, and DCC tools. Licensed under Apache-2.0 (`LICENSE`, `NOTICE`).
 
 It holds both the design documents (`docs/`) and the application code (`packages/`, `apps/`). The design documents describe the complete target system; the code implements it work package by work package as listed in `docs/DEVELOPMENT_PLAN.md`.
 
@@ -27,6 +27,10 @@ It holds both the design documents (`docs/`) and the application code (`packages
 - `docs/DEVELOPMENT_PLAN.md`: work packages ordered by technical dependency, each mapped to design sections and register entries, with "done when" criteria. This is the only document allowed to express ordering, and the ordering is dependency, not product phasing.
 - `docs/STATUS.md`: summary of what exists, its evidence level (fake-tested vs. live-verified), and remaining work grouped by area. Update it in the same change that changes a work-package status or resolves a register entry; the plan remains the authoritative per-package status text.
 - `docs/research/*.md`: sourced reference notes. Every factual claim needs a source URL; mark anything unverified as "unverified". Include a "Last researched" date.
+
+## Public identity
+
+The public product name is **PlayWeld**, and the user owns `playweld.com`. Preserve existing GameCrafter technical identifiers, package names, data paths, app ID, and GitHub URLs for compatibility; see `docs/BRANDING.md`. Do not rename these through a blanket text replacement.
 
 ## Conventions
 

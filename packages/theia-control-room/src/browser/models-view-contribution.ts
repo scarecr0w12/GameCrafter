@@ -19,7 +19,7 @@ export class ModelsViewContribution extends AbstractViewContribution<ModelsWidge
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: MODELS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Models & Routing' },
+      { id: MODELS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Models & Routing' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class ModelsViewContribution extends AbstractViewContribution<ModelsWidge
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: MODELS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Models & Routing',
+      label: 'PlayWeld: Open Models & Routing',
     });
   }
 }

@@ -23,7 +23,7 @@ export class CreateProjectCommand implements CommandContribution, MenuContributi
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: CREATE_PROJECT_COMMAND_ID, label: 'GameCrafter: Create Project' },
+      { id: CREATE_PROJECT_COMMAND_ID, label: 'PlayWeld: Create Project' },
       { execute: () => this.createProject() },
     );
   }
@@ -31,7 +31,7 @@ export class CreateProjectCommand implements CommandContribution, MenuContributi
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.FILE, {
       commandId: CREATE_PROJECT_COMMAND_ID,
-      label: 'GameCrafter: Create Project',
+      label: 'PlayWeld: Create Project',
     });
   }
 

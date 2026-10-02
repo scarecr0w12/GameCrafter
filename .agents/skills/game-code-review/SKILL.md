@@ -9,7 +9,7 @@ metadata:
 # Game code review
 
 Review observable failure modes against the intended behavior and actual engine
-version. This is an original GameCrafter review procedure. Read the focused matrix
+version. This is an original PlayWeld review procedure. Read the focused matrix
 and examples in [review workflows](references/workflows.md).
 
 ## Establish the contract

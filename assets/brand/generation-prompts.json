@@ -1,0 +1,17 @@
+{
+  "provider": "built-in image_gen",
+  "date": "2026-10-02",
+  "reference": "app-icon-1024.png",
+  "assets": [
+    {
+      "file": "promo-banner.png",
+      "prompt": "Create a polished finished wide landscape promotional banner image for PlayWeld, a local open-source game-development desktop workspace. Reference image is the actual canonical app icon: preserve the lime angular W and single four-point welding spark above it exactly when using the logo, do not redesign it. Composition 2400x1350 or similar 16:9 landscape: deep ink violet (#120D1E) background with soft plum atmospheric gradients, restrained neon chartreuse (#BAFF2C), soft white typography. Left 45% is spacious clean editorial title area with exact large text 'PlayWeld', below exact smaller text 'Your game development workspace.', and at bottom small exact text 'playweld.com'. Right 55% is a stunning crafted isometric miniature game-development workshop: layered untextured game terrain, a sculptural architectural arch, faceted rocks, wireframe geometry, a stylized orbiting tool ring and two luminous rails joining at one bright welding spark. The canonical W logo appears as a simple small crisp flat brand emblem near title, not giant or distorted. Premium creative-tool product artwork, graphic design finish, precise silhouettes, dimensional clay/rendered materials, elegant negative space. No people, no robots, no game controller, no generic dashboard or fake UI, no additional text, no stock logos, no AI brain motif. This is marketing illustration, not a screenshot of implemented functionality."
+    },
+    {
+      "file": "wallpaper.png",
+      "editTarget": "promo-banner.png",
+      "prompt": "Using the supplied PlayWeld promotional banner as the edit target and visual reference, create a matching text-free 16:9 desktop wallpaper / reusable brand illustration. Remove ALL lettering, domain text and the flat W logo on the left; preserve the elegant violet and chartreuse palette, dimensional sculpted terrain, stone arch, wireframe forms, two luminous rails joining in the bright four-point welding spark, atmospheric lighting, and refined high-end creative-tool aesthetic. Recompose the miniature workshop in the right half with a generous calm dark violet left half, clean enough for app icons or later layout text. Full-bleed landscape with no frame, no watermark, no UI, no humans, no robots, no brand text anywhere. Render as a crisp finished image suitable for 2560x1440 or higher. This illustration conveys creative intent and is not an app screenshot."
+    }
+  ],
+  "note": "Generated marketing illustrations; not screenshots or engine/runtime evidence. Canonical logo and icons are authored SVG exports."
+}

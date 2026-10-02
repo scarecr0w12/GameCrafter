@@ -348,7 +348,7 @@ export class UpdateService {
     }
     return {
       launched: false,
-      instructions: `Close GameCrafter, then reinstall version ${previous.version} from "${previous.path}". GameCrafter does not replace the running installation automatically.`,
+      instructions: `Close PlayWeld, then reinstall version ${previous.version} from "${previous.path}". PlayWeld does not replace the running installation automatically.`,
     };
   }
 
@@ -550,15 +550,15 @@ function safeAssetName(name: string): string {
 function installInstructions(filePath: string): string {
   const lower = filePath.toLowerCase();
   if (lower.endsWith('.appimage')) {
-    return `Close GameCrafter, then run:\nchmod +x "${filePath}"\n"${filePath}"\nGameCrafter does not replace the running installation automatically.`;
+    return `Close PlayWeld, then run:\nchmod +x "${filePath}"\n"${filePath}"\nPlayWeld does not replace the running installation automatically.`;
   }
   if (lower.endsWith('.deb')) {
-    return `Close GameCrafter, then install the package:\nsudo apt install "${filePath}"\nGameCrafter does not install packages automatically.`;
+    return `Close PlayWeld, then install the package:\nsudo apt install "${filePath}"\nPlayWeld does not install packages automatically.`;
   }
   if (lower.endsWith('.exe')) {
-    return `Close GameCrafter, then open "${filePath}" to start the installer. GameCrafter does not run installers automatically.`;
+    return `Close PlayWeld, then open "${filePath}" to start the installer. PlayWeld does not run installers automatically.`;
   }
-  return `Close GameCrafter, then open "${filePath}" to install the downloaded update. GameCrafter does not run installers automatically.`;
+  return `Close PlayWeld, then open "${filePath}" to install the downloaded update. PlayWeld does not run installers automatically.`;
 }
 
 function errorMessage(error: unknown): string {

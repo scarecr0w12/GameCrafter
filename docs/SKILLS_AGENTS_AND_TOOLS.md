@@ -1,7 +1,7 @@
 # Skills, Agent Roles, and Tool Connections: Design
 
 **Status:** Engineering-default design built on the 2026-09-27 research pass. User-confirmed requirements are cited from `PLATFORM_DESIGN.md`; everything else here is a selected engineering default under the delegated best-practice judgment, not an implementation claim.  
-**Last updated:** 2026-09-27  
+**Last updated:** 2026-10-02
 **Research basis:** [agent-skills-and-agent-ecosystem.md](research/agent-skills-and-agent-ecosystem.md), [engine-connectors.md](research/engine-connectors.md), [dcc-and-asset-tools.md](research/dcc-and-asset-tools.md), [process-isolation.md](research/process-isolation.md), [local-model-and-routing-sources.md](research/local-model-and-routing-sources.md).
 
 This document resolves the skill, agent-role, and tool-connection contracts that `OPEN_DECISIONS.md` left open (A03, S04 skill portion, S06, S07, S08, C01, and parts of A02/S01/S02). It is organized by contract, not by milestone.
@@ -24,7 +24,7 @@ Rationale: the `SKILL.md` format is already supported by dozens of agent product
 
 ### 2.1 Format
 
-A platform skill **is** an Agent Skills directory. `SKILL.md` frontmatter follows the specification exactly (`name` matching the directory, `description` ≤1024 chars that says what and when, optional `license`, `compatibility`, `allowed-tools`). Platform-specific data lives under `metadata` with a `gamecrafter-` prefix (P01 resolved the name as GameCrafter) so unknown-key rules of other clients are respected:
+A platform skill **is** an Agent Skills directory. `SKILL.md` frontmatter follows the specification exactly (`name` matching the directory, `description` ≤1024 chars that says what and when, optional `license`, `compatibility`, `allowed-tools`). Platform-specific data lives under `metadata` with a `gamecrafter-` prefix (the original technical identity is retained under the [PlayWeld compatibility contract](BRANDING.md)) so unknown-key rules of other clients are respected:
 
 ```yaml
 ---

@@ -90,7 +90,7 @@ async function startDetached(paths: ReturnType<typeof resolvePaths>): Promise<vo
     }
     await delay(100);
   }
-  throw new Error('Timed out waiting for GameCrafter service to start');
+  throw new Error('Timed out waiting for PlayWeld service to start');
 }
 
 function showStatus(lockPath: string): void {

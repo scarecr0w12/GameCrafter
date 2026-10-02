@@ -19,7 +19,7 @@ export class EngineViewContribution extends AbstractViewContribution<EngineWidge
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: ENGINE_OPEN_COMMAND_ID, label: 'GameCrafter: Open Engine' },
+      { id: ENGINE_OPEN_COMMAND_ID, label: 'PlayWeld: Open Engine' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class EngineViewContribution extends AbstractViewContribution<EngineWidge
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: ENGINE_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Engine',
+      label: 'PlayWeld: Open Engine',
     });
   }
 }

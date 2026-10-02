@@ -30,7 +30,7 @@ export class GameCrafterThemeContribution implements FrontendApplicationContribu
   initialize(): void {
     this.theming.registerParsedTheme({
       id: 'gamecrafter-neon-green',
-      label: 'GameCrafter Neon Green',
+      label: 'PlayWeld Neon Green',
       description: 'Dark violet workspace with neon green accents',
       uiTheme: 'vs-dark',
       json: {

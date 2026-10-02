@@ -40,7 +40,7 @@ The design documents under `docs/` are the specification the code in `packages/`
 - No phases, milestones, roadmaps, "first game", or "MVP" language. Sections are architectural areas.
 - Present complete recommendations; do not add lists of questions for the user unless genuinely product/creative.
 - Never state something is implemented, tested, or secure. Write "candidate", "selected direction", "remains Verify".
-- Prefix for platform-specific metadata keys is `gamecrafter-` (P01 resolved: the platform is named GameCrafter).
+- Prefix for platform-specific metadata keys is `gamecrafter-` (retained compatibility identity; the public product name is PlayWeld, see `docs/BRANDING.md`).
 - Dependency ordering between work packages belongs only in `docs/DEVELOPMENT_PLAN.md`; when a work package lands, update its "Status" there and the register entries it resolves.
 - Keep `**Last updated:**` current in any header you touch (format `YYYY-MM-DD`).
 

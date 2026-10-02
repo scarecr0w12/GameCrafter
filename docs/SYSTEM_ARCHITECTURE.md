@@ -1,6 +1,6 @@
-# GameCrafter system architecture guide
+# PlayWeld system architecture guide
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 **Scope:** Current component responsibilities and code paths. The [technical architecture](TECHNICAL_ARCHITECTURE.md) describes the complete selected target; [status](STATUS.md) identifies outstanding implementation. [Documentation index](README.md).
 
@@ -35,7 +35,7 @@ flowchart TB
     Broker --> External
 ```
 
-The browser target shares application views but is a development/test entrypoint. It is not the desktop distribution target. Remote model and asset calls are integrations made by the local service; running GameCrafter locally does not make every configured provider local.
+The browser target shares application views but is a development/test entrypoint. It is not the desktop distribution target. Remote model and asset calls are integrations made by the local service; running PlayWeld locally does not make every configured provider local.
 
 ## Package responsibilities
 

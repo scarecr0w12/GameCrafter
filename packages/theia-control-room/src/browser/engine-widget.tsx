@@ -212,10 +212,10 @@ export class EngineWidget extends ControlRoomReactWidget {
       <section className="gamecrafter-engine-section">
         <h2>Engine installations</h2>
         <p>
-          Register the engine tools GameCrafter should run. This is not the game-project folder:
-          Unreal project files must be inside the selected GameCrafter Project's <code>game/</code>{' '}
-          directory. Use <code>RunUAT.bat</code> for builds and <code>UnrealEditor-Cmd.exe</code>{' '}
-          for commandlet operations.
+          Register the engine tools PlayWeld should run. This is not the game-project folder: Unreal
+          project files must be inside the selected PlayWeld Project's <code>game/</code> directory.
+          Use <code>RunUAT.bat</code> for builds and <code>UnrealEditor-Cmd.exe</code> for
+          commandlet operations.
         </p>
         <form
           className="gamecrafter-engine-install-form"

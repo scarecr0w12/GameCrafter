@@ -1,14 +1,14 @@
-# GameCrafter user guide
+# PlayWeld user guide
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
-**Audience:** People creating and maintaining games with the current GameCrafter workspace. [Documentation index](README.md).
+**Audience:** People creating and maintaining games with the current PlayWeld workspace. [Documentation index](README.md).
 
 ## What you are running
 
 The desktop Control Room organizes a local Project, its design records, source assets, engine files, discussions, agent tasks, and integrations. A local platform service stores operational records and executes work. Closing a window can leave that service running, depending on `window.closeBehavior`.
 
-GameCrafter does not install or license a game engine for you. Unity, Unreal, Godot, DCC applications, model endpoints and asset-provider accounts have their own installation and configuration requirements. The development browser target exists for smoke testing; the Electron application is the desktop product.
+PlayWeld does not install or license a game engine for you. Unity, Unreal, Godot, DCC applications, model endpoints and asset-provider accounts have their own installation and configuration requirements. The development browser target exists for smoke testing; the Electron application is the desktop product.
 
 The current interface uses a dark violet background and neon green accents. Its view contributions expose Project Home, Settings, Models & Routing, Chat, Skills & Roles, Connections, Discussion Board, Swarm, Plugins, Engine, DCC, Knowledge, Assets, Backups, Updates, and Audit & History. Project-dependent actions require an opened Project.
 
@@ -56,7 +56,7 @@ game/                      Native Unity, Unreal or Godot project files
 .gamecrafter/              Operational databases, logs, cache and run artifacts
 ```
 
-The engine folder can initially be empty. Creating the GameCrafter workspace does not itself create a complete Unity scene or Unreal game. Engine capability reports explain which operations are available after native project files and installations are present.
+The engine folder can initially be empty. Creating the PlayWeld workspace does not itself create a complete Unity scene or Unreal game. Engine capability reports explain which operations are available after native project files and installations are present.
 
 Use the Project clone operation when you need an independent copy. Clone/registered restore can assign a new identity and reconcile copied operational state. Copying folders manually can duplicate IDs and stale work; use the supported flows and review their resulting identity and warnings.
 

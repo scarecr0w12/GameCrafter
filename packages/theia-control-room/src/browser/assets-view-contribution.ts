@@ -19,7 +19,7 @@ export class AssetsViewContribution extends AbstractViewContribution<AssetsWidge
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: ASSETS_OPEN_COMMAND_ID, label: 'GameCrafter: Open Assets' },
+      { id: ASSETS_OPEN_COMMAND_ID, label: 'PlayWeld: Open Assets' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class AssetsViewContribution extends AbstractViewContribution<AssetsWidge
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: ASSETS_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Assets',
+      label: 'PlayWeld: Open Assets',
     });
   }
 }

@@ -1,6 +1,6 @@
-# GameCrafter integration and extension guide
+# PlayWeld integration and extension guide
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 
 **Audience:** Engine, DCC, MCP, skill, role, plugin and provider integrators. [Documentation index](README.md).
 

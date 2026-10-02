@@ -1,5 +1,8 @@
 appId: ai.gamecrafter.controlroom
-productName: GameCrafter
+productName: PlayWeld
+# Keep the executable identity stable for existing installations and service launchers.
+executableName: GameCrafter
+icon: ../../assets/brand/app-icon-512.png
 artifactName: ${productName}-${version}-${arch}.${ext}
 asar: false
 # Theia rebuilds for the host; electron-builder must rebuild native addons for the target OS.
@@ -30,7 +33,7 @@ directories:
   output: dist/${version}
 linux:
   category: Development
-  maintainer: GameCrafter
+  maintainer: PlayWeld
   executableName: gamecrafter
   target:
     - target: AppImage
@@ -40,6 +43,7 @@ linux:
       arch:
         - x64
 win:
+  icon: ../../assets/brand/app-icon.ico
   target:
     - target: nsis
       arch:

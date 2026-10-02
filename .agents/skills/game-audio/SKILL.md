@@ -9,7 +9,7 @@ metadata:
 # Game audio
 
 Deliver sound that supports gameplay timing, spatial meaning and an intelligible runtime mix.
-These are recommended authoring procedures, not claims that GameCrafter has implemented these tools.
+These are recommended authoring procedures, not claims that PlayWeld has implemented these tools.
 Apply the workflow across engines by inspecting the actual target and installed versions.
 
 ## Required context

@@ -1,12 +1,12 @@
 {
   "name": "@gamecrafter/control-room",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "license": "Apache-2.0",
-  "description": "GameCrafter local game development control room",
-  "author": "GameCrafter",
+  "description": "PlayWeld local game development control room",
+  "author": "PlayWeld",
   "homepage": "https://github.com/scarecr0w12/GameCrafter",
-  "desktopName": "GameCrafter",
+  "desktopName": "PlayWeld",
   "main": "lib/backend/electron-main.js",
   "scripts": {
     "prebuild": "node -e \"require('node:fs').chmodSync('../../node_modules/@electron/rebuild/lib/cli.js', 0o755)\"",
@@ -27,7 +27,7 @@
     "target": "electron",
     "frontend": {
       "config": {
-        "applicationName": "GameCrafter",
+        "applicationName": "PlayWeld",
         "electron": {
           "windowOptions": {
             "minWidth": 800,
@@ -67,7 +67,7 @@
     "vscode.hlsl": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.hlsl.vsix"
   },
   "dependencies": {
-    "@gamecrafter/theia-control-room": "0.1.3",
+    "@gamecrafter/theia-control-room": "0.1.4",
     "@theia/core": "1.75.0",
     "@theia/editor": "1.75.0",
     "@theia/electron": "1.75.0",
@@ -87,7 +87,7 @@
     "@theia/workspace": "1.75.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "@gamecrafter/archive-extractor": "0.1.3"
+    "@gamecrafter/archive-extractor": "0.1.4"
   },
   "devDependencies": {
     "@theia/cli": "1.75.0",

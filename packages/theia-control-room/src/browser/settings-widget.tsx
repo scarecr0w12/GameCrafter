@@ -60,7 +60,7 @@ export class GameCrafterSettingsWidget extends ControlRoomReactWidget {
   ) {
     super();
     this.id = GameCrafterSettingsWidget.ID;
-    this.title.label = 'GameCrafter Settings';
+    this.title.label = 'PlayWeld Settings';
     this.title.iconClass = 'codicon codicon-settings-gear';
     this.title.closable = true;
     this.toDispose.push(

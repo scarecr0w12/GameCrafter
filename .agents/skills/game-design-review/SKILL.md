@@ -98,7 +98,7 @@ Turn a creative brief into specific, testable design decisions while keeping the
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Prototype scope and experience testing](https://learn.unity.com/course/creative-core-prototyping).

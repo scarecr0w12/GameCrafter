@@ -98,7 +98,7 @@ Create a repeatable multilingual content pipeline and prove representative UI/ga
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Locale, fonts, resources, and direction](https://docs.godotengine.org/en/stable/tutorials/i18n/internationalizing_games.html).

@@ -98,7 +98,7 @@ Remove identified player barriers through practical options and testable interac
 
 ## Evidence and sources
 
-These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that GameCrafter has executed them.
+These workflows are authored recommendations. Source links below support the named mechanisms, not a claim that PlayWeld has executed them.
 Last researched: 2026-10-01.
 
 - [Guideline scope and limitations](https://learn.microsoft.com/en-us/xbox/accessibility/guidelines).

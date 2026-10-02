@@ -19,7 +19,7 @@ export class AuditViewContribution extends AbstractViewContribution<AuditWidget>
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: AUDIT_OPEN_COMMAND_ID, label: 'GameCrafter: Open Audit' },
+      { id: AUDIT_OPEN_COMMAND_ID, label: 'PlayWeld: Open Audit' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class AuditViewContribution extends AbstractViewContribution<AuditWidget>
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: AUDIT_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Audit',
+      label: 'PlayWeld: Open Audit',
     });
   }
 }

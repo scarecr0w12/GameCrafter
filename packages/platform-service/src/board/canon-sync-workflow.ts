@@ -291,7 +291,7 @@ export class CanonSyncWorkflow {
       'git',
       [
         '-c',
-        'user.name=GameCrafter',
+        'user.name=PlayWeld',
         '-c',
         'user.email=gamecrafter@localhost',
         'commit',

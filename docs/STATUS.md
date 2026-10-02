@@ -1,12 +1,18 @@
-# GameCrafter Implementation Status and Remaining Work
+# PlayWeld Implementation Status and Remaining Work
 
 **Status:** Living status record. This document summarizes what exists in this repository today, how far each part has been verified, and what remains. It does not order the remaining work: dependency ordering lives only in [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md), and the complete target system is described in [PLATFORM_DESIGN.md](PLATFORM_DESIGN.md).  
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 **Operational documentation:** [documentation index](README.md), [user guide](USER_GUIDE.md), [operations](OPERATIONS_GUIDE.md), [developer guide](DEVELOPER_GUIDE.md), [integrations](INTEGRATION_GUIDE.md), [current architecture](SYSTEM_ARCHITECTURE.md), [generated RPC](API_REFERENCE.md) and [settings](SETTINGS_REFERENCE.md).
 
 **Related records:** [development plan](DEVELOPMENT_PLAN.md) (authoritative per-package status text), [decision register](OPEN_DECISIONS.md), [technical architecture](TECHNICAL_ARCHITECTURE.md), [skills, roles, and tools](SKILLS_AGENTS_AND_TOOLS.md).
 
 Evidence levels used below follow the plan's rule: **Implemented** means behaviour is covered by tests in this repository; **Verified (live)** means tested against the real engine, tool, server, or provider. "Fake-tested" means tested only against in-repo fixture servers or fake executables. Nothing here is described as secure or production-ready unless a test in this repository demonstrates it.
+
+## Public branding
+
+The user confirmed **PlayWeld** and reported purchasing `playweld.com` on 2026-10-02. The full public rebrand covers app UI and assistant identity, service/update messages, new Project instructions, automated Git author names, installer/release branding, current documentation, and bundled skill prose. The [visual asset family](../assets/brand/README.md) supplies editable logos, PNG variants, multi-size icons, banners, and generated illustrations; the app uses the canonical home mark and favicon. Existing technical identifiers remain under [the compatibility contract](BRANDING.md).
+
+PlayWeld 0.1.4 verification: all 33 build/typecheck/lint/test tasks, formatting, generated references, release-version checks, asset format checks, documentation links, browser smoke, Windows packaging/native-content checks, and 26 packaged desktop workflow checks passed. Renderer error lists were empty. [Release notes](releases/v0.1.4.md) preserve scope and local artifact locations. The installer is unsigned; NSIS install/upgrade/uninstall/rollback and Linux packaging remain unverified. Website code and domain services belong to the separate website project.
 
 ## 1. Snapshot
 
@@ -133,7 +139,7 @@ Library verification on 2026-10-01: all 33 build/typecheck/lint/test tasks pass 
 
 ## Live Unity and Unreal acceptance
 
-Unity 6000.6.0f1 (Test Framework 1.8.0) and Unreal 5.8.3 pass actual Windows fixture tests through GameCrafter, Restricted and Ask always checks, identity/family/version checks, Win64 Development builds and packaged checkpoint assertions. The [acceptance record](LIVE_ENGINE_ACCEPTANCE.md) lists exact scope, reproduced connector defects, fixes, commands and local artifacts. This adds live evidence for selected engine workflows; the earlier qualitative library evaluations remain proposals, and interactive MCP, graphics and other targets remain unverified.
+Unity 6000.6.0f1 (Test Framework 1.8.0) and Unreal 5.8.3 pass actual Windows fixture tests through GameCrafter (now PlayWeld), Restricted and Ask always checks, identity/family/version checks, Win64 Development builds and packaged checkpoint assertions. The [acceptance record](LIVE_ENGINE_ACCEPTANCE.md) lists exact scope, reproduced connector defects, fixes, commands and local artifacts. This adds live evidence for selected engine workflows; the earlier qualitative library evaluations remain proposals, and interactive MCP, graphics and other targets remain unverified.
 
 Engine acceptance regression gate: 33 build/typecheck/lint/test tasks pass on Linux (424 tests) and native Windows (412 tests, 12 explicit OS/capability skips), including browser/Electron builds. Fresh `npm ci`, format, syntax, local-link and diff checks pass. Live acceptance is recorded separately in `.turbo/live-engine-acceptance/`; no interactive editor bridge or graphics claim is implied by these headless checks.
 

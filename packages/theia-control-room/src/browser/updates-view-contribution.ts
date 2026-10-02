@@ -19,7 +19,7 @@ export class UpdatesViewContribution extends AbstractViewContribution<UpdatesWid
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: UPDATES_OPEN_COMMAND_ID, label: 'GameCrafter: Open Updates' },
+      { id: UPDATES_OPEN_COMMAND_ID, label: 'PlayWeld: Open Updates' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class UpdatesViewContribution extends AbstractViewContribution<UpdatesWid
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: UPDATES_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Updates',
+      label: 'PlayWeld: Open Updates',
     });
   }
 }

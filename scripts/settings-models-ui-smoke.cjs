@@ -131,7 +131,7 @@ async function main() {
     for (let iteration = 0; iteration < 3; iteration++) {
       await open('Settings', 'settings');
       await page.waitForSelector('nav[aria-label="Settings groups"] button');
-      await close('GameCrafter Settings');
+      await close('PlayWeld Settings');
       await open('Models', 'models');
       await page.waitForSelector('input[aria-label="Provider display name"]');
       await close('Models & Routing');
@@ -154,7 +154,7 @@ async function main() {
         document.querySelector('.gamecrafter-setting-source')?.textContent.includes('Platform'),
       savedDirectory,
     );
-    await close('GameCrafter Settings');
+    await close('PlayWeld Settings');
     await open('Settings', 'settings');
     await page.type(search, 'projects.defaultParentDirectory');
     await wait(

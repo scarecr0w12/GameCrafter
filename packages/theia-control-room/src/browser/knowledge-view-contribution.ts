@@ -19,7 +19,7 @@ export class KnowledgeViewContribution extends AbstractViewContribution<Knowledg
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: KNOWLEDGE_OPEN_COMMAND_ID, label: 'GameCrafter: Open Knowledge' },
+      { id: KNOWLEDGE_OPEN_COMMAND_ID, label: 'PlayWeld: Open Knowledge' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class KnowledgeViewContribution extends AbstractViewContribution<Knowledg
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: KNOWLEDGE_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open Knowledge',
+      label: 'PlayWeld: Open Knowledge',
     });
   }
 }

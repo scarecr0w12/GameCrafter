@@ -291,7 +291,7 @@ public static class SmokeWindow {
       if (owner == pid && IsWindowVisible(window)) {
         var title = new StringBuilder(512); GetWindowText(window, title, 512);
         Rect rect; GetWindowRect(window, out rect);
-        if (title.ToString().Contains("GameCrafter")) found = window;
+        if (title.ToString().Contains("PlayWeld")) found = window;
       }
       return true;
     }, IntPtr.Zero);

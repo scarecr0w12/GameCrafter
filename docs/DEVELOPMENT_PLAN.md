@@ -1,10 +1,12 @@
-# GameCrafter Development Plan: Work Packages by Dependency
+# PlayWeld Development Plan: Work Packages by Dependency
 
 **Status:** Living plan. Ordering below is **technical dependency**, not product phasing: a work package appears after the packages whose interfaces it consumes. Every package targets the complete system described in [PLATFORM_DESIGN.md](PLATFORM_DESIGN.md); none of them is a milestone, release, or "first game".  
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 **Related records:** [technical architecture](TECHNICAL_ARCHITECTURE.md), [decision register](OPEN_DECISIONS.md), [skills, roles, and tools](SKILLS_AGENTS_AND_TOOLS.md).
 
 Each work package lists the design sections and register entries it implements, its hard dependencies, its "done when" criteria, and its current status. Status values: **Not started**, **In progress**, **Implemented (unit/integration-tested)**, **Verified (live)**. Only behaviour covered by tests in this repository may be marked Implemented; connectors reach Verified only after tests against the real engine, tool, or server.
+
+**Product identity:** The PlayWeld public rebrand and 0.1.4 visual/package handoff are recorded in [branding](BRANDING.md) and [release notes](releases/v0.1.4.md); existing work-package evidence boundaries remain in force.
 
 ## Dependency graph
 
@@ -91,7 +93,7 @@ flowchart TD
 - **Depends on:** WP2, WP4.
 - **Scope:** typed settings schema registry in contracts; platform → Project → session precedence with effective-value and source; `settings/get|set|describe` RPC; Theia settings pages grouped as proposed (no single long page); plugin-contributed settings schemas.
 - **Done when:** precedence and null-versus-inherit rules are tested; the UI shows effective value and scope for every setting.
-- **Status:** Implemented (unit/integration-tested): registry with 17 groups and 75 builtin definitions, `settings/describe|get|getAll|set|export|import`, platform → Project → session precedence with per-connection sessions, and the GameCrafter Settings view (group pages, search, schema-driven controls, source badge, scope selector, reset-to-inherit). Plugin-contributed definitions register/unregister with their plugin; a schema-versioned redacted export is available through RPC and Settings. Project settings copy with clone and Project backups; platform settings copy with profile backups; session values remain ephemeral. Settings import previews a validated merge, skips unknown/redacted values, and applies the selected scope atomically; plugin setting migration remains open.
+- **Status:** Implemented (unit/integration-tested): registry with 17 groups and 75 builtin definitions, `settings/describe|get|getAll|set|export|import`, platform → Project → session precedence with per-connection sessions, and the PlayWeld Settings view (group pages, search, schema-driven controls, source badge, scope selector, reset-to-inherit). Plugin-contributed definitions register/unregister with their plugin; a schema-versioned redacted export is available through RPC and Settings. Project settings copy with clone and Project backups; platform settings copy with profile backups; session values remain ephemeral. Settings import previews a validated merge, skips unknown/redacted values, and applies the selected scope atomically; plugin setting migration remains open.
 
 ### WP6 — Task/event graph and scheduler
 

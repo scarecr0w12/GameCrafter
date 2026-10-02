@@ -19,7 +19,7 @@ export class DccViewContribution extends AbstractViewContribution<DccWidget> {
 
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
-      { id: DCC_OPEN_COMMAND_ID, label: 'GameCrafter: Open DCC Tools' },
+      { id: DCC_OPEN_COMMAND_ID, label: 'PlayWeld: Open DCC Tools' },
       { execute: () => this.openView({ activate: true, reveal: true }) },
     );
   }
@@ -27,7 +27,7 @@ export class DccViewContribution extends AbstractViewContribution<DccWidget> {
   registerMenus(menus: MenuModelRegistry): void {
     menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
       commandId: DCC_OPEN_COMMAND_ID,
-      label: 'GameCrafter: Open DCC Tools',
+      label: 'PlayWeld: Open DCC Tools',
     });
   }
 }
