@@ -245,7 +245,13 @@ async function main() {
     await clickText(page, '.lm-TabBar-tabLabel', 'Project Home');
     if (!desktop) {
       await page.setViewport({width: 700, height: 1000});
-      await waitForUi(page, () => getComputedStyle(document.querySelector('.gamecrafter-project-home-actions')).gridTemplateColumns.split(' ').length === 2);
+      await waitForUi(page, () => {
+        const actions = document.querySelector('.gamecrafter-project-home-actions');
+        return actions && Array.from(actions.querySelectorAll('button')).every(button => {
+          const bounds = button.getBoundingClientRect();
+          return bounds.width >= 155 && bounds.width <= actions.clientWidth + 1 && button.scrollWidth <= button.clientWidth + 1;
+        });
+      });
       assert(await page.$eval('.gamecrafter-project-home', root => root.scrollWidth <= root.clientWidth + 1), 'Narrow Project Home must contain its tables and controls');
       await page.screenshot({path: path.join(directory, 'home-narrow.png')});
       checks.push('Project Home adapts to a narrow viewport without horizontal overflow');
