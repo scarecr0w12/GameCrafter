@@ -1,7 +1,7 @@
 import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type { ProjectSummary, RpcResult } from '@gamecrafter/contracts';
 import {
   ControlRoomService,
@@ -10,7 +10,7 @@ import {
 import { ControlRoomClientEvents } from './control-room-client';
 
 @injectable()
-export class AuditWidget extends ReactWidget {
+export class AuditWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.audit';
   private projects: ProjectSummary[] = [];
   private projectId = '';

@@ -2,7 +2,7 @@ import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandService } from '@theia/core/lib/common/command';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import URI from '@theia/core/lib/common/uri';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
@@ -29,7 +29,7 @@ import { AUDIT_OPEN_COMMAND_ID } from './audit-view-contribution';
 import { CHAT_OPEN_COMMAND_ID } from './chat-view-contribution';
 
 @injectable()
-export class ProjectHomeWidget extends ReactWidget {
+export class ProjectHomeWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.projectHome';
 
   private projects: ProjectSummary[] = [];

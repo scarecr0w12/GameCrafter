@@ -2,7 +2,7 @@ import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Endpoint } from '@theia/core/lib/browser/endpoint';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type {
   AssetFileEntry,
   AssetJob,
@@ -38,7 +38,7 @@ interface GenerationForm {
 }
 
 @injectable()
-export class AssetsWidget extends ReactWidget {
+export class AssetsWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.assets';
 
   private projects: ProjectSummary[] = [];

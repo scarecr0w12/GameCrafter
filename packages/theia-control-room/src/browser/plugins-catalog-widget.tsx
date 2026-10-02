@@ -2,7 +2,7 @@ import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { CommandService } from '@theia/core/lib/common/command';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type {
   DeclarativePanel,
   DeclarativePanelSection,
@@ -26,7 +26,7 @@ type CatalogTab = 'platform' | 'editor';
 type FormValue = string | number | boolean | unknown[] | Record<string, unknown>;
 
 @injectable()
-export class PluginsCatalogWidget extends ReactWidget {
+export class PluginsCatalogWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.plugins';
 
   private projects: ProjectSummary[] = [];

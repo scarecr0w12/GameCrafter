@@ -59,7 +59,7 @@ export default new ContainerModule((bind) => {
     )
     .inSingletonScope();
 
-  bind(AuditWidget).toSelf().inSingletonScope();
+  bind(AuditWidget).toSelf();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: AuditWidget.ID,
@@ -67,21 +67,21 @@ export default new ContainerModule((bind) => {
     }))
     .inSingletonScope();
   bindViewContribution(bind, AuditViewContribution);
-  bind(ProjectHomeWidget).toSelf().inSingletonScope();
-  bind(GameCrafterSettingsWidget).toSelf().inSingletonScope();
-  bind(ModelsWidget).toSelf().inSingletonScope();
-  bind(SkillsWidget).toSelf().inSingletonScope();
-  bind(ConnectionsWidget).toSelf().inSingletonScope();
-  bind(DiscussionBoardWidget).toSelf().inSingletonScope();
-  bind(PluginsCatalogWidget).toSelf().inSingletonScope();
-  bind(EngineWidget).toSelf().inSingletonScope();
-  bind(DccWidget).toSelf().inSingletonScope();
-  bind(AssetsWidget).toSelf().inSingletonScope();
-  bind(BackupsWidget).toSelf().inSingletonScope();
-  bind(KnowledgeWidget).toSelf().inSingletonScope();
-  bind(SwarmWidget).toSelf().inSingletonScope();
-  bind(UpdatesWidget).toSelf().inSingletonScope();
-  bind(ChatWidget).toSelf().inSingletonScope();
+  bind(ProjectHomeWidget).toSelf();
+  bind(GameCrafterSettingsWidget).toSelf();
+  bind(ModelsWidget).toSelf();
+  bind(SkillsWidget).toSelf();
+  bind(ConnectionsWidget).toSelf();
+  bind(DiscussionBoardWidget).toSelf();
+  bind(PluginsCatalogWidget).toSelf();
+  bind(EngineWidget).toSelf();
+  bind(DccWidget).toSelf();
+  bind(AssetsWidget).toSelf();
+  bind(BackupsWidget).toSelf();
+  bind(KnowledgeWidget).toSelf();
+  bind(SwarmWidget).toSelf();
+  bind(UpdatesWidget).toSelf();
+  bind(ChatWidget).toSelf();
   bind(WidgetFactory)
     .toDynamicValue((context) => ({
       id: ChatWidget.ID,

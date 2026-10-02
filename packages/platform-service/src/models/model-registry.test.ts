@@ -11,6 +11,73 @@ import { ModelRegistry } from './model-registry';
 import { ModelProviderRegistry, type ModelProvider } from './providers';
 
 describe('ModelRegistry', () => {
+  it('previews without writes and imports only selected models for the requested account', async () => {
+    const profileDir = mkdtempSync(path.join(tmpdir(), 'gc-model-selection-'));
+    const database = Database.open(':memory:');
+    try {
+      migrate(database, profileMigrations);
+      const providers = new ModelProviderRegistry();
+      providers.register('openai-compatible', {
+        async listModels() {
+          return ['one', 'two', 'three'].map((providerModelId) => ({
+            providerModelId,
+            capabilities: { chat: true },
+          }));
+        },
+        async complete() {
+          throw new Error('Not used');
+        },
+        async embed() {
+          throw new Error('Not used');
+        },
+      });
+      const registry = new ModelRegistry(
+        database,
+        new CredentialStore(database, profileDir),
+        providers,
+      );
+      const input = {
+        providerKind: 'openai-compatible' as const,
+        displayName: 'Selection',
+        baseUrl: 'http://localhost:1234/v1',
+        isLocal: true,
+      };
+      const first = registry.addAccount(input);
+      const second = registry.addAccount({ ...input, displayName: 'Second' });
+      const preview = await registry.discover(first.accountId, { preview: true });
+      expect(preview).toMatchObject({ added: 0, updated: 0 });
+      expect(preview.models.map((model) => model.providerModelId)).toEqual(['one', 'two', 'three']);
+      expect(registry.listModels()).toEqual([]);
+      const selected = await registry.discover(first.accountId, { providerModelIds: ['two'] });
+      expect(selected).toMatchObject({ added: 1, updated: 0 });
+      const model = selected.models[0]!;
+      const saved = registry.updateModel(model.modelId, {
+        enabled: false,
+        pricing: { inputPerMTokUsd: 2, outputPerMTokUsd: 4 },
+      });
+      await registry.discover(first.accountId, { preview: true });
+      expect(registry.getModel(model.modelId)).toEqual(saved);
+      expect(registry.listModels({ accountId: second.accountId })).toEqual([]);
+      expect(await registry.discover(first.accountId, { providerModelIds: [] })).toEqual({
+        added: 0,
+        updated: 0,
+        models: [],
+      });
+      await expect(
+        registry.discover(first.accountId, { providerModelIds: ['one', 'missing'] }),
+      ).rejects.toThrow('no longer available');
+      expect(registry.listModels().map((model) => model.providerModelId)).toEqual(['two']);
+      expect(await registry.discover(first.accountId)).toMatchObject({ added: 2, updated: 1 });
+      expect(registry.getModel(model.modelId)).toMatchObject({
+        enabled: false,
+        pricing: saved.pricing,
+      });
+    } finally {
+      database.close();
+      rmSync(profileDir, { recursive: true, force: true });
+    }
+  });
+
   it('keeps credentials private, discovers models, preserves manual metadata, and cascades account removal', async () => {
     const profileDir = mkdtempSync(path.join(tmpdir(), 'gc-model-registry-'));
     const database = Database.open(':memory:');

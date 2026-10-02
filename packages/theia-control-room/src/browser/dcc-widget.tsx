@@ -1,7 +1,7 @@
 import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type {
   AssetPreview,
   DccCapabilityReport,
@@ -38,7 +38,7 @@ const operations: DccOperation[] = [
 ];
 
 @injectable()
-export class DccWidget extends ReactWidget {
+export class DccWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.dcc';
 
   private projects: ProjectSummary[] = [];

@@ -281,7 +281,10 @@ export class ModelRegistry {
     return row ? modelFromRow(row) : undefined;
   }
 
-  async discover(accountId: string): Promise<{ added: number; updated: number; models: Model[] }> {
+  async discover(
+    accountId: string,
+    options: { preview?: boolean; providerModelIds?: string[] } = {},
+  ): Promise<{ added: number; updated: number; models: Model[] }> {
     const account = this.getRuntimeAccount(accountId);
     if (!account) {
       throw new RpcError(`Provider account not found: ${accountId}`, RpcErrorCode.AccountNotFound);
@@ -294,11 +297,24 @@ export class ModelRegistry {
       );
     }
     const discovered = await provider.listModels(account);
+    const selected = options.providerModelIds && new Set(options.providerModelIds);
+    if (selected) {
+      const available = new Set(discovered.map((item) => item.providerModelId));
+      for (const id of selected) {
+        if (!available.has(id)) {
+          throw new RpcError(
+            `Provider model is no longer available: ${id}`,
+            RpcErrorCode.InvalidParams,
+          );
+        }
+      }
+    }
     const models: Model[] = [];
     let added = 0;
     let updated = 0;
     const metadataUpdatedAt = this.now().toISOString();
     for (const item of discovered) {
+      if (selected && !selected.has(item.providerModelId)) continue;
       const modelId = `${accountId}/${item.providerModelId}`;
       const existing = this.getModel(modelId);
       const model: Model = existing
@@ -325,8 +341,9 @@ export class ModelRegistry {
             workTypes: [],
             roles: [],
           };
-      this.writeModel(model);
       models.push(model);
+      if (options.preview) continue;
+      this.writeModel(model);
       if (existing) updated += 1;
       else added += 1;
     }

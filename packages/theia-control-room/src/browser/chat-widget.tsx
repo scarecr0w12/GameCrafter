@@ -1,7 +1,7 @@
 import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import {
   uuidv7,
@@ -19,8 +19,17 @@ import { MODELS_OPEN_COMMAND_ID } from './models-view-contribution';
 import { SWARM_OPEN_COMMAND_ID } from './swarm-view-contribution';
 import { CommandService } from '@theia/core/lib/common/command';
 
+interface PendingChat {
+  projectId: string;
+  conversationId: string;
+  navigationVersion: number;
+  mode: 'chat' | 'agent';
+  requestId?: string;
+  streamText: string;
+}
+
 @injectable()
-export class ChatWidget extends ReactWidget {
+export class ChatWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.chat';
 
   private projects: ProjectSummary[] = [];
@@ -34,8 +43,10 @@ export class ChatWidget extends ReactWidget {
   private mode: 'chat' | 'agent' = 'chat';
   private attachEditor = false;
   private busy = false;
-  private requestId?: string;
-  private streamText = '';
+  private pendingSend?: PendingChat;
+  private navigationVersion = 0;
+  private refreshVersion = 0;
+  private readonly responseErrors = new Map<string, string>();
   private error?: string;
 
   constructor(
@@ -49,11 +60,12 @@ export class ChatWidget extends ReactWidget {
     this.title.label = 'Chat';
     this.title.iconClass = 'codicon codicon-comment-discussion';
     this.title.closable = true;
+    this.addClass('gamecrafter-chat-widget');
     this.toDispose.push(
       this.events.modelDelta(({ requestId, delta }) => {
-        if (requestId !== this.requestId) return;
-        this.streamText += delta;
-        this.update();
+        if (!this.pendingSend || requestId !== this.pendingSend.requestId) return;
+        this.pendingSend.streamText += delta;
+        if (this.isCurrentSend(this.pendingSend)) this.update();
       }),
     );
     this.toDispose.push(this.events.projectChanged(() => void this.refresh()));
@@ -96,10 +108,7 @@ export class ChatWidget extends ReactWidget {
               aria-label="Chat Project"
               value={this.projectId}
               onChange={(event) => {
-                this.projectId = event.currentTarget.value;
-                this.conversationId = '';
-                this.messages = [];
-                void this.refresh();
+                this.selectProject(event.currentTarget.value);
               }}
             >
               <option value="">Select Project</option>
@@ -110,6 +119,23 @@ export class ChatWidget extends ReactWidget {
               ))}
             </select>
           </label>
+          <select
+            className="gamecrafter-chat-conversation-select"
+            aria-label="Chat conversation"
+            value={this.conversationId}
+            onChange={(event) => {
+              const id = event.currentTarget.value;
+              if (id) void this.openConversation(id);
+              else this.newConversation();
+            }}
+          >
+            <option value="">New conversation</option>
+            {this.conversations.map((conversation) => (
+              <option key={conversation.conversationId} value={conversation.conversationId}>
+                {conversation.title}
+              </option>
+            ))}
+          </select>
           <nav aria-label="Chat conversations">
             {this.conversations.map((conversation) => (
               <button
@@ -164,6 +190,12 @@ export class ChatWidget extends ReactWidget {
               {this.error}
             </p>
           )}
+          {this.busy && this.pendingSend && !this.isCurrentSend(this.pendingSend) && (
+            <p role="status">
+              A response is still pending in another conversation. You can return to it while it
+              finishes.
+            </p>
+          )}
           {this.models.length === 0 && this.projectId && (
             <p className="gamecrafter-chat-empty" role="status">
               No enabled streaming chat models are available. Add an account and discover a model in
@@ -211,14 +243,16 @@ export class ChatWidget extends ReactWidget {
                 </article>
               ))
             )}
-            {this.busy && (
+            {this.busy && this.pendingSend && this.isCurrentSend(this.pendingSend) && (
               <article className="gamecrafter-chat-message is-assistant" aria-live="polite">
                 <header>
-                  <strong>{this.mode === 'agent' ? 'Swarm handoff' : 'GameCrafter'}</strong>
+                  <strong>
+                    {this.pendingSend.mode === 'agent' ? 'Swarm handoff' : 'GameCrafter'}
+                  </strong>
                 </header>
                 <div className="gamecrafter-chat-message-content">
-                  {this.streamText ||
-                    (this.mode === 'agent' ? 'Creating change request…' : 'Thinking…')}
+                  {this.pendingSend.streamText ||
+                    (this.pendingSend.mode === 'agent' ? 'Creating change request…' : 'Thinking…')}
                 </div>
               </article>
             )}
@@ -313,40 +347,66 @@ export class ChatWidget extends ReactWidget {
     this.update();
   }
 
+  private selectProject(projectId: string): void {
+    ++this.navigationVersion;
+    ++this.refreshVersion;
+    this.projectId = projectId;
+    this.conversationId = '';
+    this.conversations = [];
+    this.messages = [];
+    this.error = undefined;
+    this.update();
+    void this.refresh();
+  }
+
   private async refresh(): Promise<void> {
+    const version = ++this.refreshVersion;
+    const navigationVersion = this.navigationVersion;
     try {
-      this.projects = await this.service.listProjects();
-      if (
-        !this.projectId ||
-        !this.projects.some((project) => project.projectId === this.projectId)
-      ) {
-        this.projectId = this.projects[0]?.projectId ?? '';
-      }
-      if (this.projectId) {
-        const [conversations, models] = await Promise.all([
-          this.service.listChatConversations(this.projectId),
-          this.service.listModels(undefined, true),
-        ]);
-        this.conversations = conversations;
-        this.models = models.filter(
-          (model) => model.capabilities.chat && model.capabilities.streaming,
-        );
-        if (
-          this.conversationId &&
-          !conversations.some((entry) => entry.conversationId === this.conversationId)
-        ) {
-          this.conversationId = '';
-          this.messages = [];
-        }
-        if (this.conversationId) {
-          this.messages = await this.service.listChatMessages(this.projectId, this.conversationId);
-        }
-      } else {
-        this.conversations = [];
+      const projects = await this.service.listProjects();
+      if (version !== this.refreshVersion || this.isDisposed) return;
+      this.projects = projects;
+      if (!this.projectId || !projects.some((project) => project.projectId === this.projectId)) {
+        this.projectId = projects[0]?.projectId ?? '';
+        this.conversationId = '';
         this.messages = [];
       }
-      this.error = undefined;
+      const projectId = this.projectId;
+      const conversationId = this.conversationId;
+      const [conversations, models, messages] = await Promise.all([
+        projectId ? this.service.listChatConversations(projectId) : Promise.resolve([]),
+        this.service.listModels(undefined, true),
+        projectId && conversationId
+          ? this.service.listChatMessages(projectId, conversationId)
+          : Promise.resolve([]),
+      ]);
+      if (
+        version !== this.refreshVersion ||
+        navigationVersion !== this.navigationVersion ||
+        this.isDisposed
+      )
+        return;
+      this.conversations = conversations;
+      this.models = models.filter(
+        (model) => model.capabilities.chat && model.capabilities.streaming,
+      );
+      if (
+        conversationId &&
+        !conversations.some((entry) => entry.conversationId === conversationId)
+      ) {
+        this.conversationId = '';
+        this.messages = [];
+      } else {
+        this.messages = messages;
+      }
+      this.error = this.responseErrors.get(this.contextKey(this.projectId, this.conversationId));
     } catch (error) {
+      if (
+        version !== this.refreshVersion ||
+        navigationVersion !== this.navigationVersion ||
+        this.isDisposed
+      )
+        return;
       this.error = messageOf(error);
     }
     this.update();
@@ -354,6 +414,8 @@ export class ChatWidget extends ReactWidget {
 
   private newConversation(): void {
     if (!this.projectId) return;
+    ++this.navigationVersion;
+    ++this.refreshVersion;
     this.conversationId = '';
     this.messages = [];
     this.error = undefined;
@@ -362,87 +424,125 @@ export class ChatWidget extends ReactWidget {
 
   private async openConversation(conversationId: string): Promise<void> {
     if (!this.projectId) return;
+    const projectId = this.projectId;
+    const version = ++this.navigationVersion;
+    ++this.refreshVersion;
+    this.conversationId = conversationId;
+    this.messages = [];
+    this.error = this.responseErrors.get(this.contextKey(projectId, conversationId));
+    this.update();
     try {
-      this.conversationId = conversationId;
-      this.messages = await this.service.listChatMessages(this.projectId, conversationId);
-      this.error = undefined;
+      const messages = await this.service.listChatMessages(projectId, conversationId);
+      if (version !== this.navigationVersion || this.isDisposed) return;
+      this.messages = messages;
     } catch (error) {
+      if (version !== this.navigationVersion || this.isDisposed) return;
       this.error = messageOf(error);
     }
     this.update();
   }
 
   private async deleteConversation(): Promise<void> {
-    if (!this.projectId || !this.conversationId) return;
+    if (!this.projectId || !this.conversationId || this.busy) return;
+    const projectId = this.projectId;
     const conversationId = this.conversationId;
+    const version = this.navigationVersion;
     try {
-      await this.service.deleteChatConversation(this.projectId, conversationId);
+      await this.service.deleteChatConversation(projectId, conversationId);
+      this.responseErrors.delete(this.contextKey(projectId, conversationId));
+      if (version !== this.navigationVersion || this.isDisposed) return;
       this.conversations = this.conversations.filter(
         (entry) => entry.conversationId !== conversationId,
       );
-      this.conversationId = '';
-      this.messages = [];
-      this.error = undefined;
+      this.newConversation();
     } catch (error) {
+      if (version !== this.navigationVersion || this.isDisposed) return;
       this.error = messageOf(error);
+      this.update();
     }
-    this.update();
+  }
+
+  private contextKey(projectId: string, conversationId: string): string {
+    return JSON.stringify([projectId, conversationId]);
+  }
+
+  private isCurrentSend(context: PendingChat): boolean {
+    return (
+      !this.isDisposed &&
+      context.projectId === this.projectId &&
+      context.conversationId === this.conversationId &&
+      (context.conversationId !== '' || context.navigationVersion === this.navigationVersion)
+    );
   }
 
   private async send(): Promise<void> {
     const raw = this.draft.trim();
     if (!raw || !this.projectId || this.busy) return;
+    // Capture everything used by the request before the first asynchronous operation.
+    const context: PendingChat = {
+      projectId: this.projectId,
+      conversationId: this.conversationId,
+      navigationVersion: this.navigationVersion,
+      mode: this.mode,
+      streamText: '',
+    };
+    const prior = [...this.messages];
+    const project = this.projects.find((entry) => entry.projectId === context.projectId);
+    const selectedModelId = this.selectedModelId;
+    const prompt = this.attachEditor ? `${raw}\n\n${this.editorContext()}` : raw;
+    this.pendingSend = context;
     this.busy = true;
     this.error = undefined;
-    this.streamText = '';
+    this.responseErrors.delete(this.contextKey(context.projectId, context.conversationId));
     this.draft = '';
     this.update();
     try {
-      if (!this.conversationId) {
+      if (!context.conversationId) {
         const conversation = await this.service.createChatConversation(
-          this.projectId,
+          context.projectId,
           titleFrom(raw),
         );
-        this.conversationId = conversation.conversationId;
-        this.conversations = [conversation, ...this.conversations];
+        const stillCurrent = this.isCurrentSend(context);
+        context.conversationId = conversation.conversationId;
+        if (stillCurrent) {
+          this.conversationId = conversation.conversationId;
+          this.conversations = [conversation, ...this.conversations];
+        }
       }
-      const prompt = this.attachEditor ? `${raw}\n\n${this.editorContext()}` : raw;
       const userMessage = await this.service.appendChatMessage({
-        projectId: this.projectId,
-        conversationId: this.conversationId,
+        projectId: context.projectId,
+        conversationId: context.conversationId,
         role: 'user',
         content: prompt,
       });
-      this.messages = [...this.messages, userMessage];
-      this.update();
-      if (this.mode === 'agent') {
+      const history = [...prior, userMessage];
+      if (this.isCurrentSend(context)) {
+        this.messages = history;
+        this.update();
+      }
+      if (context.mode === 'agent') {
         const change = await this.service.requestChange({
-          projectId: this.projectId,
-          text: this.agentPrompt(prompt),
+          projectId: context.projectId,
+          text: this.agentPrompt(prompt, prior),
         });
-        const response = await this.service.appendChatMessage({
-          projectId: this.projectId,
-          conversationId: this.conversationId,
+        await this.service.appendChatMessage({
+          projectId: context.projectId,
+          conversationId: context.conversationId,
           role: 'assistant',
           content: `Delegated to the Project swarm. Change request ${change.requestId} was created. Open Swarm to follow task progress, questions, approvals, and results.`,
         });
-        this.messages = [...this.messages, response];
-        await this.commands.executeCommand(SWARM_OPEN_COMMAND_ID);
+        if (this.isCurrentSend(context)) await this.commands.executeCommand(SWARM_OPEN_COMMAND_ID);
       } else {
-        const history = this.messages
-          .filter((entry) => entry.role !== 'system')
-          .map(({ role, content }) => ({ role, content }) as const);
         const requestId = uuidv7();
-        this.requestId = requestId;
-        const project = this.projects.find((entry) => entry.projectId === this.projectId);
+        context.requestId = requestId;
         const result = await this.service.completeChat({
-          projectId: this.projectId,
+          projectId: context.projectId,
           requestId,
           route: {
             taskType: 'chat',
-            projectId: this.projectId,
+            projectId: context.projectId,
             requiredCapabilities: ['chat', 'streaming'],
-            ...(this.selectedModelId ? { manualModelId: this.selectedModelId } : {}),
+            ...(selectedModelId ? { manualModelId: selectedModelId } : {}),
           },
           request: {
             messages: [
@@ -458,28 +558,30 @@ export class ChatWidget extends ReactWidget {
                   `Genres: ${project?.genres.join(', ') || 'not specified'}`,
                 ].join('\n'),
               },
-              ...history,
+              ...history
+                .filter((entry) => entry.role !== 'system')
+                .map(({ role, content }) => ({ role, content }) as const),
             ],
             stream: true,
           },
         });
-        const assistant = await this.service.appendChatMessage({
-          projectId: this.projectId,
-          conversationId: this.conversationId,
+        await this.service.appendChatMessage({
+          projectId: context.projectId,
+          conversationId: context.conversationId,
           role: 'assistant',
-          content: result.content || this.streamText,
+          content: result.content || context.streamText,
           modelId: result.modelId,
           usage: result.usage,
         });
-        this.messages = [...this.messages, assistant];
       }
-      await this.refresh();
+      if (this.isCurrentSend(context)) await this.refresh();
     } catch (error) {
-      this.error = messageOf(error);
+      const message = messageOf(error);
+      this.responseErrors.set(this.contextKey(context.projectId, context.conversationId), message);
+      if (this.isCurrentSend(context)) this.error = message;
     } finally {
       this.busy = false;
-      this.requestId = undefined;
-      this.streamText = '';
+      this.pendingSend = undefined;
       this.update();
     }
   }
@@ -492,8 +594,8 @@ export class ChatWidget extends ReactWidget {
     await this.send();
   }
 
-  private agentPrompt(prompt: string): string {
-    const prior = this.messages.slice(0, -1).slice(-12);
+  private agentPrompt(prompt: string, messages: ChatEntry[]): string {
+    const prior = messages.slice(-12);
     const context = prior.map((entry) => `${entry.role}: ${entry.content}`).join('\n\n');
     return context ? `Conversation context:\n${context}\n\nRequested work:\n${prompt}` : prompt;
   }

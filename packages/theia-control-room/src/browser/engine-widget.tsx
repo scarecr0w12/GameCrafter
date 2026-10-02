@@ -1,7 +1,7 @@
 import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type {
   EngineCapabilityReport,
   EngineFamily,
@@ -39,7 +39,7 @@ const operationFields: Partial<Record<EngineOperation, OperationField[]>> = {
 };
 
 @injectable()
-export class EngineWidget extends ReactWidget {
+export class EngineWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.engine';
 
   private projects: Array<{ projectId: string; name: string; family: EngineFamily }> = [];

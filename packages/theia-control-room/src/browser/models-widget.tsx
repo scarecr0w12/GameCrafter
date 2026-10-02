@@ -1,7 +1,7 @@
 import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type {
   Model,
   ModelPool,
@@ -17,7 +17,7 @@ import {
 import { formatPricing, summarizeDecision } from '../common/models-view-model';
 
 @injectable()
-export class ModelsWidget extends ReactWidget {
+export class ModelsWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.models';
 
   private accounts: ProviderAccount[] = [];
@@ -38,6 +38,10 @@ export class ModelsWidget extends ReactWidget {
   private poolModelIds = new Set<string>();
   private errorMessage?: string;
   private readonly accountResults = new Map<string, string>();
+  private readonly availableModels = new Map<string, Model[]>();
+  private readonly selectedModels = new Map<string, string[]>();
+  private readonly busyAccounts = new Set<string>();
+  private refreshVersion = 0;
 
   constructor(
     @inject(ControlRoomService)
@@ -208,15 +212,24 @@ export class ModelsWidget extends ReactWidget {
                         <button type="button" onClick={() => void this.testAccount(account)}>
                           Test
                         </button>
-                        <button type="button" onClick={() => void this.discoverModels(account)}>
+                        <button
+                          type="button"
+                          disabled={this.busyAccounts.has(account.accountId)}
+                          onClick={() => void this.discoverModels(account)}
+                        >
                           Discover
                         </button>
-                        <button type="button" onClick={() => void this.removeAccount(account)}>
+                        <button
+                          type="button"
+                          disabled={this.busyAccounts.has(account.accountId)}
+                          onClick={() => void this.removeAccount(account)}
+                        >
                           Remove
                         </button>
                         {this.accountResults.get(account.accountId) && (
-                          <span>{this.accountResults.get(account.accountId)}</span>
+                          <span role="status">{this.accountResults.get(account.accountId)}</span>
                         )}
+                        {this.renderModelSelection(account)}
                       </td>
                     </tr>
                   ))}
@@ -258,6 +271,7 @@ export class ModelsWidget extends ReactWidget {
                       <td>{model.providerModelId}</td>
                       <td>
                         <input
+                          key={model.displayName}
                           aria-label={`Display name ${model.modelId}`}
                           defaultValue={model.displayName}
                           onBlur={(event) => {
@@ -494,6 +508,7 @@ export class ModelsWidget extends ReactWidget {
   ): React.ReactNode {
     return (
       <input
+        key={`${modelId}-${field}-${JSON.stringify(values)}`}
         aria-label={`${field} ${modelId}`}
         defaultValue={values.join(', ')}
         onBlur={(event) => {
@@ -513,6 +528,7 @@ export class ModelsWidget extends ReactWidget {
   }
 
   private async refresh(): Promise<void> {
+    const version = ++this.refreshVersion;
     try {
       const [projects, accounts, models, pools, decisions] = await Promise.all([
         this.controlRoomService.listProjects(),
@@ -521,6 +537,7 @@ export class ModelsWidget extends ReactWidget {
         this.controlRoomService.listModelPools(this.selectedProjectId),
         this.controlRoomService.listRouteDecisions(this.selectedProjectId, 30),
       ]);
+      if (version !== this.refreshVersion || this.isDisposed) return;
       this.projects = projects;
       this.accounts = accounts;
       this.models = models;
@@ -528,6 +545,7 @@ export class ModelsWidget extends ReactWidget {
       this.decisions = decisions;
       this.errorMessage = undefined;
     } catch (error) {
+      if (version !== this.refreshVersion || this.isDisposed) return;
       this.errorMessage = error instanceof Error ? error.message : String(error);
     }
     this.update();
@@ -571,17 +589,125 @@ export class ModelsWidget extends ReactWidget {
   }
 
   private async discoverModels(account: ProviderAccount): Promise<void> {
-    await this.run(async () => {
-      const result = await this.controlRoomService.discoverModels(account.accountId);
-      this.accountResults.set(
-        account.accountId,
-        `Added ${result.added}, updated ${result.updated}`,
-      );
-    });
+    if (this.busyAccounts.has(account.accountId)) return;
+    this.busyAccounts.add(account.accountId);
+    this.update();
+    try {
+      await this.run(async () => {
+        const result = await this.controlRoomService.discoverModels(account.accountId, {
+          preview: true,
+        });
+        this.availableModels.set(account.accountId, result.models);
+        this.selectedModels.set(account.accountId, []);
+        this.accountResults.set(
+          account.accountId,
+          `Found ${result.models.length} available models. Choose models to add.`,
+        );
+      });
+    } finally {
+      this.busyAccounts.delete(account.accountId);
+      this.update();
+    }
+  }
+
+  private renderModelSelection(account: ProviderAccount): React.ReactNode {
+    const available = this.availableModels.get(account.accountId);
+    if (!available) return null;
+    const added = new Set(
+      this.models
+        .filter((model) => model.accountId === account.accountId)
+        .map((model) => model.providerModelId),
+    );
+    const choices = available.filter((model) => !added.has(model.providerModelId));
+    const selected = this.selectedModels.get(account.accountId) ?? [];
+    const busy = this.busyAccounts.has(account.accountId);
+    return (
+      <details className="gamecrafter-model-selection" open>
+        <summary>Choose models ({choices.length} available to add)</summary>
+        {choices.length === 0 ? (
+          <p>No new models available.</p>
+        ) : (
+          <>
+            <label>
+              Models for {account.displayName}
+              <select
+                multiple
+                size={Math.min(8, Math.max(2, choices.length))}
+                aria-label={`Models to add for ${account.displayName}`}
+                value={selected}
+                disabled={busy}
+                onChange={(event) => {
+                  this.selectedModels.set(
+                    account.accountId,
+                    Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+                  );
+                  this.update();
+                }}
+              >
+                {choices.map((model) => (
+                  <option key={model.providerModelId} value={model.providerModelId}>
+                    {model.displayName} ({model.providerModelId})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p>Use Ctrl or Command to select multiple models.</p>
+            <button
+              type="button"
+              disabled={busy || selected.length === 0}
+              onClick={() => void this.addDiscoveredModels(account, selected)}
+            >
+              Add selected ({selected.length})
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void this.addDiscoveredModels(
+                  account,
+                  choices.map((model) => model.providerModelId),
+                )
+              }
+            >
+              Add all ({choices.length})
+            </button>
+          </>
+        )}
+      </details>
+    );
+  }
+
+  private async addDiscoveredModels(
+    account: ProviderAccount,
+    providerModelIds: string[],
+  ): Promise<void> {
+    if (this.busyAccounts.has(account.accountId) || providerModelIds.length === 0) return;
+    this.busyAccounts.add(account.accountId);
+    this.update();
+    try {
+      await this.run(async () => {
+        const result = await this.controlRoomService.discoverModels(account.accountId, {
+          providerModelIds,
+        });
+        this.selectedModels.set(account.accountId, []);
+        this.accountResults.set(
+          account.accountId,
+          `Added ${result.added}, updated ${result.updated}`,
+        );
+      });
+    } finally {
+      this.busyAccounts.delete(account.accountId);
+      this.update();
+    }
   }
 
   private async removeAccount(account: ProviderAccount): Promise<void> {
-    await this.run(() => this.controlRoomService.removeProviderAccount(account.accountId));
+    await this.run(async () => {
+      await this.controlRoomService.removeProviderAccount(account.accountId);
+      this.availableModels.delete(account.accountId);
+      this.selectedModels.delete(account.accountId);
+      this.accountResults.delete(account.accountId);
+    });
   }
 
   private async updateModel(

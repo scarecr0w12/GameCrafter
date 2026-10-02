@@ -731,7 +731,7 @@ export class PlatformService {
       'model/list': ({ accountId, enabledOnly }) => ({
         models: modelRegistry.listModels({ accountId, enabledOnly: enabledOnly ?? false }),
       }),
-      'model/discover': ({ accountId }) => modelRegistry.discover(accountId),
+      'model/discover': ({ accountId, ...options }) => modelRegistry.discover(accountId, options),
       'model/update': ({ modelId, patch }) => modelRegistry.updateModel(modelId, patch),
       'pool/list': ({ projectId }) => ({ pools: modelRegistry.listPools(projectId) }),
       'pool/create': (input) => {

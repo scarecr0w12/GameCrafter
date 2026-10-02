@@ -2,7 +2,7 @@ import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import {
   RpcError,
   type RpcParams,
@@ -28,7 +28,7 @@ const sourceLabels: Record<EffectiveSetting['source'], string> = {
 };
 
 @injectable()
-export class GameCrafterSettingsWidget extends ReactWidget {
+export class GameCrafterSettingsWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.settings';
 
   private groups: SettingGroup[] = [];
@@ -48,6 +48,7 @@ export class GameCrafterSettingsWidget extends ReactWidget {
   private importNotice?: string;
   private refreshVersion = 0;
   private readonly saveVersions = new Map<string, number>();
+  private readonly drafts = new Map<string, unknown>();
 
   constructor(
     @inject(ControlRoomService)
@@ -124,6 +125,9 @@ export class GameCrafterSettingsWidget extends ReactWidget {
               onChange={(event) => {
                 this.selectedProjectId = event.currentTarget.value || undefined;
                 this.importPreview = undefined;
+                this.drafts.clear();
+                this.settings.clear();
+                this.update();
                 void this.refresh();
               }}
             >
@@ -266,7 +270,9 @@ export class GameCrafterSettingsWidget extends ReactWidget {
   private renderSetting(definition: SettingDefinition): React.ReactNode {
     const effective = this.settings.get(definition.key);
     const scope = this.selectedScope(definition, effective);
-    const value = effective?.value ?? definition.default;
+    const value = this.drafts.has(definition.key)
+      ? this.drafts.get(definition.key)
+      : (effective?.value ?? definition.default);
     const scopes = this.allowedScopes(definition);
     const disabled = scope === 'project' && !this.selectedProjectId;
     const hasOverride = Boolean(
@@ -334,6 +340,7 @@ export class GameCrafterSettingsWidget extends ReactWidget {
   ): React.ReactNode {
     const kind = controlKindFor(definition.schema);
     const schema = definition.schema;
+    const fieldKey = `${this.selectedProjectId ?? ''}-${definition.key}-${scope}-${JSON.stringify(value)}`;
     const common = {
       'aria-label': definition.title,
       disabled,
@@ -405,8 +412,9 @@ export class GameCrafterSettingsWidget extends ReactWidget {
         <input
           {...common}
           type="text"
-          value={entries.join(', ')}
-          onChange={(event) => {
+          defaultValue={entries.join(', ')}
+          key={fieldKey}
+          onBlur={(event) => {
             const values = event.currentTarget.value
               .split(',')
               .map((item) => item.trim())
@@ -421,11 +429,12 @@ export class GameCrafterSettingsWidget extends ReactWidget {
         <input
           {...common}
           type="number"
+          key={fieldKey}
           min={typeof schema.minimum === 'number' ? schema.minimum : undefined}
           max={typeof schema.maximum === 'number' ? schema.maximum : undefined}
           step={schema.type === 'integer' ? 1 : 'any'}
-          value={String(value)}
-          onChange={(event) => {
+          defaultValue={String(value)}
+          onBlur={(event) => {
             const raw = event.currentTarget.value;
             void this.saveSetting(definition, scope, raw === '' ? null : Number(raw));
           }}
@@ -437,8 +446,9 @@ export class GameCrafterSettingsWidget extends ReactWidget {
         <input
           {...common}
           type="text"
-          value={String(value)}
-          onChange={(event) => void this.saveSetting(definition, scope, event.currentTarget.value)}
+          defaultValue={String(value)}
+          key={fieldKey}
+          onBlur={(event) => void this.saveSetting(definition, scope, event.currentTarget.value)}
         />
       );
     }
@@ -522,6 +532,8 @@ export class GameCrafterSettingsWidget extends ReactWidget {
     const projectId = this.selectedProjectId;
     const version = (this.saveVersions.get(definition.key) ?? 0) + 1;
     this.saveVersions.set(definition.key, version);
+    if (value !== null) this.drafts.set(definition.key, value);
+    this.update();
     try {
       const effective = await this.controlRoomService.setSetting(
         definition.key,
@@ -532,10 +544,14 @@ export class GameCrafterSettingsWidget extends ReactWidget {
       if (projectId !== this.selectedProjectId || this.saveVersions.get(definition.key) !== version)
         return;
       ++this.refreshVersion;
+      this.drafts.delete(definition.key);
       this.settings.set(definition.key, effective);
       this.errorMessage = undefined;
       this.update();
     } catch (error) {
+      if (projectId !== this.selectedProjectId || this.saveVersions.get(definition.key) !== version)
+        return;
+      this.drafts.delete(definition.key);
       const message =
         error instanceof RpcError
           ? error.message
@@ -569,6 +585,7 @@ export class GameCrafterSettingsWidget extends ReactWidget {
       this.settings = new Map(settings.map((setting) => [setting.key, setting]));
       this.errorMessage = undefined;
     } catch (error) {
+      if (version !== this.refreshVersion || this.isDisposed) return;
       this.errorMessage = error instanceof Error ? error.message : String(error);
     }
     this.update();

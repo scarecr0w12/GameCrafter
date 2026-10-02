@@ -21291,6 +21291,17 @@
           "accountId": {
             "format": "uuid",
             "type": "string"
+          },
+          "preview": {
+            "type": "boolean"
+          },
+          "providerModelIds": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            }
           }
         }
       },

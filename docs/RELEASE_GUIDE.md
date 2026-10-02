@@ -98,6 +98,6 @@ Inspect the packaged service over authenticated RPC as well: check `service/info
 
 Keep quality logs, package logs, screenshots, UI reports, metadata/checksum verification and the exact GitHub workflow/tag IDs with each build. Source fixtures and sanitized records are versioned; generated artifacts live in ignored local output or GitHub release assets.
 
-Testing prereleases do not certify production games, every engine version, live provider accounts, installer rollback or Windows plugin isolation. Read [status](STATUS.md), [operations](OPERATIONS_GUIDE.md), and the version's [release notes](releases/v0.1.1.md) for the current boundary.
+Testing prereleases do not certify production games, every engine version, live provider accounts, installer rollback or Windows plugin isolation. Read [status](STATUS.md), [operations](OPERATIONS_GUIDE.md), and the version's [release notes](releases/v0.1.2.md) for the current boundary.
 
 The publication and packaging mechanisms above are documented by [GitHub release management](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository) and [Electron Builder v26 target selection](https://www.electron.build/v26/docs/targets/). Repository scripts and test evidence determine GameCrafter's actual behavior.

@@ -1302,7 +1302,13 @@ export const RpcMethods = {
   },
   'model/discover': {
     params: Type.Object(
-      { accountId: Type.String({ format: 'uuid' }) },
+      {
+        accountId: Type.String({ format: 'uuid' }),
+        preview: Type.Optional(Type.Boolean()),
+        providerModelIds: Type.Optional(
+          Type.Array(Type.String({ minLength: 1 }), { uniqueItems: true }),
+        ),
+      },
       { additionalProperties: false },
     ),
     result: Type.Object(

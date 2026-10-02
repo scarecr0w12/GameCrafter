@@ -1,7 +1,7 @@
 import React from 'react';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import type { UpdateState } from '@gamecrafter/contracts';
 import {
   ControlRoomService,
@@ -9,7 +9,7 @@ import {
 } from '../common/control-room-protocol';
 
 @injectable()
-export class UpdatesWidget extends ReactWidget {
+export class UpdatesWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.updates';
 
   private state?: UpdateState;

@@ -173,7 +173,10 @@ export interface ControlRoomService {
     error?: string;
   }>;
   listModels(accountId?: string, enabledOnly?: boolean): Promise<Model[]>;
-  discoverModels(accountId: string): Promise<{ added: number; updated: number; models: Model[] }>;
+  discoverModels(
+    accountId: string,
+    options?: { preview?: boolean; providerModelIds?: string[] },
+  ): Promise<{ added: number; updated: number; models: Model[] }>;
   updateModel(
     modelId: string,
     patch: {

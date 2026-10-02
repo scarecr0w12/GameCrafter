@@ -1,7 +1,7 @@
 import React from 'react';
 import { CommandService } from '@theia/core/lib/common/command';
 import { Message } from '@theia/core/lib/browser/widgets/widget';
-import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
+import { ControlRoomReactWidget } from './control-room-react-widget';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import type {
   ChangeRequest,
@@ -21,7 +21,7 @@ import { ControlRoomClientEvents } from './control-room-client';
 import { DISCUSSION_BOARD_OPEN_COMMAND_ID } from './discussion-board-view-contribution';
 
 @injectable()
-export class SwarmWidget extends ReactWidget {
+export class SwarmWidget extends ControlRoomReactWidget {
   static readonly ID = 'gamecrafter.swarm';
 
   private projects: ProjectSummary[] = [];

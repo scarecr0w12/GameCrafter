@@ -488,9 +488,10 @@ export class ControlRoomServiceImpl implements ControlRoomService {
 
   async discoverModels(
     accountId: string,
+    options: { preview?: boolean; providerModelIds?: string[] } = {},
   ): Promise<{ added: number; updated: number; models: Model[] }> {
     const client = await this.getPlatformClient();
-    return client.call('model/discover', { accountId });
+    return client.call('model/discover', { accountId, ...options });
   }
 
   async updateModel(
