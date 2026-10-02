@@ -247,6 +247,10 @@ export class KnowledgeService {
       embeddingProfile: () => store.activeEmbeddingProfile(request.projectId),
       vectorStore: () => this.indexer.createVectorStore(request.projectId),
       embed: (modelId, inputs) => this.options.completion.embed(modelId, inputs),
+      taskContext: (projectId, taskId) => {
+        const task = this.options.tasks.get(projectId, taskId);
+        return { goal: task.goal, resources: task.touches?.map((touch) => touch.resource) ?? [] };
+      },
     });
     return retriever.search(request);
   }
@@ -455,6 +459,8 @@ export class KnowledgeService {
         : {}),
       ...(typeof args.limit === 'number' ? { limit: args.limit } : {}),
       ...(typeof args.mode === 'string' ? { mode: args.mode as SearchRequest['mode'] } : {}),
+      ...(context.taskId ? { taskId: context.taskId } : {}),
+      maxTokens: typeof args.maxTokens === 'number' ? args.maxTokens : 4000,
     });
     return {
       output: result,

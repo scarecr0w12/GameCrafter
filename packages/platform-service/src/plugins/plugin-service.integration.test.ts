@@ -56,7 +56,7 @@ describe('plugin service integration', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-service-'));
     temporaryDirectories.push(root);
     const profileDir = path.join(root, 'profile');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -214,7 +214,7 @@ describe('plugin service integration', () => {
     await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-python-plugin-'));
     temporaryDirectories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -314,7 +314,7 @@ describe('plugin service integration', () => {
     await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-crash-'));
     temporaryDirectories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -399,7 +399,7 @@ describe('plugin service integration', () => {
         throw new Error('Isolated process must not launch when probe fails.');
       },
     };
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({
       paths,
       platformVersion: '0.1.0',
@@ -491,7 +491,7 @@ describe('plugin service integration', () => {
     await skipWithoutBwrap(context);
     const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-secret-'));
     temporaryDirectories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -627,7 +627,7 @@ describe('plugin service integration', () => {
     await new Promise<void>((resolve) => fakeModelServer!.listen(0, '127.0.0.1', resolve));
     const address = fakeModelServer.address();
     if (!address || typeof address === 'string') throw new Error('Fake model server did not bind');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,

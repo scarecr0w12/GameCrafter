@@ -81,9 +81,15 @@ export interface Mcp2026HttpFixture {
   close(): Promise<void>;
 }
 
+interface EditorFixtureOptions {
+  projectPath?: string;
+  screenshotPath?: string;
+}
+
 export async function startMcp2026HttpFixture(
   port = 0,
   projectId = '',
+  editor: EditorFixtureOptions = {},
 ): Promise<Mcp2026HttpFixture> {
   const requests: Mcp2026HttpFixture['requests'] = [];
   const server = createServer((request, response) => {
@@ -93,7 +99,7 @@ export async function startMcp2026HttpFixture(
       return;
     }
     void readJsonBody(request)
-      .then((message) => respondHttp(message, response, projectId))
+      .then((message) => respondHttp(message, response, projectId, editor))
       .catch((error: unknown) => {
         response.writeHead(400, { 'content-type': 'text/plain' });
         response.end(error instanceof Error ? error.message : String(error));
@@ -159,6 +165,7 @@ interface JsonRpcMessage {
 function handleMessage(
   message: JsonRpcMessage,
   projectId = process.env.GAMECRAFTER_TEST_PROJECT_ID ?? '',
+  editor: EditorFixtureOptions = {},
 ): Record<string, unknown> | undefined {
   if (!message.method || message.id === undefined) return undefined;
   const params = isRecord(message.params) ? message.params : {};
@@ -182,7 +189,11 @@ function handleMessage(
   if (message.method === 'tools/list') {
     return rpcResult(message.id, {
       resultType: 'complete',
-      tools: mcp2026Tools,
+      tools: mcp2026Tools.map((tool) =>
+        editor.projectPath && tool.name === 'project_identity'
+          ? { ...tool, name: 'editor_status' }
+          : tool,
+      ),
       ttlMs: 60_000,
       cacheScope: 'connection',
     });
@@ -223,13 +234,29 @@ function handleMessage(
         content: [{ type: 'text', text: process.env.MCP_FIXTURE_SECRET ?? '' }],
       });
     }
-    if (name === 'project_identity') {
+    if (name === 'project_identity' || name === 'editor_status') {
       return rpcResult(message.id, {
         resultType: 'complete',
-        content: [{ type: 'text', text: JSON.stringify({ projectId }) }],
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              editor.projectPath
+                ? { projectPath: editor.projectPath, status: 'ready' }
+                : { projectId },
+            ),
+          },
+        ],
       });
     }
     if (name === 'screenshot') {
+      if (editor.screenshotPath)
+        return rpcResult(message.id, {
+          resultType: 'complete',
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, path: editor.screenshotPath }) },
+          ],
+        });
       return rpcResult(message.id, {
         resultType: 'complete',
         content: [
@@ -259,17 +286,18 @@ async function respondHttp(
   message: JsonRpcMessage,
   response: ServerResponse,
   projectId: string,
+  editor: EditorFixtureOptions = {},
 ): Promise<void> {
   if (message.method === 'subscriptions/listen' && message.id !== undefined) {
     response.writeHead(200, { 'content-type': 'text/event-stream', connection: 'keep-alive' });
     response.write(
-      `event: message\ndata: ${JSON.stringify(handleMessage(message, projectId))}\n\n`,
+      `event: message\ndata: ${JSON.stringify(handleMessage(message, projectId, editor))}\n\n`,
     );
     const timer = setTimeout(() => response.end(), 50);
     timer.unref?.();
     return;
   }
-  const result = handleMessage(message, projectId);
+  const result = handleMessage(message, projectId, editor);
   if (message.id === undefined) {
     response.writeHead(202).end();
     return;

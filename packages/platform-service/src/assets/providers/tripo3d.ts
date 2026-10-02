@@ -52,13 +52,17 @@ export class Tripo3dProvider implements AssetProviderAdapter {
       body = {
         ...options,
         input: sourceProviderTaskId,
-        format: request.outputFormat.toUpperCase(),
+        format: request.outputFormat === 'glb' ? 'GLTF' : request.outputFormat.toUpperCase(),
       };
     } else if (request.kind === 'image-to-3d') {
       if (!imageDataUrl) throw new Error('Image-to-3D requires image data');
       suffix = 'v3/generation/image-to-model';
-      // unverified against live API: current Tripo docs show URL/file-token inputs; the Project image is passed as a data URI.
-      body = { ...options, input: imageDataUrl };
+      const input = await uploadImage(context, imageDataUrl);
+      body = {
+        ...options,
+        input,
+        model: typeof options.model === 'string' ? options.model : 'v3.1-20260211',
+      };
     } else {
       // unverified against live API: current v3 generation routes; older integrations used the /v3/task shape.
       suffix = 'v3/generation/text-to-model';
@@ -109,7 +113,7 @@ export class Tripo3dProvider implements AssetProviderAdapter {
       retryAfter && Number.isFinite(Number(retryAfter))
         ? Math.min(60_000, Math.max(0, Number(retryAfter) * 1000))
         : undefined;
-    const errorValue = task.error ?? task.message;
+    const errorValue = task.error_message ?? task.error ?? task.message;
     const errorText =
       typeof errorValue === 'string'
         ? errorValue
@@ -127,27 +131,13 @@ export class Tripo3dProvider implements AssetProviderAdapter {
   }
 
   async balance(context: ProviderContext): Promise<number | null> {
-    try {
-      const { data } = await assetProviderJson<unknown>(
-        context,
-        assetProviderUrl(context.baseUrl, 'v3/account/balance'),
-      );
-      const record = isRecord(data) ? data : {};
-      const result = isRecord(record.data) ? record.data : record;
-      return numericOrNull(result.balance);
-    } catch (error) {
-      // unverified against live API: fallback for the older /v3/user/balance path.
-      if (isHttpNotFound(error)) {
-        const { data } = await assetProviderJson<unknown>(
-          context,
-          assetProviderUrl(context.baseUrl, 'v3/user/balance'),
-        );
-        const record = isRecord(data) ? data : {};
-        const result = isRecord(record.data) ? record.data : record;
-        return numericOrNull(result.balance);
-      }
-      throw error;
-    }
+    const { data } = await assetProviderJson<unknown>(
+      context,
+      assetProviderUrl(context.baseUrl, 'v3/account/balance'),
+    );
+    const record = isRecord(data) ? data : {};
+    const result = isRecord(record.data) ? record.data : record;
+    return numericOrNull(result.balance);
   }
 
   async test(context: ProviderContext): Promise<number | null> {
@@ -197,12 +187,31 @@ function numericOrNull(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function isHttpNotFound(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'data' in error &&
-    isRecord(error.data) &&
-    error.data.status === 404
+async function uploadImage(context: ProviderContext, dataUrl: string): Promise<string> {
+  const match = /^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+  if (!match) throw new Error('Tripo image upload requires a PNG or JPEG reference image');
+  const bytes = Buffer.from(match[2]!, 'base64');
+  if (bytes.length === 0 || bytes.length > 20 * 1024 * 1024) {
+    throw new Error('Tripo reference images must be between 1 byte and 20 MB');
+  }
+  const form = new FormData();
+  form.append(
+    'file',
+    new Blob([bytes], { type: match[1] }),
+    match[1] === 'image/png' ? 'reference.png' : 'reference.jpg',
   );
+  const { data } = await assetProviderJson<unknown>(
+    context,
+    assetProviderUrl(context.baseUrl, 'v3/files'),
+    {
+      method: 'POST',
+      body: form,
+    },
+  );
+  const record = isRecord(data) ? data : {};
+  const result = isRecord(record.data) ? record.data : record;
+  if (typeof result.file_token !== 'string' || !result.file_token) {
+    throw new Error('Tripo upload response did not include a file token');
+  }
+  return result.file_token;
 }

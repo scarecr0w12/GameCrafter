@@ -1,0 +1,1 @@
+{"name":"Acceptance.EditMode","references":["Acceptance.Runtime"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}

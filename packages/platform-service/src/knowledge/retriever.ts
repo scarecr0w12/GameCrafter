@@ -12,6 +12,7 @@ export interface KnowledgeRetrieverOptions {
   embeddingProfile(projectId: string): EmbeddingProfile | null;
   vectorStore(projectId: string): VectorStore;
   embed(modelId: string, inputs: string[]): Promise<{ vectors: number[][] }>;
+  taskContext?(projectId: string, taskId: string): { goal: string; resources: string[] };
 }
 
 interface RankedCandidate {
@@ -26,6 +27,9 @@ export class KnowledgeRetriever {
   constructor(private readonly options: KnowledgeRetrieverOptions) {}
 
   async search(request: SearchRequest): Promise<KnowledgeSearchResult> {
+    const task = request.taskId
+      ? this.options.taskContext?.(request.projectId, request.taskId)
+      : undefined;
     const mode = request.mode ?? 'hybrid';
     const limit = request.limit ?? 10;
     const filter: KnowledgeSearchFilter = {
@@ -101,7 +105,39 @@ export class KnowledgeRetriever {
 
     if (mode === 'semantic' && degraded) lexical = lexicalCandidates;
     const ranked = this.combine(lexical, semantic, request.query, store, mode);
+    if (task) {
+      const terms = [...new Set(task.goal.toLocaleLowerCase().match(/[\p{L}\p{N}_-]{3,}/gu) ?? [])];
+      for (const entry of ranked) {
+        const text =
+          `${entry.candidate.recordTitle ?? ''} ${entry.candidate.chunk.text}`.toLocaleLowerCase();
+        const overlap = terms.filter((term) => text.includes(term)).length;
+        entry.score *= 1 + (terms.length ? (0.3 * overlap) / terms.length : 0);
+        const chunk = entry.candidate.chunk;
+        if (
+          task.resources.includes(`file:${chunk.path}`) ||
+          (chunk.recordId && task.resources.includes(`canon:${chunk.recordId}`))
+        )
+          entry.score *= 2;
+      }
+      ranked.sort(
+        (left, right) =>
+          right.score - left.score ||
+          right.recency - left.recency ||
+          left.candidate.chunk.path.localeCompare(right.candidate.chunk.path) ||
+          left.candidate.chunk.startLine - right.candidate.chunk.startLine,
+      );
+    }
+    let remainingTokens = request.maxTokens ?? Infinity;
     const hits: SearchHit[] = ranked
+      .filter(({ candidate }) => {
+        const cost =
+          Math.max(candidate.chunk.tokensEstimate, Math.ceil(candidate.chunk.text.length / 4), 1) +
+          Math.ceil((candidate.chunk.path.length + candidate.chunk.revision.length) / 4) +
+          16;
+        if (cost > remainingTokens) return false;
+        remainingTokens -= cost;
+        return true;
+      })
       .slice(0, limit)
       .map(({ candidate, lexicalRank, semanticRank, score }) => {
         const chunk = candidate.chunk;

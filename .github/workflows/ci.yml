@@ -25,12 +25,10 @@ jobs:
         run: npm ci
       - if: runner.os == 'Windows'
         run: npm ci --foreground-scripts
+      - run: npx turbo run build typecheck lint test --concurrency=1
+      - run: npm run format:check
       - if: runner.os == 'Linux'
-        run: npx turbo run build typecheck lint test --concurrency=1
-      - if: runner.os == 'Windows'
-        run: npx turbo run build typecheck lint --concurrency=1
-      - if: runner.os == 'Windows'
-        run: npm test -w @gamecrafter/service-client
+        run: bash scripts/check-links.sh
 
   theia-build:
     runs-on: ubuntu-latest
@@ -46,3 +44,25 @@ jobs:
       - run: npm run download:plugins
       - run: npm run build -w @gamecrafter/control-room-browser
       # Electron rebuild is left to the desktop release workflow.
+      - name: Live browser UI smoke
+        shell: bash
+        env:
+          GAMECRAFTER_PROFILE_DIR: ${{ runner.temp }}/gamecrafter-ui-profile
+          THEIA_CONFIG_DIR: ${{ runner.temp }}/gamecrafter-ui-config
+        run: |
+          npm run start -w @gamecrafter/control-room-browser > "$RUNNER_TEMP/gamecrafter-ui.log" 2>&1 &
+          gamecrafter_ui_pid=$!
+          trap 'kill "$gamecrafter_ui_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          npm run test:ui
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-ui-evidence
+          path: .turbo/live-browser/
+          if-no-files-found: warn

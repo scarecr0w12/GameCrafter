@@ -39,7 +39,7 @@ describe('MCP connection manager integration', () => {
     temporaryDirectories.push(root);
     const projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await startService(paths);
     client = await connectService(service.socketPath, paths);
 
@@ -201,7 +201,7 @@ describe('MCP connection manager integration', () => {
     temporaryDirectories.push(root);
     const projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await startService(paths);
     client = await connectService(service.socketPath, paths);
     const project = await client.call('project/create', {

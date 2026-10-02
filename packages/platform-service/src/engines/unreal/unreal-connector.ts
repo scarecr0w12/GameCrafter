@@ -8,6 +8,7 @@ import {
   type EngineOperationCapability,
 } from '@gamecrafter/contracts';
 import { isExecutable, readUtf8 } from '../utils';
+import { readTestReport } from '../test-report';
 import type {
   EngineCapabilityContext,
   EngineConnector,
@@ -140,7 +141,7 @@ export class UnrealConnector implements EngineConnector {
         command,
         sideEffects,
         'Unreal commandlet or Automation Tool operation.',
-        reason,
+        available ? null : reason,
       );
     return [
       cap(
@@ -199,7 +200,7 @@ export class UnrealConnector implements EngineConnector {
         'test',
         project && commandlet,
         'cli',
-        'UnrealEditor-Cmd <uproject> -run=Automation -ExecCmds=Automation RunTests',
+        'UnrealEditor-Cmd <uproject> -ExecCmds=Automation RunTests -TestExit="Automation Test Queue Empty" -ReportExportPath=<run>',
         'workspace-write',
         project ? 'UnrealEditor-Cmd is not installed.' : 'No Unreal .uproject identity was found.',
       ),
@@ -289,8 +290,21 @@ export class UnrealConnector implements EngineConnector {
           : 'DataValidation';
       args = [fullProjectFile, `-run=${commandlet}`];
     } else if (operation === 'test') {
-      const filter = typeof params.filter === 'string' ? params.filter : '*';
-      args = [fullProjectFile, '-run=Automation', `-ExecCmds=Automation RunTests ${filter}; Quit`];
+      const filter =
+        typeof params.filter === 'string' && params.filter.trim() ? params.filter.trim() : '*';
+      // ExecCmds is an engine console command, so reject command separators in a test filter.
+      if (/[;\r\n"\0]/.test(filter))
+        return unavailable('Unreal test filters must contain no command separators.');
+      args = [
+        fullProjectFile,
+        `-ExecCmds=Automation RunTests ${filter}`,
+        '-TestExit=Automation Test Queue Empty',
+        `-ReportExportPath=${context.runDirectory}`,
+        '-unattended',
+        '-nullrhi',
+        '-nop4',
+        '-nosplash',
+      ];
     } else if (operation === 'run') {
       args = [fullProjectFile, '-game', '-nullrhi', '-unattended', '-nop4', '-ExecCmds=Quit'];
     } else {
@@ -298,8 +312,19 @@ export class UnrealConnector implements EngineConnector {
         `Unreal does not support the ${operation} operation through this connector.`,
       );
     }
+    const engineArtifacts: EngineOperationOutcome['artifacts'] = [];
+    if (context.installation.kind !== 'uat') {
+      engineArtifacts.push(context.writeArtifact('log', 'editor.log', ''));
+      args.push(
+        `-abslog=${path.join(context.runDirectory, 'editor.log')}`,
+        '-stdout',
+        '-FullStdOutLogOutput',
+      );
+      if (!args.includes('-unattended')) args.push('-unattended');
+      if (!args.includes('-nop4')) args.push('-nop4');
+    }
     const result = await context.runProcess(context.installation.executable, args);
-    return {
+    const outcome: EngineOperationOutcome = {
       status:
         result.exitCode === 0 && !result.timedOut && !result.cancelled ? 'succeeded' : 'failed',
       exitCode: result.exitCode,
@@ -316,8 +341,21 @@ export class UnrealConnector implements EngineConnector {
           detail: `Exit code ${result.exitCode}; duration ${result.durationMs}ms.`,
         },
       ],
-      artifacts: result.artifacts,
+      artifacts: [...result.artifacts, ...engineArtifacts],
     };
+    if (operation === 'test') {
+      const reportPath = path.join(context.runDirectory, 'index.json');
+      const report = readTestReport(reportPath, 'unreal');
+      if (!report.passed) outcome.status = 'failed';
+      outcome.summary += ` ${report.detail}`;
+      outcome.evidence.push({ kind: 'process', ref: 'index.json', detail: report.detail });
+      if (existsSync(reportPath))
+        outcome.artifacts.push({
+          kind: 'report',
+          path: path.relative(context.projectPath, reportPath).split(path.sep).join('/'),
+        });
+    }
+    return outcome;
   }
 
   private async inspect(

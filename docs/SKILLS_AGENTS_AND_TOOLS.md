@@ -49,6 +49,7 @@ metadata:
 
 | Scope | Location | Notes |
 | --- | --- | --- |
+| Bundled first-party library | Packaged platform-service skill directories | 30 curated game-development skills, enabled by default per Project; source `builtin:gamecrafter`; see [library guide](GAME_DEVELOPMENT_SKILLS.md) |
 | Platform (global install) | `<profile>/skills/<name>/` | Canonical copy; the installed-skill record in the profile database stores source, version/commit, hash, install time |
 | Project enablement | Project SQLite `skill_enablement` table + `project.json` pin | Records enabled state, pinned version, per-Project eligibility overrides |
 | Project-local skills | `<project>/.agents/skills/<name>/` | Authored inside the Project, versioned in the Project Git repo, visible to external agents too |
@@ -77,6 +78,8 @@ Three-tier progressive disclosure, as in the specification:
 Ranking when the eligible set is large (>~40 skills): order by observed success for this work type/engine, then lexical match between task text and description, then recency of use; truncate the catalog and expose a `search_skills(query)` broker tool so agents can discover more mid-task. This satisfies the confirmed requirement that agents can discover and load additional eligible skills during an active task.
 
 Context management: activated skill content is flagged protected from compaction; a second activation of the same skill in the same task returns a short "already loaded" notice instead of the body. Users can force-activate a skill with `/skill-name` in chat.
+
+Selected implementation default: first-party bundled skills use the existing platform scope with source `builtin:gamecrafter`. Enabled installed/plugin copies override bundled copies; trusted Project-local copies override both, while compatibility copies have lower precedence. Project enablement and pins apply by name. The Control Room labels bundled copies and offers a paged guide/reference reader. The broker and authenticated RPC expose `skills/read-resource` for eligible, inventoried UTF-8 resources (including `SKILL.md`), with file/response/line bounds and containment checks. Reading resource scripts grants no execution authority. See [bundled library coverage and evidence](GAME_DEVELOPMENT_SKILLS.md).
 
 ### 2.5 Skill evaluation signal (feeds M06)
 
@@ -155,10 +158,12 @@ Each engine connector exposes two layers behind one capability report:
 
 | Layer | Unity | Unreal | Godot |
 | --- | --- | --- | --- |
-| Headless/CLI | `-batchmode -executeMethod`, `unity` CLI build/run/test | `UnrealEditor-Cmd -run=<commandlet>`, `RunUAT BuildCookRun` | `godot --headless --script/--check-only/--import/--export-*` |
+| Headless/CLI | `-batchmode -executeMethod`, `unity` CLI build/run/test | `UnrealEditor-Cmd -run=<commandlet>` for commandlets, editor Automation for tests, `RunUAT BuildCookRun` | `godot --headless --script/--check-only/--import/--export-*` |
 | Live editor | Unity CLI `unity mcp` / Pipeline `[CliCommand]` (first-party) or community MCP servers | Epic's Editor MCP plugin (5.8, verify status) or community bridges via Python remote execution | Editor-addon MCP servers; process launch via Node MCP servers |
 
 The connector reports `project-file`, `headless-process`, and `live-editor` readiness separately, with detected engine version, project identity proof (e.g. `ProjectSettings/ProjectVersion.txt`, `.uproject`, `project.godot`), and the MCP revision of any live bridge. Unity's first-party `unity mcp` is the preferred live bridge; community servers are installable as connector plugins with their code-execution tools labeled as above.
+
+Unity tests omit `-quit` and require completed NUnit reports; Unreal tests run editor Automation with queue-completion exit and exported JSON. Test success requires completed non-empty assertions and consistent counts, separately from process exit. Explicitly registered Unity Editors take priority over the CLI; a CLI tool version is not editor-version evidence. Native Windows processes receive an explicit directory/toolchain environment allowlist without unrelated provider credentials. The [live acceptance matrix](LIVE_ENGINE_ACCEPTANCE.md) records the exact Windows versions, access-policy checks and packaged fixtures; [Extended acceptance](EXTENDED_ENGINE_ACCEPTANCE.md) verifies Unity native game-folder identity and bounded file-backed PNG collection through the official MCP server. A two-tool CodeFizz acceptance adapter also proves Unreal identity and returns brokered viewport images. General bridge routing and physical desktop input stay Verify. Explicit draft-07 external tool schemas use an isolated legacy validator; other schemas default to 2020-12, with unresolved external references rejected.
 
 ### 4.4 DCC and generation connectors (implements C05/C06 defaults)
 

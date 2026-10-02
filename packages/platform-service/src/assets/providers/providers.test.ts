@@ -86,6 +86,18 @@ describe('asset providers', () => {
     const requests: Array<{ method: string; url: string; body: Record<string, unknown> }> = [];
     let balanceAttempts = 0;
     const server = createServer(async (request, response) => {
+      if (request.url === '/v3/files') {
+        expect(request.headers.authorization).toBe('Bearer test-tripo-key');
+        expect(request.headers['content-type']).toMatch(/^multipart\/form-data; boundary=/);
+        const chunks: Buffer[] = [];
+        for await (const chunk of request) chunks.push(Buffer.from(chunk));
+        const multipart = Buffer.concat(chunks).toString('utf8');
+        expect(multipart).toContain('name="file"; filename="reference.png"');
+        expect(multipart).toContain('Content-Type: image/png');
+        expect(multipart).toContain('image');
+        sendJson(response, 200, { code: 0, data: { file_token: 'file_reference' } });
+        return;
+      }
       const body = await readBody(request);
       expect(request.headers.authorization).toBe('Bearer test-tripo-key');
       requests.push({ method: request.method ?? '', url: request.url ?? '', body });
@@ -156,18 +168,43 @@ describe('asset providers', () => {
       expect(converted.providerTaskId).toBe(`tripo-${requests.length}`);
       const image = await provider.submit(
         context,
-        { kind: 'image-to-3d', imagePath: 'game/reference.webp', outputFormat: 'glb' },
-        'data:image/webp;base64,aW1hZ2U=',
+        { kind: 'image-to-3d', imagePath: 'game/reference.png', outputFormat: 'glb' },
+        'data:image/png;base64,aW1hZ2U=',
       );
       expect(requests[5]).toMatchObject({
         url: '/v3/generation/image-to-model',
-        body: { input: 'data:image/webp;base64,aW1hZ2U=' },
+        body: { input: 'file_reference', model: 'v3.1-20260211' },
       });
       expect(image.providerTaskId).toBe(`tripo-${requests.length}`);
       expect(provider.capabilities().supportsBalance).toBe(true);
     } finally {
       await close(server);
     }
+  });
+
+  it('rejects unsupported images before upload and preserves documented task errors', async () => {
+    const context: ProviderContext = {
+      baseUrl: 'https://provider.example.test',
+      apiKey: 'short-secret',
+      timeoutMs: 2000,
+      fetch: async () =>
+        Response.json({
+          code: 0,
+          data: { status: 'failed', error_message: 'Invalid Bearer short-secret', output: {} },
+        }),
+    };
+    const provider = new Tripo3dProvider();
+    await expect(
+      provider.submit(
+        context,
+        { kind: 'image-to-3d', outputFormat: 'glb' },
+        'data:image/webp;base64,aW1hZ2U=',
+      ),
+    ).rejects.toThrow('PNG or JPEG');
+    expect(await provider.poll(context, 'task_failed')).toMatchObject({
+      status: 'failed',
+      error: 'Invalid Bearer [REDACTED]',
+    });
   });
 
   it('redacts API keys from provider HTTP errors', async () => {

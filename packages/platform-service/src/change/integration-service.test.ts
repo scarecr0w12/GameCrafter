@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+﻿import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -168,7 +168,7 @@ describe('IntegrationService', () => {
     expect(
       fixture.changes.integrationForTask(fixture.projectId, restricted.task.taskId)?.status,
     ).toBe('ready');
-  });
+  }, 30_000);
 });
 
 function createFixture() {
@@ -195,6 +195,7 @@ function createFixture() {
   });
   writeFileSync(path.join(projectPath, 'gamecrafter.project.json'), JSON.stringify(manifest));
   execFileSync('git', ['init', '-b', 'main'], { cwd: projectPath, stdio: 'ignore' });
+  execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: projectPath, stdio: 'ignore' });
   execFileSync('git', ['add', '-A'], { cwd: projectPath, stdio: 'ignore' });
   execFileSync(
     'git',

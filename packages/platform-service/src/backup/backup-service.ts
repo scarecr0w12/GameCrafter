@@ -1,3 +1,4 @@
+import { reidentifyProjectDatabase } from '../projects/reidentify';
 import { createHash } from 'node:crypto';
 import {
   createReadStream,
@@ -1085,31 +1086,7 @@ function currentMigrationVersion(migrations: Array<{ id: number }>): number {
 function rewriteProjectDatabaseId(databasePath: string, previousId: string, nextId: string): void {
   const database = Database.open(databasePath);
   try {
-    database
-      .prepare('UPDATE project_meta SET value = ? WHERE key = ? AND value = ?')
-      .run(nextId, 'project_id', previousId);
-    const tables = database
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
-      .all<{ name: string }>();
-    for (const { name } of tables) {
-      if (name.startsWith('sqlite_') || name.includes(' ')) continue;
-      const columns = database
-        .prepare(`PRAGMA table_info("${name.replaceAll('"', '""')}")`)
-        .all<{ name: string }>();
-      if (columns.some((column) => column.name === 'project_id')) {
-        database
-          .prepare(`UPDATE "${name.replaceAll('"', '""')}" SET project_id = ? WHERE project_id = ?`)
-          .run(nextId, previousId);
-      }
-      for (const column of ['task_json', 'run_json', 'job_json', 'payload']) {
-        if (!columns.some((item) => item.name === column)) continue;
-        database
-          .prepare(
-            `UPDATE "${name.replaceAll('"', '""')}" SET "${column}" = json_set("${column}", '$.projectId', ?) WHERE json_valid("${column}") AND json_type("${column}", '$.projectId') IS NOT NULL`,
-          )
-          .run(nextId);
-      }
-    }
+    reidentifyProjectDatabase(database, previousId, nextId);
   } finally {
     database.close();
   }

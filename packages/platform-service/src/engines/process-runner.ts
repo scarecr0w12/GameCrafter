@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import spawn from 'cross-spawn';
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { EngineRunArtifact } from '@gamecrafter/contracts';
@@ -59,6 +59,29 @@ export async function runEngineProcess(
     if (process.platform === 'win32' && process.env.SystemRoot) {
       childEnv.SystemRoot = process.env.SystemRoot;
     }
+    // Native engine launchers need Windows user/cache and toolchain directories.
+    // Keep an explicit allowlist rather than forwarding provider credentials.
+    if (process.platform === 'win32') {
+      for (const key of [
+        'USERPROFILE',
+        'APPDATA',
+        'LOCALAPPDATA',
+        'ProgramData',
+        'ProgramFiles',
+        'ProgramFiles(x86)',
+        'ProgramW6432',
+        'SystemDrive',
+        'WINDIR',
+        'COMSPEC',
+        'PATHEXT',
+        'NUMBER_OF_PROCESSORS',
+        'PROCESSOR_ARCHITECTURE',
+      ]) {
+        if (process.env[key]) childEnv[key] = process.env[key];
+      }
+      childEnv.TEMP = options.runDirectory;
+      childEnv.TMP = options.runDirectory;
+    }
     let child;
     try {
       child = spawn(options.command, options.args, {
@@ -94,7 +117,7 @@ export async function runEngineProcess(
       finishKill();
     };
     options.signal.addEventListener('abort', onAbort, { once: true });
-    child.stdout.on('data', (chunk: Buffer | string) => {
+    child.stdout!.on('data', (chunk: Buffer | string) => {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       appendFileSync(stdoutPath, buffer);
       if (Buffer.byteLength(stdout) < maxCapturedOutput) {
@@ -103,7 +126,7 @@ export async function runEngineProcess(
           .toString('utf8');
       }
     });
-    child.stderr.on('data', (chunk: Buffer | string) => {
+    child.stderr!.on('data', (chunk: Buffer | string) => {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       appendFileSync(stderrPath, buffer);
       if (Buffer.byteLength(stderr) < maxCapturedOutput) {

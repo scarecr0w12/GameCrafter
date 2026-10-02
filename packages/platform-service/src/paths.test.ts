@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+﻿import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -20,9 +20,9 @@ describe('service paths', () => {
   it('uses the profile run directory when Linux XDG variables are missing', () => {
     const paths = resolvePaths({}, 'linux');
 
-    expect(paths.profileDir).toBe(path.join(homedir(), '.config', 'gamecrafter'));
-    expect(paths.runtimeDir).toBe(path.join(paths.profileDir, 'run'));
-    expect(paths.socketPath).toBe(path.join(paths.profileDir, 'run', 'service.sock'));
+    expect(paths.profileDir).toBe(path.posix.resolve(homedir(), '.config', 'gamecrafter'));
+    expect(paths.runtimeDir).toBe(path.posix.join(paths.profileDir, 'run'));
+    expect(paths.socketPath).toBe(path.posix.join(paths.profileDir, 'run', 'service.sock'));
   });
 
   it('uses a deterministic Windows named pipe', () => {

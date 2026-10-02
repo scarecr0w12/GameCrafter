@@ -4,7 +4,12 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PROJECT_MANIFEST_FILENAME, RpcErrorCode, projectManifest } from '@gamecrafter/contracts';
+import {
+  PROJECT_MANIFEST_FILENAME,
+  RpcErrorCode,
+  projectManifest,
+  uuidv7,
+} from '@gamecrafter/contracts';
 import { connect } from '@gamecrafter/service-client';
 import { Database } from './db/database';
 import { resolvePaths } from './paths';
@@ -24,7 +29,7 @@ afterEach(async () => {
 describe('platform service integration', () => {
   it('checks, downloads, verifies, and dismisses a release through update RPCs', async () => {
     const profileDir = makeTemporaryDirectory('gc-update-profile-');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     const artifact = Buffer.from('verified package bytes');
     const manifest = {
       schemaVersion: 1,
@@ -34,11 +39,11 @@ describe('platform service integration', () => {
       builtAt: '2026-09-30T00:00:00.000Z',
       platforms: [
         {
-          os: 'linux',
+          os: process.platform === 'win32' ? 'windows' : 'linux',
           arch: 'x64',
           asset: 'GameCrafter-0.2.0.AppImage',
           sha256: createHash('sha256').update(artifact).digest('hex'),
-          kind: 'appimage',
+          kind: process.platform === 'win32' ? 'nsis' : 'appimage',
         },
       ],
       compatibility: {
@@ -89,7 +94,7 @@ describe('platform service integration', () => {
     const profileDir = makeTemporaryDirectory('gc-profile-');
     const projectsDirectory = makeTemporaryDirectory('gc-projects-');
     const emptyDirectory = makeTemporaryDirectory('gc-empty-');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     let resolveUnauthenticatedClose: () => void = () => undefined;
     const unauthenticatedClose = new Promise<void>((resolve) => {
       resolveUnauthenticatedClose = resolve;
@@ -233,6 +238,41 @@ describe('platform service integration', () => {
       projectId: project.projectId,
     });
     expect(projectAccess).toMatchObject({ source: 'project', value: 'restricted' });
+    const exported = await client.call('settings/export', { projectId: project.projectId });
+    expect(exported).toMatchObject({ schemaVersion: 1, projectId: project.projectId });
+    expect(exported.settings.find((setting) => setting.key === 'access.mode')).toMatchObject({
+      source: 'project',
+      value: 'restricted',
+    });
+    const preview = await client.call('settings/import', {
+      document: exported,
+      scope: 'project',
+      projectId: project.projectId,
+      dryRun: true,
+    });
+    expect(preview.importedKeys).toContain('access.mode');
+    await client.call('task/create', {
+      projectId: project.projectId,
+      kind: 'noop.echo',
+      title: 'Audit redaction fixture',
+      goal: 'Audit redaction fixture',
+      input: { password: 'audit-short-secret' },
+    });
+    const audit = await client.call('audit/read', { projectId: project.projectId, limit: 1 });
+    expect(audit).toMatchObject({ schemaVersion: 1, projectId: project.projectId, limit: 1 });
+    expect(audit.events).toHaveLength(1);
+    expect(
+      JSON.stringify(await client.call('audit/read', { projectId: project.projectId })),
+    ).not.toContain('audit-short-secret');
+    await expect(client.call('audit/read', { projectId: uuidv7() })).rejects.toThrow();
+    expect(
+      (
+        await client.call('audit/read', {
+          projectId: project.projectId,
+          afterSeq: audit.nextAfterSeq,
+        })
+      ).events.every((event) => event.seq > audit.nextAfterSeq),
+    ).toBe(true);
     expect(await client.call('settings/get', { key: 'access.mode' })).toMatchObject({
       source: 'default',
       value: 'ask-always',
@@ -370,12 +410,30 @@ describe('platform service integration', () => {
     execFileSync('git', ['remote', 'add', 'origin', 'https://example.invalid/source.git'], {
       cwd: project.path,
     });
+    const cloneChat = await client.call('chat/create', {
+      projectId: project.projectId,
+      title: 'Keep in the clone',
+    });
+    const cloneEntry = await client.call('chat/append', {
+      projectId: project.projectId,
+      conversationId: cloneChat.conversationId,
+      role: 'user',
+      content: 'Clone this history',
+    });
     const clone = await client.call('project/clone', {
       projectId: project.projectId,
       name: 'Dungeon Clone',
       parentDirectory: projectsDirectory,
     });
     expect(clone.projectId).not.toBe(project.projectId);
+    expect(
+      (
+        await client.call('chat/messages', {
+          projectId: clone.projectId,
+          conversationId: cloneChat.conversationId,
+        })
+      ).messages,
+    ).toMatchObject([{ projectId: clone.projectId, content: cloneEntry.content }]);
     expect(clone.engine.family).toBe(project.engine.family);
     expect(
       await client.call('settings/get', { key: 'access.mode', projectId: clone.projectId }),
@@ -430,7 +488,7 @@ describe('platform service integration', () => {
   it('persists chat history across platform-service restarts', async () => {
     const profileDir = makeTemporaryDirectory('gc-chat-profile-');
     const projectsDirectory = makeTemporaryDirectory('gc-chat-projects-');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     let client = await connect({
       socketPath: service.socketPath,
@@ -475,7 +533,7 @@ describe('platform service integration', () => {
 
   it('clears session-scoped settings when a client disconnects', async () => {
     const profileDir = makeTemporaryDirectory('gc-session-profile-');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     let resolveClientClose: () => void = () => undefined;
     const clientClosed = new Promise<void>((resolve) => {
       resolveClientClose = resolve;

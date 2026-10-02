@@ -12,5 +12,6 @@
     "test": {
       "dependsOn": ["^build"]
     }
-  }
+  },
+  "globalDependencies": [".agents/skills/**"]
 }

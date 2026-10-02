@@ -35,6 +35,54 @@ afterEach(() => {
 });
 
 describe('SettingsService', () => {
+  it('previews and atomically imports only the chosen scope while retaining other settings', () => {
+    const f = createFixture();
+    f.service.set('access.mode', 'platform', 'restricted');
+    f.service.set('access.mode', 'project', 'full', { projectId: f.projectId });
+    const document = f.service.export({ projectId: f.projectId });
+    f.service.set('access.mode', 'platform', null);
+    expect(f.service.import({ document, scope: 'platform', dryRun: true }).importedKeys).toEqual([
+      'access.mode',
+    ]);
+    expect(f.service.resolve('access.mode').source).toBe('default');
+    f.service.import({ document, scope: 'platform' });
+    expect(f.service.resolve('access.mode').value).toBe('restricted');
+    expect(f.service.resolve('access.mode', { projectId: f.projectId }).value).toBe('full');
+  });
+
+  it('rejects invalid and duplicate imports without applying any earlier valid values', () => {
+    const f = createFixture();
+    f.service.set('access.mode', 'platform', 'restricted');
+    const document = f.service.export();
+    f.service.set('access.mode', 'platform', null);
+    const entry = document.settings.find((item) => item.key === 'window.closeBehavior')!;
+    entry.layers.platform = 'not-valid';
+    expect(() => f.service.import({ document, scope: 'platform' })).toThrow();
+    expect(f.service.resolve('access.mode').source).toBe('default');
+    document.settings.push(document.settings[0]!);
+    expect(() => f.service.import({ document, scope: 'platform' })).toThrow();
+  });
+
+  it('skips unavailable plugin settings and nested redacted values without overwriting storage', () => {
+    const f = createFixture();
+    const document = f.service.export();
+    document.settings.push({
+      key: 'plugin.absent.option',
+      value: 1,
+      source: 'platform',
+      layers: { default: 0, platform: 1 },
+    });
+    const entry = document.settings.find((item) => item.key === 'access.mode')!;
+    entry.layers.platform = '[REDACTED]';
+    const result = f.service.import({ document, scope: 'platform' });
+    expect(result.skipped).toContainEqual({
+      key: 'plugin.absent.option',
+      reason: 'unknown-setting',
+    });
+    expect(result.skipped).toContainEqual({ key: 'access.mode', reason: 'redacted-value' });
+    expect(f.service.resolve('access.mode').source).toBe('default');
+  });
+
   it('resolves default, platform, Project, and session layers in precedence order', () => {
     const fixture = createFixture();
     fixture.service.set('access.mode', 'platform', 'restricted');
@@ -100,6 +148,45 @@ describe('SettingsService', () => {
         }),
       RpcErrorCode.UnknownSession,
     );
+  });
+
+  it('exports scoped effective settings with credentials redacted without changing stored values', () => {
+    const fixture = createFixture();
+    fixture.registry.register(
+      'plugin:sample',
+      [],
+      [
+        {
+          key: 'plugin.sample.password',
+          title: 'Password',
+          description: 'Secret.',
+          group: 'plugins',
+          schema: { type: 'string' },
+          default: '',
+          scopes: ['project'],
+          source: 'plugin:sample',
+        },
+      ],
+    );
+    fixture.service.set('plugin.sample.password', 'project', 'short-secret', {
+      projectId: fixture.projectId,
+    });
+    fixture.service.set('access.mode', 'platform', 'restricted');
+    const exported = fixture.service.export({
+      projectId: fixture.projectId,
+      sessionId: fixture.sessionId,
+    });
+    expect(exported).toMatchObject({ schemaVersion: 1, projectId: fixture.projectId });
+    expect(JSON.stringify(exported)).not.toContain('short-secret');
+    expect(
+      exported.settings.find((setting) => setting.key === 'plugin.sample.password'),
+    ).toMatchObject({ value: '[REDACTED]', source: 'project', layers: { project: '[REDACTED]' } });
+    expect(exported.settings.find((setting) => setting.key === 'access.mode')?.value).toBe(
+      'restricted',
+    );
+    expect(
+      fixture.service.resolve('plugin.sample.password', { projectId: fixture.projectId }).value,
+    ).toBe('short-secret');
   });
 
   it('drops contributed values and definitions when a plugin is uninstalled', () => {

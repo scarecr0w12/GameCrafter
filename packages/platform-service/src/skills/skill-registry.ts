@@ -17,6 +17,7 @@ import type { ProjectDatabases } from '../projects/project-databases';
 import type { SettingsService } from '../settings/settings-service';
 import { SkillInstaller } from './skill-installer';
 import { loadSkillDir, stripFrontmatter } from './skill-loader';
+import { BUNDLED_SKILL_NAMES } from './bundled-skill-names';
 
 type SettingsReader = Pick<SettingsService, 'resolve'>;
 
@@ -50,6 +51,7 @@ interface RegistryOptions {
   installer: SkillInstaller;
   settings: SettingsReader;
   homeDir?: string;
+  bundledSkillsDirectory?: string;
   now?: () => Date;
   pluginSkillDirectories?: (projectId: string) => PluginSkillDirectory[];
 }
@@ -78,11 +80,13 @@ export class SkillRegistry {
   }
 
   listPlatform(): ProjectSkillEntry[] {
-    return this.options.installer.listInstalledRecords().map((record) => ({
-      ...record,
-      enablement: null,
-      shadowedBy: null,
-    }));
+    return [...this.options.installer.listInstalledRecords(), ...this.bundledRecords()].map(
+      (record) => ({
+        ...record,
+        enablement: null,
+        shadowedBy: null,
+      }),
+    );
   }
 
   listForProject(projectId: string): ProjectSkillEntry[] {
@@ -94,6 +98,14 @@ export class SkillRegistry {
     const platformSkills = this.options.installer.listInstalledRecords().map((record) => ({
       ...record,
       enablement: enablements.get(record.name) ?? emptyEnablement(record.name),
+      shadowedBy: null as string | null,
+    }));
+    const bundledSkills = this.bundledRecords().map((record) => ({
+      ...record,
+      enablement: enablements.get(record.name) ?? {
+        ...emptyEnablement(record.name),
+        enabled: true,
+      },
       shadowedBy: null as string | null,
     }));
     const pluginSkills = (this.options.pluginSkillDirectories?.(projectId) ?? []).flatMap(
@@ -146,6 +158,7 @@ export class SkillRegistry {
       ...projectSkills,
       ...platformSkills,
       ...pluginSkills,
+      ...bundledSkills,
       ...compatibilitySkills,
     ];
     this.applyShadowing(projectId, entries);
@@ -158,9 +171,10 @@ export class SkillRegistry {
   }
 
   enable(projectId: string, input: SkillEnableInput): SkillEnablement {
-    const record = this.options.installer
-      .listInstalledRecords()
-      .find((skill) => skill.name === input.name);
+    const record = [
+      ...this.options.installer.listInstalledRecords(),
+      ...this.bundledRecords(),
+    ].find((skill) => skill.name === input.name);
     if (!record) {
       throw new RpcError(
         `Installed platform skill not found: ${input.name}`,
@@ -289,6 +303,9 @@ export class SkillRegistry {
       throw new RpcError(`Project not found: ${projectId}`, RpcErrorCode.ProjectNotFound);
     const roots = [
       this.options.installer.skillsDirectory,
+      ...(this.options.bundledSkillsDirectory
+        ? BUNDLED_SKILL_NAMES.map((name) => path.join(this.options.bundledSkillsDirectory!, name))
+        : []),
       ...(this.options.pluginSkillDirectories?.(projectId) ?? []).map((plugin) => plugin.directory),
     ];
     if (
@@ -331,6 +348,14 @@ export class SkillRegistry {
       );
     }
     return entry;
+  }
+
+  private bundledRecords(): SkillRecord[] {
+    const directory = this.options.bundledSkillsDirectory;
+    if (!directory) return [];
+    return BUNDLED_SKILL_NAMES.map((name) =>
+      loadSkillDir(path.join(directory, name), 'platform', 'builtin:gamecrafter'),
+    );
   }
 
   private loadEnablements(database: Database): Map<string, SkillEnablement> {
@@ -424,8 +449,9 @@ function parseList(value: string | null | undefined): string[] | null {
 }
 
 function scopeRank(entry: ProjectSkillEntry): number {
-  if (entry.scope === 'project') return 3;
-  if (entry.scope === 'platform') return entry.enablement?.enabled ? 2 : 0;
+  if (entry.scope === 'project') return 4;
+  if (entry.source === 'builtin:gamecrafter') return 2;
+  if (entry.scope === 'platform') return entry.enablement?.enabled ? 3 : 0;
   return 1;
 }
 
@@ -442,4 +468,17 @@ function escapeAttribute(value: string): string {
     if (character === '>') return '&gt;';
     return '&quot;';
   });
+}
+
+/** Use packaged assets in production and the authored library in source-based tests. */
+export function findBundledSkillsDirectory(): string {
+  const candidates = [__dirname, path.resolve(__dirname, '../../../../.agents/skills')];
+  const directory = candidates.find((candidate) =>
+    existsSync(path.join(candidate, 'game-development', 'SKILL.md')),
+  );
+  if (!directory)
+    throw new Error(
+      'The bundled GameCrafter skill library is missing. Rebuild the platform service.',
+    );
+  return directory;
 }

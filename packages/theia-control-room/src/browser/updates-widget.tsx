@@ -33,7 +33,7 @@ export class UpdatesWidget extends ReactWidget {
   protected render(): React.ReactNode {
     const state = this.state;
     return (
-      <main className="gamecrafter-updates">
+      <main className="gamecrafter-updates gamecrafter-surface">
         <header className="gamecrafter-updates-header">
           <div>
             <h2>Updates</h2>

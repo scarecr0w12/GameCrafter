@@ -190,7 +190,7 @@ describe('model registry and adaptive routing integration', () => {
     const profileDirectory = path.join(root, 'profile');
     projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory });
     service = await startService(paths);
     client = await connectService(service.socketPath, paths);
     const project = await client.call('project/create', {
@@ -366,7 +366,7 @@ describe('model registry and adaptive routing integration', () => {
     const profileDirectory = path.join(root, 'profile');
     projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory });
     service = await startService(paths);
     client = await connectService(service.socketPath, paths);
     const project = await client.call('project/create', {

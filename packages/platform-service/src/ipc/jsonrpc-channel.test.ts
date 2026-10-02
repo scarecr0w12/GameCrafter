@@ -52,6 +52,20 @@ describe('generic JSON-RPC channel', () => {
     await channel.close();
   });
 
+  it('contains synchronous notification handler failures and keeps serving requests', async () => {
+    const transport = new FakeTransport();
+    const channel = new JsonRpcChannel(transport, 100);
+    await channel.start();
+    channel.onNotification('worker/log', () => {
+      throw new Error('Bad subscriber');
+    });
+    expect(() =>
+      transport.onMessage?.({ jsonrpc: '2.0', method: 'worker/log', params: {} }),
+    ).not.toThrow();
+    expect(await channel.request('echo', { afterFailure: true })).toEqual({ afterFailure: true });
+    await channel.close();
+  });
+
   it('times out pending requests and rejects requests after close', async () => {
     const channel = new JsonRpcChannel(new FakeTransport(), 5);
     await channel.start();

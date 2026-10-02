@@ -1,9 +1,12 @@
 import type {
   EffectiveSetting,
+  SettingsExport,
+  SettingsImportParams,
+  SettingsImportResult,
   RpcNotificationParams,
   SettingsScope,
 } from '@gamecrafter/contracts';
-import { RpcError as ServiceRpcError, RpcErrorCode } from '@gamecrafter/contracts';
+import { redact, RpcError as ServiceRpcError, RpcErrorCode } from '@gamecrafter/contracts';
 import type { Database } from '../db/database';
 import { ProjectDatabases } from '../projects/project-databases';
 import { SettingsRegistry } from './registry';
@@ -34,6 +37,87 @@ export class SettingsService {
     return this.registry
       .describe()
       .definitions.map((definition) => this.resolve(definition.key, context));
+  }
+
+  export(context: SettingsContext = {}): SettingsExport {
+    const scrub = (key: string, value: unknown): unknown => redact({ [key]: value })[key];
+    return {
+      schemaVersion: 1,
+      exportedAt: this.now().toISOString(),
+      projectId: context.projectId ?? null,
+      settings: this.getAll(context).map((setting) => ({
+        ...setting,
+        value: scrub(setting.key, setting.value),
+        layers: Object.fromEntries(
+          Object.entries(setting.layers).map(([scope, value]) => [
+            scope,
+            scrub(setting.key, value),
+          ]),
+        ) as EffectiveSetting['layers'],
+      })),
+    };
+  }
+
+  import(input: SettingsImportParams): SettingsImportResult {
+    if (input.scope === 'project' && !input.projectId)
+      throw new ServiceRpcError(
+        'projectId is required for Project import',
+        RpcErrorCode.InvalidParams,
+      );
+    const database =
+      input.scope === 'project'
+        ? this.projectDatabases.get(input.projectId!)
+        : this.profileDatabase;
+    const table = input.scope === 'project' ? 'settings_overrides' : 'settings_values';
+    const result: SettingsImportResult = {
+      schemaVersion: 1,
+      dryRun: input.dryRun ?? false,
+      importedKeys: [],
+      skipped: [],
+    };
+    const changes: Array<{ key: string; value: unknown }> = [];
+    const seen = new Set<string>();
+    for (const setting of input.document.settings) {
+      if (seen.has(setting.key))
+        throw new ServiceRpcError(`Duplicate setting: ${setting.key}`, RpcErrorCode.InvalidParams);
+      seen.add(setting.key);
+      const definition = this.registry.get(setting.key);
+      let reason: SettingsImportResult['skipped'][number]['reason'] | undefined;
+      if (!definition) reason = 'unknown-setting';
+      else if (!Object.prototype.hasOwnProperty.call(setting.layers, input.scope))
+        reason = 'no-override';
+      else if (containsRedacted(setting.layers[input.scope])) reason = 'redacted-value';
+      if (reason) {
+        result.skipped.push({ key: setting.key, reason });
+        continue;
+      }
+      if (input.scope === 'project' && !definition!.scopes.includes('project'))
+        throw new ServiceRpcError(
+          `Setting ${setting.key} cannot be overridden at Project scope`,
+          RpcErrorCode.SettingScopeNotAllowed,
+        );
+      const value = setting.layers[input.scope];
+      if (value === null || this.registry.validateValue(setting.key, value).length)
+        throw new ServiceRpcError(
+          `Invalid imported value for setting ${setting.key}`,
+          RpcErrorCode.InvalidSettingValue,
+        );
+      changes.push({ key: setting.key, value });
+      result.importedKeys.push(setting.key);
+    }
+    if (!result.dryRun) {
+      database.transaction(() => {
+        for (const { key, value } of changes)
+          this.writeOverride(database, table, key, value, this.now().toISOString());
+      });
+      for (const { key } of changes)
+        this.notifyChanged({
+          key,
+          scope: input.scope,
+          ...(input.scope === 'project' ? { projectId: input.projectId } : {}),
+        });
+    }
+    return result;
   }
 
   resolve(key: string, context: SettingsContext = {}): EffectiveSetting {
@@ -232,4 +316,10 @@ export class SettingsService {
       )
       .run(key, JSON.stringify(value), updatedAt);
   }
+}
+
+function containsRedacted(value: unknown): boolean {
+  if (typeof value === 'string') return value.includes('[REDACTED]');
+  if (Array.isArray(value)) return value.some(containsRedacted);
+  return value !== null && typeof value === 'object' && Object.values(value).some(containsRedacted);
 }

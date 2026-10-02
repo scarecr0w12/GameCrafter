@@ -43,6 +43,35 @@ export function compileJsonSchema2020<T>(schema: AnySchema): {
   assert(value: unknown): T;
 } {
   const validator = new Ajv2020({ allErrors: true, strict: false });
+  return compileExternalSchemaWith<T>(validator, schema);
+}
+
+/** MCP v1 SDK servers can explicitly advertise draft-07; unspecified schemas use 2020-12. */
+export function compileExternalJsonSchema<T>(schema: AnySchema): {
+  check(value: unknown): value is T;
+  assert(value: unknown): T;
+} {
+  const dialect = typeof schema === 'object' ? schema.$schema : undefined;
+  if (
+    dialect === 'http://json-schema.org/draft-07/schema#' ||
+    dialect === 'https://json-schema.org/draft-07/schema#'
+  ) {
+    // A fresh instance keeps independently supplied $id/ref namespaces isolated.
+    return compileExternalSchemaWith<T>(new Ajv({ allErrors: true, strict: false }), {
+      ...(schema as object),
+      $schema: 'http://json-schema.org/draft-07/schema#',
+    });
+  }
+  return compileJsonSchema2020<T>(schema);
+}
+
+function compileExternalSchemaWith<T>(
+  validator: Ajv | Ajv2020,
+  schema: AnySchema,
+): {
+  check(value: unknown): value is T;
+  assert(value: unknown): T;
+} {
   addFormats(validator);
   const validate = validator.compile<T>(schema) as ValidateFunction<T>;
 
@@ -53,7 +82,7 @@ export function compileJsonSchema2020<T>(schema: AnySchema): {
     assert(value: unknown): T {
       if (!validate(value)) {
         throw new ValidationError(
-          'Value does not match JSON Schema 2020-12',
+          'Value does not match external JSON Schema',
           validate.errors ?? [],
         );
       }

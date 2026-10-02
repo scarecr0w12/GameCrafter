@@ -115,7 +115,7 @@ export class DiscussionBoardWidget extends ReactWidget {
   protected render(): React.ReactNode {
     const activeThread = this.threadDetail?.thread;
     return (
-      <div className="gamecrafter-board">
+      <div className="gamecrafter-board gamecrafter-surface">
         <header className="gamecrafter-board-header">
           <h1>Discussion Board</h1>
           <label>

@@ -35,7 +35,7 @@ beforeEach(async () => {
   const profilePath = path.join(root, 'profile');
   projectsDirectory = path.join(root, 'projects');
   mkdirSync(projectsDirectory, { recursive: true });
-  servicePaths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profilePath }, 'linux');
+  servicePaths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profilePath });
   service = await startService(servicePaths);
   client = await connectToService(service.socketPath);
   const project = await client.call('project/create', {
@@ -61,7 +61,7 @@ afterEach(async () => {
 describe('Tool broker integration', () => {
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
-    expect(result.tools).toHaveLength(50);
+    expect(result.tools).toHaveLength(51);
     expect(result.tools.map((tool) => tool.toolId)).toEqual([
       'asset/files',
       'asset/generate',
@@ -110,6 +110,7 @@ describe('Tool broker integration', () => {
       'process/run',
       'project/manifest',
       'skills/activate',
+      'skills/read-resource',
       'skills/search',
       'tasks/await',
       'tasks/delegate',
@@ -195,20 +196,22 @@ describe('Tool broker integration', () => {
     await setSetting('access.mode', 'project', 'restricted');
     const write = await callTool('fs/write-file', { path: 'safe.txt', content: 'safe' });
     expect(write.status).toBe('completed');
-    await expect(callTool('process/run', { command: 'echo', args: ['hi'] })).rejects.toMatchObject({
+    await expect(
+      callTool('process/run', { command: process.execPath, args: ['-e', 'console.log("hi")'] }),
+    ).rejects.toMatchObject({
       code: -32031,
     });
     const denied = await client!.call('tool/calls', { projectId, toolId: 'process/run' });
     expect(denied.calls[0]).toMatchObject({ decision: 'denied', status: 'denied' });
 
     await setSetting('access.restricted.allowedTools', 'project', ['process/*']);
-    const process = await callTool('process/run', {
-      command: 'echo',
-      args: ['hi'],
+    const processCall = await callTool('process/run', {
+      command: process.execPath,
+      args: ['-e', 'console.log("hi")'],
       timeoutMs: 5000,
     });
-    expect(process.status).toBe('completed');
-    expect(process.output).toMatchObject({ exitCode: 0, stdout: 'hi\n' });
+    expect(processCall.status).toBe('completed');
+    expect(processCall.output).toMatchObject({ exitCode: 0, stdout: 'hi\n' });
   }, 60_000);
 
   it('allows no-effect reads and waits for reject/approve decisions', async () => {
@@ -294,7 +297,11 @@ describe('Tool broker integration', () => {
       sessionId: client!.sessionId,
     });
     await expect(
-      callTool('process/run', { command: 'echo', args: ['hi'] }, { accessCeiling: 'restricted' }),
+      callTool(
+        'process/run',
+        { command: process.execPath, args: ['-e', 'console.log("hi")'] },
+        { accessCeiling: 'restricted' },
+      ),
     ).rejects.toMatchObject({ code: -32031 });
     const calls = await client!.call('tool/calls', { projectId, toolId: 'process/run' });
     expect(calls.calls[0]).toMatchObject({ accessMode: 'restricted', decision: 'denied' });

@@ -26,7 +26,7 @@ describe('board decision synchronization', () => {
     directories.push(root);
     const profileDirectory = path.join(root, 'profile');
     const projectsDirectory = path.join(root, 'projects');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -175,7 +175,7 @@ describe('board decision synchronization', () => {
   it('marks a canon path conflict without overwriting the existing record', async () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-board-conflict-'));
     directories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -221,7 +221,7 @@ describe('board decision synchronization', () => {
   it('uses Project approvals for canon writes in Ask-always mode', async () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-board-approval-'));
     directories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -293,7 +293,7 @@ describe('board decision synchronization', () => {
   it('records a failed restricted write and retries successfully after access is granted', async () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-board-sync-retry-'));
     directories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,
@@ -365,7 +365,7 @@ describe('board decision synchronization', () => {
   it('suppresses automatic maintenance when disabled and deduplicates an active manual sync', async () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-board-disabled-'));
     directories.push(root);
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,

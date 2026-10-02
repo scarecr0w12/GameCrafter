@@ -1,0 +1,17 @@
+{
+  "skill_name": "source-research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Investigate whether a narrative runtime supports branching and state.",
+      "expected_output": "Dated source-backed note and proposed adoption/validation path.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

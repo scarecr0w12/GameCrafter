@@ -101,7 +101,7 @@ export class DccWidget extends ReactWidget {
       (entry.config.tags ?? []).includes(`live-bridge:${this.tool}`),
     );
     return (
-      <div className="gamecrafter-dcc">
+      <div className="gamecrafter-dcc gamecrafter-surface">
         <header className="gamecrafter-dcc-header">
           <div>
             <h1>DCC Tools</h1>

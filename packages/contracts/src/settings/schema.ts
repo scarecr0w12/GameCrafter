@@ -67,3 +67,47 @@ export function EffectiveValueSchema<T extends TSchema>(valueSchema: T) {
     { additionalProperties: false },
   );
 }
+
+export const SettingsExportSchema = Type.Object(
+  {
+    schemaVersion: Type.Literal(1),
+    exportedAt: Type.String({ format: 'date-time' }),
+    projectId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),
+    settings: Type.Array(EffectiveSettingSchema),
+  },
+  { additionalProperties: false },
+);
+export type SettingsExport = Static<typeof SettingsExportSchema>;
+
+export const SettingsImportParamsSchema = Type.Object(
+  {
+    document: SettingsExportSchema,
+    scope: Type.Union([Type.Literal('platform'), Type.Literal('project')]),
+    projectId: Type.Optional(Type.String({ format: 'uuid' })),
+    dryRun: Type.Optional(Type.Boolean()),
+  },
+  { additionalProperties: false },
+);
+export type SettingsImportParams = Static<typeof SettingsImportParamsSchema>;
+export const SettingsImportResultSchema = Type.Object(
+  {
+    schemaVersion: Type.Literal(1),
+    dryRun: Type.Boolean(),
+    importedKeys: Type.Array(Type.String()),
+    skipped: Type.Array(
+      Type.Object(
+        {
+          key: Type.String(),
+          reason: Type.Union([
+            Type.Literal('unknown-setting'),
+            Type.Literal('redacted-value'),
+            Type.Literal('no-override'),
+          ]),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type SettingsImportResult = Static<typeof SettingsImportResultSchema>;

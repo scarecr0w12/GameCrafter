@@ -434,7 +434,7 @@ describe('swarm coordination through the RPC harness', () => {
     const profileDirectory = path.join(root, 'profile');
     const projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDirectory });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connectToService(service.socketPath, paths);
     const project = await client.call('project/create', {

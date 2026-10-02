@@ -34,7 +34,7 @@ describe('MCP Docker runtime', () => {
     vi.stubEnv('PATH', `${directory}${path.delimiter}${process.env.PATH ?? ''}`);
     vi.stubEnv('GC_FAKE_DOCKER_LOG', logPath);
     vi.stubEnv('GC_FAKE_DOCKER_IMAGE', 'fixture/mcp');
-    const manager = createManager(directory, 'docker');
+    const manager = createManager(directory, path.join(directory, 'docker'));
     managers.push(manager);
     const fixture = path.resolve(__dirname, '../../lib/mcp/__fixtures__/server-2026-07-28.js');
 
@@ -84,7 +84,7 @@ describe('MCP Docker runtime', () => {
     vi.stubEnv('PATH', `${directory}${path.delimiter}${process.env.PATH ?? ''}`);
     vi.stubEnv('GC_FAKE_DOCKER_LOG', logPath);
     vi.stubEnv('GC_FAKE_DOCKER_IMAGE', 'fixture/mcp');
-    const manager = createManager(directory, 'docker');
+    const manager = createManager(directory, path.join(directory, 'docker'));
     managers.push(manager);
     const fixture = path.resolve(__dirname, '../../lib/mcp/__fixtures__/server-2026-07-28.js');
     const config = manager.add({

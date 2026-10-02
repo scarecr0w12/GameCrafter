@@ -288,7 +288,7 @@ describe('asset service integration', () => {
 async function startService(clientName: string, root?: string): Promise<void> {
   const serviceRoot = root ?? mkdtempSync(path.join(tmpdir(), 'gc-asset-service-'));
   if (!root) temporaryDirectories.push(serviceRoot);
-  paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(serviceRoot, 'profile') }, 'linux');
+  paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(serviceRoot, 'profile') });
   service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
   client = await connect({
     socketPath: service.socketPath,

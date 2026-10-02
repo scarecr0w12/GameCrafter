@@ -112,6 +112,36 @@ export const SkillActivationResultSchema = Type.Object(
 );
 export type SkillActivationResult = Static<typeof SkillActivationResultSchema>;
 
+/** Bounded progressive-disclosure reads; content is data and grants no tool authority. */
+export const SkillResourceReadParamsSchema = Type.Object(
+  {
+    projectId: Type.String({ format: 'uuid' }),
+    name: Type.String({ minLength: 1 }),
+    resource: Type.String({ minLength: 1 }),
+    taskId: Type.Optional(Type.String({ format: 'uuid' })),
+    startLine: Type.Optional(Type.Integer({ minimum: 1 })),
+    maxLines: Type.Optional(Type.Integer({ minimum: 1, maximum: 500 })),
+  },
+  { additionalProperties: false },
+);
+export type SkillResourceReadParams = Static<typeof SkillResourceReadParamsSchema>;
+
+export const SkillResourceReadResultSchema = Type.Object(
+  {
+    schemaVersion: Type.Literal(1),
+    name: Type.String(),
+    resource: Type.String(),
+    hash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
+    content: Type.String(),
+    startLine: Type.Integer({ minimum: 1 }),
+    endLine: Type.Integer({ minimum: 0 }),
+    totalLines: Type.Integer({ minimum: 0 }),
+    truncated: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type SkillResourceReadResult = Static<typeof SkillResourceReadResultSchema>;
+
 export const SkillValidationResultSchema = Type.Object(
   {
     ok: Type.Boolean(),

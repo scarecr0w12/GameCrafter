@@ -58,7 +58,7 @@ export class ModelsWidget extends ReactWidget {
 
   protected render(): React.ReactNode {
     return (
-      <div className="gamecrafter-models">
+      <div className="gamecrafter-models gamecrafter-surface">
         <header className="gamecrafter-models-header">
           <h1>Models &amp; Routing</h1>
           <label>

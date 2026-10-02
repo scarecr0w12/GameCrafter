@@ -34,6 +34,7 @@ export function registerKnowledgeTools(
           includeInactive: { type: 'boolean' },
           mode: { type: 'string', enum: ['hybrid', 'lexical', 'semantic'] },
           limit: { type: 'integer', minimum: 1, maximum: 100 },
+          maxTokens: { type: 'integer', minimum: 0, maximum: 200000 },
         },
         required: ['query'],
         additionalProperties: false,

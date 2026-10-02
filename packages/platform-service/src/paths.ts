@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+﻿import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -18,29 +18,26 @@ export function resolvePaths(
 ): ServicePaths {
   const profileOverride = env.GAMECRAFTER_PROFILE_DIR;
   const windows = platform === 'win32';
+  const paths = windows ? path.win32 : path.posix;
   const profileDir = windows
-    ? path.win32.resolve(
+    ? paths.resolve(
         profileOverride ??
-          path.win32.join(
-            env.APPDATA ?? path.win32.join(homedir(), 'AppData', 'Roaming'),
-            'GameCrafter',
-          ),
+          paths.join(env.APPDATA ?? paths.join(homedir(), 'AppData', 'Roaming'), 'GameCrafter'),
       )
-    : path.resolve(
+    : paths.resolve(
         profileOverride ??
-          path.join(env.XDG_CONFIG_HOME ?? path.join(homedir(), '.config'), 'gamecrafter'),
+          paths.join(env.XDG_CONFIG_HOME ?? paths.join(homedir(), '.config'), 'gamecrafter'),
       );
   const runtimeDir = windows
     ? undefined
     : profileOverride
-      ? path.join(profileDir, 'run')
+      ? paths.join(profileDir, 'run')
       : env.XDG_RUNTIME_DIR
-        ? path.join(env.XDG_RUNTIME_DIR, 'gamecrafter')
-        : path.join(profileDir, 'run');
+        ? paths.join(env.XDG_RUNTIME_DIR, 'gamecrafter')
+        : paths.join(profileDir, 'run');
   const socketPath = windows
     ? `\\\\.\\pipe\\gamecrafter-${createHash('sha256').update(profileDir).digest('hex').slice(0, 16)}`
-    : path.join(runtimeDir!, 'service.sock');
-  const paths = windows ? path.win32 : path;
+    : paths.join(runtimeDir!, 'service.sock');
 
   return {
     profileDir,

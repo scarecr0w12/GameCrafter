@@ -1,12 +1,12 @@
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { promisify } from 'node:util';
+import { execCommand } from '../processes/exec-command';
 import { RpcError, RpcErrorCode, type McpConnectionConfig } from '@gamecrafter/contracts';
 import type { McpTransport } from './types';
 import { StdioTransport } from './transports/stdio';
 import { StreamableHttpTransport } from './transports/streamable-http';
 
-const execFileAsync = promisify(execFile);
+const execFileAsync = execCommand;
 
 type DockerConfig = Extract<McpConnectionConfig, { mode: 'docker' }>['docker'];
 
@@ -63,7 +63,19 @@ export async function createDockerRuntime(options: DockerRuntimeOptions): Promis
     }
     const result = await runDocker(dockerBinary, args, { env, exec });
     containerId = result.stdout.trim().split(/\s+/)[0] || containerName;
-    await waitForTcp('127.0.0.1', options.docker.port, options.connectTimeoutMs);
+    try {
+      await waitForTcp('127.0.0.1', options.docker.port, options.connectTimeoutMs);
+    } catch (error) {
+      // The runtime has not been returned, so the manager cannot clean up this container.
+      try {
+        await runDocker(dockerBinary, ['stop', containerId], { env, exec });
+      } catch (cleanupError) {
+        options.onStderr?.(
+          `Failed to stop Docker container after startup failure: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        );
+      }
+      throw error;
+    }
     const url = `http://127.0.0.1:${options.docker.port}/mcp`;
     transport = new StreamableHttpTransport({
       url,

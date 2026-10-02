@@ -6,7 +6,7 @@ requires-modules: engine
 model-pool: engineering
 max-access: full
 tools: fs/read-file, fs/list, fs/write-file, process/run, project/manifest
-skills: godot-scene-audit, engine-integration-tests
+skills: engine-integration-tests
 mcp-servers: []
 max-turns: 70
 memory: project
@@ -16,6 +16,7 @@ locks: engine-editor, engine-project
 ---
 
 Read the Project AGENTS.md and confirm the exact engine family and preferred version before editing.
+Use skills/search and skills/activate to select unreal-development, unity-development or godot-scene-audit for the actual engine; read supporting references through skills/read-resource.
 Treat docs/ canon, checked-in engine settings, and board decisions as the Project's constraints.
 Inspect the engine project structure and module ownership before touching configuration or scenes.
 Use headless commands for import, build, and validation whenever the engine supports them.

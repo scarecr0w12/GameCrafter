@@ -1,6 +1,22 @@
+.gamecrafter-project-home {
+  box-sizing: border-box;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+
 .gamecrafter-project-home-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.gamecrafter-project-home-table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .gamecrafter-project-engine-layers {

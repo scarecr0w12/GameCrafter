@@ -27,6 +27,7 @@ import type { ProfileStore } from '../profile/profile-store';
 import { projectMigrations } from './migrations';
 import { Database } from '../db/database';
 import { migrate } from '../db/migrator';
+import { reidentifyProjectDatabase } from './reidentify';
 
 const execFileAsync = promisify(execFile);
 
@@ -216,6 +217,18 @@ export class ProjectWorkspace {
     const source = this.get(input.projectId);
     const folderName = input.folderName ?? slug(input.name);
     const projectPath = path.resolve(input.parentDirectory, folderName);
+    const relativeToSource = path.relative(source.path, projectPath);
+    if (
+      relativeToSource === '' ||
+      (!relativeToSource.startsWith(`..${path.sep}`) &&
+        relativeToSource !== '..' &&
+        !path.isAbsolute(relativeToSource))
+    ) {
+      throw new RpcError(
+        'A clone must be outside the source Project folder.',
+        RpcErrorCode.InvalidParams,
+      );
+    }
     const created = !existsSync(projectPath);
     if (!created) {
       const stats = statSync(projectPath);
@@ -230,20 +243,16 @@ export class ProjectWorkspace {
 
     try {
       const sourceDatabasePath = path.join(source.path, '.gamecrafter', 'project.sqlite');
-      if (existsSync(sourceDatabasePath)) {
-        const sourceDatabase = Database.open(sourceDatabasePath);
-        try {
-          sourceDatabase.prepare('PRAGMA wal_checkpoint(FULL)').get();
-        } finally {
-          sourceDatabase.close();
-        }
-      }
 
       cpSync(source.path, projectPath, {
         recursive: true,
         filter: (sourceEntry) => {
           const relative = path.relative(source.path, sourceEntry).split(path.sep).join('/');
           if (
+            relative === '.gamecrafter/worktrees' ||
+            relative.startsWith('.gamecrafter/worktrees/') ||
+            relative === '.git/worktrees' ||
+            relative.startsWith('.git/worktrees/') ||
             relative === '.gamecrafter/cache' ||
             relative.startsWith('.gamecrafter/cache/') ||
             relative === '.gamecrafter/logs' ||
@@ -251,10 +260,20 @@ export class ProjectWorkspace {
           ) {
             return false;
           }
+          if (relative === '.gamecrafter/project.sqlite') return false;
           const name = path.basename(sourceEntry);
           return !['-wal', '-shm', '-journal'].some((suffix) => name.endsWith(suffix));
         },
       });
+
+      if (existsSync(sourceDatabasePath)) {
+        const sourceDatabase = Database.open(sourceDatabasePath);
+        try {
+          sourceDatabase.snapshotTo(path.join(projectPath, '.gamecrafter', 'project.sqlite'));
+        } finally {
+          sourceDatabase.close();
+        }
+      }
 
       const sourceManifest = this.readManifest(source.path);
       const manifest = projectManifest.assert({
@@ -280,6 +299,7 @@ export class ProjectWorkspace {
       const database = Database.open(path.join(projectPath, '.gamecrafter', 'project.sqlite'));
       try {
         migrate(database, projectMigrations);
+        reidentifyProjectDatabase(database, source.projectId, manifest.projectId, this.now);
         database
           .prepare(
             `INSERT INTO project_meta (key, value) VALUES (?, ?)

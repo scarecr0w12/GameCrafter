@@ -25,6 +25,7 @@ import { DCC_OPEN_COMMAND_ID } from './dcc-view-contribution';
 import { KNOWLEDGE_OPEN_COMMAND_ID } from './knowledge-view-contribution';
 import { ASSETS_OPEN_COMMAND_ID } from './assets-view-contribution';
 import { BACKUPS_OPEN_COMMAND_ID } from './backups-view-contribution';
+import { AUDIT_OPEN_COMMAND_ID } from './audit-view-contribution';
 import { CHAT_OPEN_COMMAND_ID } from './chat-view-contribution';
 
 @injectable()
@@ -79,113 +80,37 @@ export class ProjectHomeWidget extends ReactWidget {
 
   protected render(): React.ReactNode {
     return (
-      <div className="gamecrafter-project-home">
-        <header>
-          <h1>GameCrafter</h1>
-          <p role="status">{this.serviceStatus}</p>
-        </header>
-        <div className="gamecrafter-project-home-actions">
+      <div className="gamecrafter-project-home gamecrafter-surface">
+        <header className="gamecrafter-home-header">
+          <div className="gamecrafter-home-brand">
+            <span className="codicon codicon-package" aria-hidden="true" />
+            <div>
+              <h1>GameCrafter</h1>
+              <p className="gamecrafter-home-subtitle">Your game development workspace.</p>
+              <p role="status">{this.serviceStatus}</p>
+            </div>
+          </div>
           <button
-            className="theia-button"
+            className="theia-button gamecrafter-primary-action"
             type="button"
             onClick={() => void this.commandService.executeCommand(CREATE_PROJECT_COMMAND_ID)}
           >
-            Create Project
+            <span className="codicon codicon-add" aria-hidden="true" /> Create Project
           </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(SETTINGS_OPEN_COMMAND_ID)}
-          >
-            Settings
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(MODELS_OPEN_COMMAND_ID)}
-          >
-            Models
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(CHAT_OPEN_COMMAND_ID)}
-          >
-            Chat
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(SKILLS_OPEN_COMMAND_ID)}
-          >
-            Skills &amp; Roles
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(CONNECTIONS_OPEN_COMMAND_ID)}
-          >
-            Connections
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() =>
-              void this.commandService.executeCommand(DISCUSSION_BOARD_OPEN_COMMAND_ID)
-            }
-          >
-            Discussion Board
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(SWARM_OPEN_COMMAND_ID)}
-          >
-            Swarm
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(PLUGINS_OPEN_COMMAND_ID)}
-          >
-            Plugins
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(ENGINE_OPEN_COMMAND_ID)}
-          >
-            Engine
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(DCC_OPEN_COMMAND_ID)}
-          >
-            DCC Tools
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(KNOWLEDGE_OPEN_COMMAND_ID)}
-          >
-            Knowledge
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(ASSETS_OPEN_COMMAND_ID)}
-          >
-            Assets
-          </button>
-          <button
-            className="theia-button"
-            type="button"
-            onClick={() => void this.commandService.executeCommand(BACKUPS_OPEN_COMMAND_ID)}
-          >
-            Backups
-          </button>
-        </div>
+        </header>
+        <nav className="gamecrafter-project-home-actions" aria-label="Workspace tools">
+          {HOME_ACTIONS.map(({ label, command, icon }) => (
+            <button
+              className="theia-button secondary"
+              type="button"
+              key={command}
+              onClick={() => void this.commandService.executeCommand(command)}
+            >
+              <span className={`codicon codicon-${icon}`} aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </nav>
         <section className="gamecrafter-home-guides" aria-label="Getting started">
           <article>
             <span className="gamecrafter-home-guide-kicker">01 · Models</span>
@@ -246,10 +171,13 @@ export class ProjectHomeWidget extends ReactWidget {
             </button>
           </article>
         </section>
+        <h2 className="gamecrafter-home-projects-heading">Projects</h2>
         {this.projects.length === 0 ? (
-          <p className="gamecrafter-project-home-empty">
-            No Projects yet. Create a Project to get started.
-          </p>
+          <div className="gamecrafter-project-home-empty">
+            <span className="codicon codicon-folder-opened" aria-hidden="true" />
+            <h3>No Projects yet</h3>
+            <p>Create a Project to start building your game.</p>
+          </div>
         ) : (
           <table className="gamecrafter-project-home-table">
             <thead>
@@ -366,3 +294,20 @@ export class ProjectHomeWidget extends ReactWidget {
     this.update();
   }
 }
+
+const HOME_ACTIONS = [
+  { label: 'Settings', command: SETTINGS_OPEN_COMMAND_ID, icon: 'settings-gear' },
+  { label: 'Models', command: MODELS_OPEN_COMMAND_ID, icon: 'hubot' },
+  { label: 'Chat', command: CHAT_OPEN_COMMAND_ID, icon: 'comment-discussion' },
+  { label: 'Skills & Roles', command: SKILLS_OPEN_COMMAND_ID, icon: 'organization' },
+  { label: 'Connections', command: CONNECTIONS_OPEN_COMMAND_ID, icon: 'plug' },
+  { label: 'Discussion Board', command: DISCUSSION_BOARD_OPEN_COMMAND_ID, icon: 'comment' },
+  { label: 'Swarm', command: SWARM_OPEN_COMMAND_ID, icon: 'type-hierarchy' },
+  { label: 'Plugins', command: PLUGINS_OPEN_COMMAND_ID, icon: 'extensions' },
+  { label: 'Engine', command: ENGINE_OPEN_COMMAND_ID, icon: 'debug' },
+  { label: 'DCC Tools', command: DCC_OPEN_COMMAND_ID, icon: 'tools' },
+  { label: 'Knowledge', command: KNOWLEDGE_OPEN_COMMAND_ID, icon: 'book' },
+  { label: 'Assets', command: ASSETS_OPEN_COMMAND_ID, icon: 'file-media' },
+  { label: 'Audit & History', command: AUDIT_OPEN_COMMAND_ID, icon: 'history' },
+  { label: 'Backups', command: BACKUPS_OPEN_COMMAND_ID, icon: 'archive' },
+];

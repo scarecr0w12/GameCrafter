@@ -1,7 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const appDir = path.join(__dirname, '..', 'dist', 'win-unpacked', 'resources', 'app');
+const unpackedDir = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(__dirname, '..', 'dist', 'win-unpacked');
+const appDir = path.join(unpackedDir, 'resources', 'app');
 const appPackage = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
 const electronMain = 'lib/backend/electron-main.js';
 if (appPackage.main !== electronMain || !fs.existsSync(path.join(appDir, electronMain))) {

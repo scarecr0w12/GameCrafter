@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -26,6 +26,125 @@ afterEach(async () => {
 });
 
 describe('engine connector integration', () => {
+  it('accepts native game-folder identity and collects a file-backed screenshot only within its Project', async () => {
+    await startService('native-editor-identity');
+    const project = await client!.call('project/create', {
+      name: 'Native editor identity',
+      engine: { family: 'unity' },
+      parentDirectory: path.join(temporaryDirectories[0]!, 'projects'),
+      folderName: 'native-editor',
+    });
+    const game = path.join(project.path, 'game');
+    mkdirSync(path.join(game, 'ProjectSettings'), { recursive: true });
+    writeFileSync(
+      path.join(game, 'ProjectSettings/ProjectVersion.txt'),
+      'm_EditorVersion: 6000.6.0f1\n',
+    );
+    const imagePath = path.join(game, 'capture.png');
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aI4sAAAAASUVORK5CYII=',
+      'base64',
+    );
+    writeFileSync(imagePath, png);
+    const editor = {
+      projectPath: process.platform === 'win32' ? game.toUpperCase() : game,
+      screenshotPath: imagePath,
+    };
+    fixture = await startMcp2026HttpFixture(0, '', editor);
+    const connection = await client!.call('mcp/add', {
+      config: {
+        name: 'native-editor',
+        scope: 'project',
+        projectId: project.projectId,
+        mode: 'endpoint',
+        endpoint: { url: fixture.url, transport: 'streamable-http', headers: {} },
+        tags: ['live-editor'],
+        enabled: false,
+      },
+    });
+    await client!.call('mcp/connect', { connectionId: connection.connectionId });
+    await client!.call('engine/setLiveBridge', {
+      projectId: project.projectId,
+      connectionId: connection.connectionId,
+    });
+    const report = await client!.call('engine/capabilities', {
+      projectId: project.projectId,
+      refresh: true,
+    });
+    expect(report.layers['live-editor'].status).toBe('ready');
+    const capture = await client!.call('engine/run', {
+      projectId: project.projectId,
+      operation: 'screenshot',
+    });
+    expect(capture.status).toBe('succeeded');
+    const screenshot = capture.artifacts.find((artifact) => artifact.kind === 'screenshot');
+    expect(screenshot).toBeDefined();
+    expect(readFileSync(path.join(project.path, screenshot!.path))).toEqual(png);
+    editor.screenshotPath = path.join(temporaryDirectories[0]!, 'outside.png');
+    writeFileSync(editor.screenshotPath, png);
+    const outside = await client!.call('engine/run', {
+      projectId: project.projectId,
+      operation: 'screenshot',
+    });
+    expect(outside.status).toBe('failed');
+    expect(outside.artifacts.some((artifact) => artifact.kind === 'screenshot')).toBe(false);
+    editor.screenshotPath = path.join(game, 'missing.png');
+    expect(
+      (await client!.call('engine/run', { projectId: project.projectId, operation: 'screenshot' }))
+        .status,
+    ).toBe('failed');
+    editor.projectPath = path.join(game, 'another-project');
+    const wrong = await client!.call('engine/capabilities', {
+      projectId: project.projectId,
+      refresh: true,
+    });
+    expect(wrong.layers['live-editor'].status).toBe('unavailable');
+  }, 30_000);
+  it('does not present a Unity CLI tool version as the selected editor version', async () => {
+    await startService('unity-cli-version-evidence');
+    await client!.call('settings/set', {
+      key: 'engine.autoDetectInstallations',
+      scope: 'platform',
+      value: false,
+    });
+    const project = await client!.call('project/create', {
+      name: 'CLI version evidence',
+      engine: { family: 'unity', preferredVersion: '6000.6.0f1' },
+      parentDirectory: path.join(temporaryDirectories[0]!, 'projects'),
+      folderName: 'cli-version',
+    });
+    const settings = path.join(project.path, 'game', 'ProjectSettings');
+    mkdirSync(settings, { recursive: true });
+    writeFileSync(path.join(settings, 'ProjectVersion.txt'), 'm_EditorVersion: 6000.6.0f1\n');
+    // Node stands in for a version-reporting CLI; no engine is launched in this test.
+    const installation = await client!.call('engine/addInstallation', {
+      family: 'unity',
+      executable: process.execPath,
+      kind: 'cli',
+    });
+    const report = await client!.call('engine/capabilities', {
+      projectId: project.projectId,
+      refresh: true,
+    });
+    expect(report.projectIdentity).toMatchObject({ proven: true, projectVersion: '6000.6.0f1' });
+    expect(report.engineVersion).toMatchObject({
+      detected: null,
+      preferred: '6000.6.0f1',
+      matches: null,
+    });
+    await client!.call('engine/removeInstallation', {
+      installationId: installation.installationId,
+    });
+    expect((await client!.call('engine/installations', { family: 'unity' })).installations).toEqual(
+      [],
+    );
+    const removed = await client!.call('engine/capabilities', {
+      projectId: project.projectId,
+      refresh: true,
+    });
+    expect(removed.layers['headless-process'].status).toBe('unavailable');
+  });
+
   it('runs a real Godot capability, script-check, import, and version-mismatch flow', async (context) => {
     const godot = '/usr/local/bin/godot';
     if (!isExecutable(godot)) {
@@ -267,7 +386,7 @@ describe('engine connector integration', () => {
 async function startService(clientName: string): Promise<void> {
   const root = mkdtempSync(path.join(tmpdir(), 'gc-engine-service-'));
   temporaryDirectories.push(root);
-  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
   service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
   client = await connect({
     socketPath: service.socketPath,

@@ -119,7 +119,9 @@ export class JsonRpcChannel {
     }
     if (typeof message.method === 'string') {
       if ('id' in message && (typeof message.id === 'string' || typeof message.id === 'number')) {
-        void this.handlePeerRequest(message.method, message.id, message.params);
+        void this.handlePeerRequest(message.method, message.id, message.params).catch((error) =>
+          this.handleTransportError(asTransportError(error)),
+        );
       } else {
         this.handlePeerNotification(message.method, message.params);
       }
@@ -181,7 +183,11 @@ export class JsonRpcChannel {
 
   private handlePeerNotification(method: string, params: unknown): void {
     for (const handler of this.notificationHandlers.get(method) ?? []) {
-      void Promise.resolve(handler(params)).catch(() => undefined);
+      try {
+        void Promise.resolve(handler(params)).catch(() => undefined);
+      } catch {
+        // Subscribers run synchronously for cache invalidation; one failure must not escape dispatch.
+      }
     }
   }
 

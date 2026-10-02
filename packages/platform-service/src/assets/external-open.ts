@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { execFile, type ExecFileOptions } from 'node:child_process';
+import spawn from 'cross-spawn';
 import { RpcError, RpcErrorCode } from '@gamecrafter/contracts';
 import { requireExistingProjectPath } from './path-utils';
 
@@ -21,11 +21,11 @@ export async function openInAuthoringTool(
     try {
       const options = {
         detached: true,
-        stdio: 'ignore',
+        stdio: 'ignore' as const,
         shell: false,
         windowsHide: true,
-      } as unknown as ExecFileOptions;
-      child = execFile(parsed.executable, args, options, () => undefined);
+      };
+      child = spawn(parsed.executable, args, options);
     } catch {
       resolve({ launched: false, command: displayCommand });
       return;

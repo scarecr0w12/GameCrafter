@@ -1,0 +1,17 @@
+{
+  "skill_name": "security-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review a public WebSocket lobby command handler.",
+      "expected_output": "Validated findings with transport context, code pointers, and focused regression cases.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

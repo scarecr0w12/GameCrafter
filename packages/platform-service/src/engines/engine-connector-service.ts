@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import {
   EngineCapabilityReportSchema,
@@ -143,6 +150,9 @@ export class EngineConnectorService {
         RpcErrorCode.EngineInstallationNotFound,
       );
     }
+    this.options.database
+      .prepare('DELETE FROM engine_installations WHERE installation_id = ?')
+      .run(installationId);
     this.invalidateCapabilityReports();
   }
 
@@ -185,7 +195,9 @@ export class EngineConnectorService {
       .operations(baseContext)
       .map((operation) => this.withLiveBridgeCapability(operation, bridge));
     const preferred = context.manifest.engine.preferredVersion ?? null;
-    const detected = selected?.version ?? null;
+    // The Unity CLI reports its own tool version, not the editor it will launch.
+    const detected =
+      context.family === 'unity' && selected?.kind === 'cli' ? null : (selected?.version ?? null);
     const matches = prefixVersionMatch(detected, preferred);
     const checkedAt = this.now().toISOString();
     const report: EngineCapabilityReport = {
@@ -855,7 +867,9 @@ export class EngineConnectorService {
       const proven =
         identityResult?.projectId === projectId ||
         (identityResult?.projectPath !== undefined &&
-          path.resolve(identityResult.projectPath) === path.resolve(projectPath));
+          [projectPath, path.join(projectPath, 'game')].some((expected) =>
+            sameNativePath(identityResult.projectPath!, expected),
+          ));
       return {
         entry,
         identityProven: proven,
@@ -949,15 +963,21 @@ export class EngineConnectorService {
       },
       { accessCeiling: context.accessMode, agentRole: context.agentRole, signal: context.signal },
     );
-    const reportArtifact = this.writeMcpArtifact(runDirectory, operation, record.output);
+    const reportArtifact = this.writeMcpArtifact(
+      runDirectory,
+      operation,
+      record.output,
+      project.projectPath,
+    );
+    const completed =
+      record.status === 'completed' && (operation !== 'screenshot' || reportArtifact !== null);
     return {
-      status: record.status === 'completed' ? 'succeeded' : 'failed',
-      exitCode: record.status === 'completed' ? 0 : 1,
+      status: completed ? 'succeeded' : 'failed',
+      exitCode: completed ? 0 : 1,
       command: ['MCP', `${namespace}/${tool.toolId.split('/').at(-1)}`],
-      summary:
-        record.status === 'completed'
-          ? `Live editor ${operation} completed.`
-          : `Live editor ${operation} failed.`,
+      summary: completed
+        ? `Live editor ${operation} completed.`
+        : `Live editor ${operation} failed.`,
       evidence: [
         {
           kind: 'mcp',
@@ -973,10 +993,33 @@ export class EngineConnectorService {
     runDirectory: string,
     operation: EngineOperation,
     output: unknown,
+    projectPath: string,
   ): EngineOperationRun['artifacts'][number] | null {
     if (operation !== 'screenshot') return null;
     const image = findImage(output);
-    if (!image) return null;
+    if (!image) {
+      // Official Unity Pipeline returns a PNG file path rather than inline MCP image data.
+      const result = parseMcpObject(output);
+      if (!result || typeof result.path !== 'string' || result.success !== true) return null;
+      try {
+        const source = realpathSync(path.resolve(path.join(projectPath, 'game'), result.path));
+        const relative = path.relative(realpathSync(projectPath), source);
+        if (relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative))
+          return null;
+        const stat = statSync(source);
+        if (!stat.isFile() || stat.size > 8 * 1024 * 1024 || stat.size < 8) return null;
+        const data = readFileSync(source);
+        if (!data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
+          return null;
+        writeFileSync(path.join(runDirectory, 'screenshot.png'), data);
+        return {
+          kind: 'screenshot',
+          path: `.gamecrafter/engine-runs/${path.basename(runDirectory)}/screenshot.png`,
+        };
+      } catch {
+        return null;
+      }
+    }
     const extension =
       image.mimeType === 'image/jpeg' ? 'jpg' : image.mimeType === 'image/webp' ? 'webp' : 'png';
     const runId = path.basename(runDirectory);
@@ -993,10 +1036,26 @@ function isIdentityTool(name: string): boolean {
     'get_project_info',
     'project_info',
     'identity',
+    'editor_status',
   ].includes(name);
 }
 
 function parseIdentityResult(value: unknown): { projectId?: string; projectPath?: string } | null {
+  const result = parseMcpObject(value);
+  if (!result) return null;
+  return {
+    ...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+    ...(typeof result.projectPath === 'string' ? { projectPath: result.projectPath } : {}),
+  };
+}
+
+function sameNativePath(left: string, right: string): boolean {
+  const normalize = (value: string) =>
+    process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+  return normalize(left) === normalize(right);
+}
+
+function parseMcpObject(value: unknown): Record<string, unknown> | null {
   let result = value;
   if (isRecord(result) && Array.isArray(result.content)) {
     const text = result.content.find(
@@ -1011,10 +1070,7 @@ function parseIdentityResult(value: unknown): { projectId?: string; projectPath?
     } else if (isRecord(result.structuredContent)) result = result.structuredContent;
   }
   if (!isRecord(result)) return null;
-  return {
-    ...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
-    ...(typeof result.projectPath === 'string' ? { projectPath: result.projectPath } : {}),
-  };
+  return result;
 }
 
 function findImage(value: unknown): { data: string; mimeType: string } | null {

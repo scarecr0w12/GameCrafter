@@ -23,13 +23,15 @@ afterEach(async () => {
 
 describe('real Blender DCC connector', () => {
   it('discovers Blender, inspects a saved cube scene, exports GLB, and renders PNG through WSL interop', async (context) => {
-    const blender = process.env.GAMECRAFTER_BLENDER ?? '/mnt/d/Blender/blender.exe';
+    const blender =
+      process.env.GAMECRAFTER_BLENDER ??
+      (process.platform === 'win32' ? 'D:/Blender/blender.exe' : '/mnt/d/Blender/blender.exe');
     if (!existsSync(blender)) {
       console.warn(`Skipping real Blender connector test: ${blender} is not installed.`);
       context.skip();
     }
     root = mkdtempSync(path.join(tmpdir(), 'gc-dcc-blender-real-'));
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connect({
       socketPath: service.socketPath,

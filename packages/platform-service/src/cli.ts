@@ -8,6 +8,7 @@ import { acquireLock, isProcessAlive, readLock } from './lock';
 import { log } from './logger';
 import { resolvePaths } from './paths';
 import { PlatformService } from './service';
+import { connect } from '@gamecrafter/service-client';
 
 const packageJson = JSON.parse(
   readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),
@@ -31,7 +32,7 @@ async function main(): Promise<void> {
       showStatus(paths.lockPath);
       break;
     case 'stop':
-      await stopService(paths.lockPath);
+      await stopService(paths);
       break;
     default:
       process.stderr.write('Usage: gamecrafter-service <start [--foreground]|status|stop>\n');
@@ -102,7 +103,8 @@ function showStatus(lockPath: string): void {
   process.exitCode = 3;
 }
 
-async function stopService(lockPath: string): Promise<void> {
+async function stopService(paths: ReturnType<typeof resolvePaths>): Promise<void> {
+  const { lockPath, tokenPath } = paths;
   const lock = readLock(lockPath);
   if (!lock || !isProcessAlive(lock.pid)) {
     process.stdout.write('not running\n');
@@ -110,10 +112,16 @@ async function stopService(lockPath: string): Promise<void> {
     return;
   }
 
+  const client = await connect({
+    socketPath: lock.socketPath,
+    token: readFileSync(tokenPath, 'utf8').trim(),
+    clientName: 'gamecrafter-service CLI',
+    clientVersion: packageJson.version,
+  });
   try {
-    process.kill(lock.pid, 'SIGTERM');
-  } catch (error) {
-    if (!isCode(error, 'ESRCH')) throw error;
+    await client.call('service/stop', { checkpoint: true });
+  } finally {
+    client.close();
   }
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
@@ -136,10 +144,6 @@ function probeSocket(socketPath: string): Promise<boolean> {
     socket.once('connect', () => finish(true));
     socket.once('error', () => finish(false));
   });
-}
-
-function isCode(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 
 void main().catch((error: unknown) => {

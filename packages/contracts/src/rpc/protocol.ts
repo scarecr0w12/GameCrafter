@@ -59,6 +59,9 @@ import {
   DccToolSchema,
 } from '../dcc';
 import {
+  SettingsExportSchema,
+  SettingsImportParamsSchema,
+  SettingsImportResultSchema,
   EffectiveSettingSchema,
   SettingDefinitionSchema,
   SettingGroupSchema,
@@ -98,6 +101,8 @@ import {
   RoleRecordSchema,
   SkillActivationSchema,
   SkillActivationResultSchema,
+  SkillResourceReadParamsSchema,
+  SkillResourceReadResultSchema,
   SkillCatalogEntrySchema,
   SkillEnablementSchema,
   SkillRecordSchema,
@@ -903,6 +908,17 @@ export const RpcMethods = {
       { additionalProperties: false },
     ),
   },
+  'settings/export': {
+    params: Type.Object(
+      {
+        projectId: Type.Optional(Type.String({ format: 'uuid' })),
+        sessionId: Type.Optional(Type.String({ format: 'uuid' })),
+      },
+      { additionalProperties: false },
+    ),
+    result: SettingsExportSchema,
+  },
+  'settings/import': { params: SettingsImportParamsSchema, result: SettingsImportResultSchema },
   'settings/set': {
     params: Type.Object(
       {
@@ -1148,6 +1164,28 @@ export const RpcMethods = {
       { additionalProperties: false },
     ),
     result: ToolCallRecordSchema,
+  },
+  'audit/read': {
+    params: Type.Object(
+      {
+        projectId: Type.String({ format: 'uuid' }),
+        afterSeq: Type.Optional(Type.Integer({ minimum: 0 })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object(
+      {
+        schemaVersion: Type.Literal(1),
+        projectId: Type.String({ format: 'uuid' }),
+        exportedAt: Type.String({ format: 'date-time' }),
+        nextAfterSeq: Type.Integer({ minimum: 0 }),
+        limit: Type.Integer(),
+        calls: Type.Array(ToolCallRecordSchema),
+        events: Type.Array(TaskEventSchema),
+      },
+      { additionalProperties: false },
+    ),
   },
   'tool/calls': {
     params: Type.Object(
@@ -1554,6 +1592,10 @@ export const RpcMethods = {
       { additionalProperties: false },
     ),
     result: SkillActivationResultSchema,
+  },
+  'skills/read-resource': {
+    params: SkillResourceReadParamsSchema,
+    result: SkillResourceReadResultSchema,
   },
   'skills/search': {
     params: Type.Object(

@@ -124,7 +124,7 @@ export class KnowledgeWidget extends ReactWidget {
 
   protected render(): React.ReactNode {
     return (
-      <div className="gamecrafter-knowledge">
+      <div className="gamecrafter-knowledge gamecrafter-surface">
         <header className="gamecrafter-knowledge-header">
           <div>
             <h1>Knowledge</h1>

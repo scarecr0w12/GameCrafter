@@ -106,7 +106,7 @@ export class PluginsCatalogWidget extends ReactWidget {
       (entry) => entry.installed.pluginId === this.selectedPluginId,
     );
     return (
-      <div className="gamecrafter-plugins">
+      <div className="gamecrafter-plugins gamecrafter-surface">
         <header className="gamecrafter-plugins-header">
           <div>
             <h1>Plugins</h1>

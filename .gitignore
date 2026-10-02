@@ -16,3 +16,9 @@ apps/*/gen-esbuild*.mjs
 .kilo/kilo.jsonc
 .kilo/opencode.json
 .kilo/agent-manager.json
+
+# Generated desktop installers and Python bytecode.
+/Windows-Release/
+/Windows-Release-Hosted/
+__pycache__/
+*.py[cod]

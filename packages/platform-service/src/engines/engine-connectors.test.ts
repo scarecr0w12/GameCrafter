@@ -22,6 +22,180 @@ afterEach(() => {
 });
 
 describe('engine connector adapters', () => {
+  it('does not quit Unity tests early or accept a zero exit without test assertions', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-unity-tests-'));
+    roots.push(root);
+    const gamePath = path.join(root, 'game');
+    mkdirSync(path.join(gamePath, 'ProjectSettings'), { recursive: true });
+    writeFileSync(
+      path.join(gamePath, 'ProjectSettings', 'ProjectVersion.txt'),
+      'm_EditorVersion: 6000.6.0f1\n',
+    );
+    const installation: EngineInstallation = {
+      installationId: uuidv7(),
+      family: 'unity',
+      version: '6000.6.0f1',
+      executable: process.execPath,
+      kind: 'editor',
+      source: 'manual',
+      detectedAt: new Date().toISOString(),
+    };
+    const connector = new UnityConnector();
+    const context = executionContext(root, gamePath, installation);
+    const capabilities = connector.operations({
+      projectId: context.projectId,
+      family: context.family,
+      projectPath: root,
+      gamePath,
+      manifest: context.manifest,
+      installation,
+      installations: [installation],
+      identity: await connector.proveIdentity(gamePath),
+    });
+    expect(capabilities.find((entry) => entry.operation === 'test')).toMatchObject({
+      available: true,
+      reason: null,
+    });
+    const commands: string[][] = [];
+    context.runProcess = async (command, args) => {
+      commands.push(args);
+      return {
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        durationMs: 1,
+        timedOut: false,
+        cancelled: false,
+        command: [command, ...args],
+        artifacts: [],
+      };
+    };
+    expect(
+      (await connector.run('test', { testPlatform: 'PlayMode', testFilter: 'Acceptance' }, context))
+        .status,
+    ).toBe('failed');
+    expect(commands[0]).not.toContain('-quit');
+    expect(commands[0]!.filter((argument) => argument === '-testResults')).toHaveLength(1);
+    expect(commands[0]).toContain('-testFilter');
+    expect(commands[0]).toContain('Acceptance');
+    const cli = { ...installation, kind: 'cli' as const, source: 'detected' as const };
+    expect(connector.selectInstallation('test', [cli, installation])).toBe(installation);
+    context.runProcess = async (command, args) => {
+      writeFileSync(
+        path.join(context.runDirectory, 'results.xml'),
+        '<test-run result="Passed" total="1" passed="1" failed="0"><test-case result="Passed" /></test-run>',
+      );
+      return {
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        durationMs: 1,
+        timedOut: false,
+        cancelled: false,
+        command: [command, ...args],
+        artifacts: [],
+      };
+    };
+    expect((await connector.run('test', {}, context)).status).toBe('succeeded');
+    context.installation = cli;
+    expect(
+      (await connector.run('test', { testPlatform: 'PlayMode', testFilter: 'Acceptance' }, context))
+        .status,
+    ).toBe('succeeded');
+    const cliOutcome = await connector.run('build', { method: 'Acceptance.Build' }, context);
+    expect(cliOutcome.command).toContain('--execute-method');
+    expect(cliOutcome.command).toContain('Acceptance.Build');
+    expect(cliOutcome.command).not.toContain('--project-path');
+    const cliTest = await connector.run('test', { testPlatform: 'PlayMode' }, context);
+    expect(cliTest.command).toContain('--mode');
+    expect(cliTest.command).toContain('--output');
+  });
+
+  it('runs Unreal editor automation and rejects empty reports and injected filter commands', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-unreal-tests-'));
+    roots.push(root);
+    const gamePath = path.join(root, 'game');
+    mkdirSync(gamePath);
+    writeFileSync(
+      path.join(gamePath, 'Acceptance.uproject'),
+      JSON.stringify({ EngineAssociation: '5.8' }),
+    );
+    const installation: EngineInstallation = {
+      installationId: uuidv7(),
+      family: 'unreal',
+      version: '5.8.3',
+      executable: process.execPath,
+      kind: 'commandlet',
+      source: 'manual',
+      detectedAt: new Date().toISOString(),
+    };
+    const connector = new UnrealConnector();
+    const context = executionContext(root, gamePath, installation);
+    const capabilities = connector.operations({
+      projectId: context.projectId,
+      family: context.family,
+      projectPath: root,
+      gamePath,
+      manifest: context.manifest,
+      installation,
+      installations: [installation],
+      identity: await connector.proveIdentity(gamePath),
+    });
+    expect(capabilities.find((entry) => entry.operation === 'test')).toMatchObject({
+      available: true,
+      reason: null,
+    });
+    const commands: string[][] = [];
+    context.runProcess = async (command, args) => {
+      commands.push(args);
+      return {
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        durationMs: 1,
+        timedOut: false,
+        cancelled: false,
+        command: [command, ...args],
+        artifacts: [],
+      };
+    };
+    expect((await connector.run('test', { filter: 'Acceptance' }, context)).status).toBe('failed');
+    expect(commands[0]).not.toContain('-run=Automation');
+    expect(commands[0]).toContain('-TestExit=Automation Test Queue Empty');
+    expect(commands[0]).toContain('-unattended');
+    expect(commands[0]).toContain(`-ReportExportPath=${context.runDirectory}`);
+    expect((await connector.run('test', { filter: 'Acceptance;Quit' }, context)).status).toBe(
+      'unavailable',
+    );
+    expect(commands).toHaveLength(1);
+    context.runProcess = async (command, args) => {
+      writeFileSync(
+        path.join(context.runDirectory, 'index.json'),
+        JSON.stringify({
+          succeeded: 1,
+          succeededWithWarnings: 0,
+          failed: 0,
+          notRun: 0,
+          inProcess: 0,
+          tests: [{ state: 'Success' }],
+        }),
+      );
+      return {
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        durationMs: 1,
+        timedOut: false,
+        cancelled: false,
+        command: [command, ...args],
+        artifacts: [],
+      };
+    };
+    const result = await connector.run('test', {}, context);
+    expect(result.status).toBe('succeeded');
+    expect(result.artifacts.some((artifact) => artifact.path.endsWith('/index.json'))).toBe(true);
+  });
+
   it('detects fake Unity CLI and Editor installations and builds Editor batch arguments', async () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-unity-adapter-'));
     roots.push(root);
@@ -29,14 +203,15 @@ describe('engine connector adapters', () => {
     mkdirSync(bin);
     const fixtures = path.resolve(__dirname, '__fixtures__');
     const cli = path.join(bin, 'unity');
-    const editor = path.join(bin, 'Unity');
+    const editor = path.join(bin, 'Editor', process.platform === 'win32' ? 'Unity.exe' : 'Unity');
+    mkdirSync(path.dirname(editor));
     cpSync(path.join(fixtures, 'unity-cli.cjs'), cli);
     cpSync(path.join(fixtures, 'unity-editor.cjs'), editor);
     chmodSync(cli, 0o755);
     chmodSync(editor, 0o755);
 
     const connector = new UnityConnector();
-    const installations = await connector.detectInstallations({ PATH: bin });
+    const installations = await connector.detectInstallations({ PATH: bin, UNITY_PATH: editor });
     const cliInstallation = installations.find((installation) => installation.kind === 'cli');
     const editorInstallation = installations.find((installation) => installation.kind === 'editor');
     expect(cliInstallation?.version).toBe('1.2.3');
@@ -85,8 +260,18 @@ describe('engine connector adapters', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-unreal-adapter-'));
     roots.push(root);
     const engine = path.join(root, 'UE_5.4', 'Engine');
-    const editor = path.join(engine, 'Binaries', 'Linux', 'UnrealEditor-Cmd');
-    const uat = path.join(engine, 'Build', 'BatchFiles', 'RunUAT.sh');
+    const editor = path.join(
+      engine,
+      'Binaries',
+      process.platform === 'win32' ? 'Win64' : 'Linux',
+      process.platform === 'win32' ? 'UnrealEditor-Cmd.exe' : 'UnrealEditor-Cmd',
+    );
+    const uat = path.join(
+      engine,
+      'Build',
+      'BatchFiles',
+      process.platform === 'win32' ? 'RunUAT.bat' : 'RunUAT.sh',
+    );
     mkdirSync(path.dirname(editor), { recursive: true });
     mkdirSync(path.dirname(uat), { recursive: true });
     mkdirSync(path.join(engine, 'Build'), { recursive: true });

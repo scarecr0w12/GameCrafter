@@ -102,7 +102,7 @@ describe('MCP sampling through model routing', () => {
     const profileDir = path.join(root, 'profile');
     const projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     service = await startService(paths);
     client = await connectService(service.socketPath, paths);
     const project = await client.call('project/create', {

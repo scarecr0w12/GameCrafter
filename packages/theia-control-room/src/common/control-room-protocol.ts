@@ -68,6 +68,8 @@ import type {
   SkillCatalogEntry,
   SkillEnablement,
   SkillRecord,
+  SkillResourceReadParams,
+  SkillResourceReadResult,
   ServiceInfo,
   SideEffect,
   SettingDefinition,
@@ -104,12 +106,15 @@ export interface ControlRoomService {
   getDefaultProjectsDirectory(): Promise<string>;
   describeSettings(): Promise<{ groups: SettingGroup[]; definitions: SettingDefinition[] }>;
   getAllSettings(projectId?: string): Promise<EffectiveSetting[]>;
+  importSettings(input: RpcParams<'settings/import'>): Promise<RpcResult<'settings/import'>>;
+  exportSettings(projectId?: string): Promise<RpcResult<'settings/export'>>;
   setSetting(
     key: string,
     scope: SettingsScope,
     value: unknown,
     projectId?: string,
   ): Promise<EffectiveSetting>;
+  readAudit(projectId: string, afterSeq?: number): Promise<RpcResult<'audit/read'>>;
   listTasks(projectId: string): Promise<TaskRecord[]>;
   getTaskTree(projectId: string, rootTaskId: string): Promise<TaskRecord[]>;
   listTaskEvents(params: RpcParams<'task/events'>): Promise<RpcResult<'task/events'>>;
@@ -215,6 +220,7 @@ export interface ControlRoomService {
       meanLatencyMs: number | null;
     }>;
   }>;
+  readSkillResource(input: SkillResourceReadParams): Promise<SkillResourceReadResult>;
   listSkills(projectId?: string): Promise<ProjectSkillEntry[]>;
   installSkills(source: string, name?: string, force?: boolean): Promise<SkillRecord[]>;
   uninstallSkill(name: string): Promise<void>;

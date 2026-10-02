@@ -100,7 +100,7 @@ export class EngineWidget extends ReactWidget {
 
   protected render(): React.ReactNode {
     return (
-      <div className="gamecrafter-engine">
+      <div className="gamecrafter-engine gamecrafter-surface">
         <header className="gamecrafter-engine-header">
           <div>
             <h1>Engine</h1>

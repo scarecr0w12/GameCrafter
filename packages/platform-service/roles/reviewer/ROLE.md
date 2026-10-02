@@ -5,7 +5,7 @@ work-types: review, code-review, design-review
 model-pool: reviewer
 max-access: restricted
 tools: fs/read-file, fs/list, project/manifest, board/read
-skills: code-review, security-review
+skills: game-code-review, security-review
 mcp-servers: []
 max-turns: 45
 memory: none

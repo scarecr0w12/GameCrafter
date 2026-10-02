@@ -19,3 +19,8 @@ AGENTS.md
 scripts/
 .devin/
 skills-lock.json
+# Generated releases and independent agent worktrees are not source for this checkout.
+.kilo/worktrees/
+Windows-Release/
+Windows-Release-Hosted/
+apps/control-room/dist-chat/

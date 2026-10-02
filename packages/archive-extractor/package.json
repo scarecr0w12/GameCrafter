@@ -1,0 +1,23 @@
+{
+  "name": "@gamecrafter/archive-extractor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xhmikosr/decompress": "11.1.4"
+  },
+  "devDependencies": {
+    "tar": "7.5.22"
+  }
+}

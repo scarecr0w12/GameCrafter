@@ -5,6 +5,8 @@ import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
 import {
   RpcError,
+  type RpcParams,
+  type RpcResult,
   type EffectiveSetting,
   type ProjectSummary,
   type SettingDefinition,
@@ -38,6 +40,14 @@ export class GameCrafterSettingsWidget extends ReactWidget {
   private searchQuery = '';
   private readonly scopes = new Map<string, SettingsScope>();
   private errorMessage?: string;
+  private importPreview?: {
+    input: RpcParams<'settings/import'>;
+    result: RpcResult<'settings/import'>;
+  };
+  private importBusy = false;
+  private importNotice?: string;
+  private refreshVersion = 0;
+  private readonly saveVersions = new Map<string, number>();
 
   constructor(
     @inject(ControlRoomService)
@@ -80,7 +90,7 @@ export class GameCrafterSettingsWidget extends ReactWidget {
     const activeDefinitions = activeGroup?.definitions ?? [];
 
     return (
-      <div className="gamecrafter-settings">
+      <div className="gamecrafter-settings gamecrafter-surface">
         <header className="gamecrafter-settings-header">
           <div>
             <h1>Settings</h1>
@@ -88,13 +98,32 @@ export class GameCrafterSettingsWidget extends ReactWidget {
           </div>
         </header>
         <div className="gamecrafter-settings-toolbar">
+          <label className="gamecrafter-settings-import-button">
+            Import settings
+            <input
+              aria-label="Import settings file"
+              type="file"
+              accept=".json,application/json"
+              disabled={this.importBusy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = '';
+                if (file) void this.previewImport(file);
+              }}
+            />
+          </label>
+          <button type="button" onClick={() => void this.exportSettings()}>
+            Export redacted settings
+          </button>
           <label className="gamecrafter-settings-project">
             <span>Project overrides</span>
             <select
               aria-label="Project"
+              disabled={this.importBusy}
               value={this.selectedProjectId ?? ''}
               onChange={(event) => {
                 this.selectedProjectId = event.currentTarget.value || undefined;
+                this.importPreview = undefined;
                 void this.refresh();
               }}
             >
@@ -126,6 +155,53 @@ export class GameCrafterSettingsWidget extends ReactWidget {
           </label>
         </div>
         {this.errorMessage ? <p role="alert">{this.errorMessage}</p> : undefined}
+        {this.importPreview && (
+          <section
+            className="gamecrafter-settings-import-preview"
+            aria-label="Settings import preview"
+          >
+            <h2>
+              Import {this.importPreview.result.importedKeys.length}{' '}
+              {this.importPreview.input.scope} overrides
+            </h2>
+            <p>
+              Existing overrides for these setting IDs will be replaced. Other settings and redacted
+              credentials are preserved.
+            </p>
+            <ul>
+              {this.importPreview.result.importedKeys.map((key) => (
+                <li key={key}>
+                  <code>{key}</code>
+                </li>
+              ))}
+            </ul>
+            <p>
+              {
+                this.importPreview.result.skipped.filter((item) => item.reason !== 'no-override')
+                  .length
+              }{' '}
+              unavailable or redacted settings skipped.
+            </p>
+            <button
+              type="button"
+              disabled={this.importBusy || !this.importPreview.result.importedKeys.length}
+              onClick={() => void this.applyImport()}
+            >
+              Apply overrides
+            </button>
+            <button
+              type="button"
+              disabled={this.importBusy}
+              onClick={() => {
+                this.importPreview = undefined;
+                this.update();
+              }}
+            >
+              Cancel import
+            </button>
+          </section>
+        )}
+        {this.importNotice && <p role="status">{this.importNotice}</p>}
         <div className="gamecrafter-settings-layout">
           <nav className="gamecrafter-settings-groups" aria-label="Settings groups">
             {visibleGroups.map(({ group, definitions }) => (
@@ -167,6 +243,24 @@ export class GameCrafterSettingsWidget extends ReactWidget {
         </div>
       </div>
     );
+  }
+
+  private async exportSettings(): Promise<void> {
+    try {
+      const exported = await this.controlRoomService.exportSettings(this.selectedProjectId);
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'gamecrafter-settings.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      await this.messageService.error(error instanceof Error ? error.message : String(error));
+    }
   }
 
   private renderSetting(definition: SettingDefinition): React.ReactNode {
@@ -374,18 +468,70 @@ export class GameCrafterSettingsWidget extends ReactWidget {
     return this.selectedProjectId && allowed.includes('project') ? 'project' : 'platform';
   }
 
+  private async previewImport(file: File): Promise<void> {
+    const projectId = this.selectedProjectId;
+    this.errorMessage = undefined;
+    this.importPreview = undefined;
+    this.importNotice = undefined;
+    this.importBusy = true;
+    this.update();
+    try {
+      if (file.size > 5 * 1024 * 1024) throw new Error('Settings files must be smaller than 5 MB.');
+      const input: RpcParams<'settings/import'> = {
+        document: JSON.parse(await file.text()),
+        scope: projectId ? 'project' : 'platform',
+        projectId,
+        dryRun: true,
+      };
+      const result = await this.controlRoomService.importSettings(input);
+      if (this.selectedProjectId === input.projectId) this.importPreview = { input, result };
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : String(error);
+    } finally {
+      this.importBusy = false;
+      this.update();
+    }
+  }
+
+  private async applyImport(): Promise<void> {
+    const preview = this.importPreview;
+    if (!preview || this.importBusy) return;
+    this.importBusy = true;
+    this.update();
+    try {
+      const result = await this.controlRoomService.importSettings({
+        ...preview.input,
+        dryRun: false,
+      });
+      this.importPreview = undefined;
+      this.importNotice = `Imported ${result.importedKeys.length} settings.`;
+      await this.refresh();
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : String(error);
+    } finally {
+      this.importBusy = false;
+      this.update();
+    }
+  }
+
   private async saveSetting(
     definition: SettingDefinition,
     scope: SettingsScope,
     value: unknown,
   ): Promise<void> {
+    const projectId = this.selectedProjectId;
+    const version = (this.saveVersions.get(definition.key) ?? 0) + 1;
+    this.saveVersions.set(definition.key, version);
     try {
       const effective = await this.controlRoomService.setSetting(
         definition.key,
         scope,
         value,
-        this.selectedProjectId,
+        projectId,
       );
+      if (projectId !== this.selectedProjectId || this.saveVersions.get(definition.key) !== version)
+        return;
+      ++this.refreshVersion;
       this.settings.set(definition.key, effective);
       this.errorMessage = undefined;
       this.update();
@@ -403,12 +549,14 @@ export class GameCrafterSettingsWidget extends ReactWidget {
   }
 
   private async refresh(): Promise<void> {
+    const version = ++this.refreshVersion;
     try {
       const [description, projects, settings] = await Promise.all([
         this.controlRoomService.describeSettings(),
         this.controlRoomService.listProjects(),
         this.controlRoomService.getAllSettings(this.selectedProjectId),
       ]);
+      if (version !== this.refreshVersion) return;
       this.groups = description.groups;
       this.definitions = description.definitions;
       this.projects = projects;

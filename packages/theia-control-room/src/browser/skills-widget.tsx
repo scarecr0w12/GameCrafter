@@ -7,6 +7,7 @@ import type {
   ProjectSummary,
   RoleRecord,
   SkillCatalogEntry,
+  SkillResourceReadResult,
 } from '@gamecrafter/contracts';
 import {
   ControlRoomService,
@@ -23,6 +24,11 @@ export class SkillsWidget extends ReactWidget {
   private roles: RoleRecord[] = [];
   private catalog: SkillCatalogEntry[] = [];
   private catalogTruncated = false;
+  private readingSkill?: ProjectSkillEntry;
+  private readingResource = 'SKILL.md';
+  private resourcePage?: SkillResourceReadResult;
+  private readPending = false;
+  private readGeneration = 0;
   private source = '';
   private installName = '';
   private forceInstall = false;
@@ -54,7 +60,7 @@ export class SkillsWidget extends ReactWidget {
       (project) => project.projectId === this.selectedProjectId,
     );
     return (
-      <div className="gamecrafter-skills">
+      <div className="gamecrafter-skills gamecrafter-surface">
         <header className="gamecrafter-skills-header">
           <h1>Skills &amp; Roles</h1>
           <label>
@@ -64,6 +70,10 @@ export class SkillsWidget extends ReactWidget {
               value={this.selectedProjectId ?? ''}
               onChange={(event) => {
                 this.selectedProjectId = event.currentTarget.value || undefined;
+                this.readingSkill = undefined;
+                this.resourcePage = undefined;
+                this.readPending = false;
+                this.readGeneration += 1;
                 void this.refresh();
               }}
             >
@@ -151,8 +161,66 @@ export class SkillsWidget extends ReactWidget {
           </form>
         </section>
 
+        {this.readingSkill && (
+          <section
+            className="gamecrafter-skills-section gamecrafter-skill-reader"
+            aria-label="Skill reference reader"
+          >
+            <h2>{this.readingSkill.name}</h2>
+            <label>
+              Document
+              <select
+                aria-label="Skill document"
+                value={this.readingResource}
+                disabled={this.readPending}
+                onChange={(event) => {
+                  this.readingResource = event.currentTarget.value;
+                  this.resourcePage = undefined;
+                  void this.readResource(1);
+                }}
+              >
+                {['SKILL.md', ...this.readingSkill.resources].map((resource) => (
+                  <option key={resource} value={resource}>
+                    {resource}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {this.readPending && <p role="status">Loading guide…</p>}
+            {this.resourcePage && (
+              <>
+                <p>
+                  Lines {this.resourcePage.startLine}–{this.resourcePage.endLine} of{' '}
+                  {this.resourcePage.totalLines}
+                </p>
+                <pre className="gamecrafter-skill-reader-content">{this.resourcePage.content}</pre>
+                <button
+                  type="button"
+                  disabled={this.readPending || this.resourcePage.startLine <= 1}
+                  onClick={() =>
+                    void this.readResource(Math.max(1, this.resourcePage!.startLine - 200))
+                  }
+                >
+                  Previous page
+                </button>
+                <button
+                  type="button"
+                  disabled={this.readPending || !this.resourcePage.truncated}
+                  onClick={() => void this.readResource(this.resourcePage!.endLine + 1)}
+                >
+                  Next page
+                </button>
+              </>
+            )}
+          </section>
+        )}
+
         <section className="gamecrafter-skills-section">
           <h2>Project skills</h2>
+          <p>
+            Browse game development workflows for engines, assets, coding, testing and delivery.
+            Choose a Project to read guides and adjust which skills its agents can use.
+          </p>
           {this.skills.length === 0 ? (
             <p>No skills found for this Project.</p>
           ) : (
@@ -180,7 +248,7 @@ export class SkillsWidget extends ReactWidget {
                         <span
                           className={`gamecrafter-skills-scope gamecrafter-skills-scope-${skill.scope}`}
                         >
-                          {skill.scope}
+                          {skill.source === 'builtin:gamecrafter' ? 'Bundled' : skill.scope}
                         </span>
                       </td>
                       <td>{skill.version ?? '—'}</td>
@@ -234,7 +302,23 @@ export class SkillsWidget extends ReactWidget {
                       <td>{skill.shadowedBy ? `Shadowed by ${skill.shadowedBy}` : '—'}</td>
                       <td>{skill.warnings.join('; ') || '—'}</td>
                       <td>
-                        {skill.scope === 'platform' && (
+                        <button
+                          type="button"
+                          disabled={
+                            !this.selectedProjectId ||
+                            skill.shadowedBy !== null ||
+                            (skill.scope === 'platform' && !skill.enablement?.enabled)
+                          }
+                          onClick={() => {
+                            this.readingSkill = skill;
+                            this.readingResource = 'SKILL.md';
+                            this.resourcePage = undefined;
+                            void this.readResource(1, true);
+                          }}
+                        >
+                          Read guide
+                        </button>
+                        {skill.scope === 'platform' && skill.source !== 'builtin:gamecrafter' && (
                           <button
                             type="button"
                             onClick={() => void this.uninstallSkill(skill.name)}
@@ -355,6 +439,42 @@ export class SkillsWidget extends ReactWidget {
         </section>
       </div>
     );
+  }
+
+  private async readResource(startLine: number, reveal = false): Promise<void> {
+    if (!this.selectedProjectId || !this.readingSkill) return;
+    const readingSkill = this.readingSkill;
+    const projectId = this.selectedProjectId;
+    const generation = ++this.readGeneration;
+    this.readPending = true;
+    this.errorMessage = undefined;
+    this.update();
+    try {
+      const result = await this.controlRoomService.readSkillResource({
+        projectId: this.selectedProjectId,
+        name: this.readingSkill.name,
+        resource: this.readingResource,
+        startLine,
+        maxLines: 200,
+      });
+      if (generation === this.readGeneration) this.resourcePage = result;
+    } catch (error) {
+      if (generation === this.readGeneration)
+        this.errorMessage = error instanceof Error ? error.message : String(error);
+    } finally {
+      if (generation === this.readGeneration) {
+        this.readPending = false;
+        this.update();
+        if (reveal && this.resourcePage) {
+          requestAnimationFrame(() => {
+            if (this.readingSkill === readingSkill && this.selectedProjectId === projectId)
+              this.node
+                .querySelector('.gamecrafter-skill-reader')
+                ?.scrollIntoView({ block: 'start' });
+          });
+        }
+      }
+    }
   }
 
   private async refresh(): Promise<void> {

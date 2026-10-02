@@ -16,9 +16,10 @@
       "config": {
         "applicationName": "GameCrafter",
         "defaultTheme": {
-          "light": "light",
-          "dark": "dark"
-        }
+          "light": "gamecrafter-neon-green",
+          "dark": "gamecrafter-neon-green"
+        },
+        "preferences": {}
       }
     }
   },
@@ -60,7 +61,8 @@
     "@theia/process": "1.75.0",
     "@theia/keymaps": "1.75.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@gamecrafter/archive-extractor": "0.1.0"
   },
   "devDependencies": {
     "@theia/cli": "1.75.0",

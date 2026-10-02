@@ -1,0 +1,17 @@
+{
+  "skill_name": "game-accessibility",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A boss attack is signaled only by a red flash and a sound.",
+      "expected_output": "Before/after scenario evidence and relevant player feedback gaps.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

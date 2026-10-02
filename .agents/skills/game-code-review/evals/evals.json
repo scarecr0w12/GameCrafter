@@ -1,0 +1,17 @@
+{
+  "skill_name": "game-code-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "A respawn change creates a replacement player but the camera keeps its old subscription. Write a reproducible finding and regression cases, without claiming a live run.",
+      "expected_output": "A concrete domain-specific workflow, artifact contract, meaningful acceptance cases and explicit distinction between proposed checks and actual execution.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review a Unity asset rename that moved a texture but omitted its .meta file. Identify identity risks, source evidence and import validation.",
+      "expected_output": "A concrete domain-specific workflow, artifact contract, meaningful acceptance cases and explicit distinction between proposed checks and actual execution.",
+      "files": []
+    }
+  ]
+}

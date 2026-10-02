@@ -1,9 +1,6 @@
-import { execFile } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
-
-const execFileAsync = promisify(execFile);
+import { execCommand } from '../processes/exec-command';
 
 export function isExecutable(filePath: string): boolean {
   try {
@@ -55,7 +52,14 @@ export function executableCandidates(
       return isExecutable(resolved) ? [resolved] : [];
     }),
   ];
-  return [...new Set(paths)];
+  return [
+    ...new Map(
+      paths.map((candidate) => [
+        process.platform === 'win32' ? candidate.toLowerCase() : candidate,
+        candidate,
+      ]),
+    ).values(),
+  ];
 }
 
 export async function probeCommand(
@@ -64,11 +68,10 @@ export async function probeCommand(
   timeoutMs = 10_000,
   extraEnv: NodeJS.ProcessEnv = {},
 ): Promise<string> {
-  const { stdout, stderr } = await execFileAsync(executable, args, {
-    encoding: 'utf8',
+  const { stdout, stderr } = await execCommand(executable, args, {
     timeout: timeoutMs,
     maxBuffer: 1024 * 1024,
-    env: { PATH: process.env.PATH, ...extraEnv },
+    env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...extraEnv },
   });
   return `${stdout}\n${stderr}`.trim();
 }

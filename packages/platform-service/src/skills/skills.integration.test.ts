@@ -29,7 +29,7 @@ function writeSkill(parent: string, name: string, workTypes: string[], roles: st
   mkdirSync(directory, { recursive: true });
   writeFileSync(
     path.join(directory, 'SKILL.md'),
-    `---\nname: ${name}\ndescription: Instructions for validating Godot project files.\nmetadata:\n  gamecrafter-version: "1.0.0"\n  gamecrafter-engines: godot\n  gamecrafter-genres: rpg\n  gamecrafter-work-types: ${workTypes.join(',')}\n  gamecrafter-roles: ${roles.join(',')}\n  gamecrafter-capabilities: fs.read:project\n---\nRead the Project AGENTS.md, preserve docs/ canon, and consult the discussion board.\n`,
+    `---\nname: ${name}\ndescription: Instructions for validating Godot project files.\nmetadata:\n  gamecrafter-version: "1.0.0"\n  gamecrafter-engines: godot\n  gamecrafter-genres: rpg\n  gamecrafter-work-types: "${workTypes.join(',')}"\n  gamecrafter-roles: "${roles.join(',')}"\n  gamecrafter-capabilities: fs.read:project\n---\nRead the Project AGENTS.md, preserve docs/ canon, and consult the discussion board.\n`,
   );
   mkdirSync(path.join(directory, 'references'), { recursive: true });
   writeFileSync(path.join(directory, 'references', 'guide.md'), 'Read-only reference.\n');
@@ -64,7 +64,7 @@ describe('skills and trust integration', () => {
     const profileDir = path.join(root, 'profile');
     const projectsDirectory = path.join(root, 'projects');
     mkdirSync(projectsDirectory, { recursive: true });
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
     service = await startService(paths);
     client = await connectService(service.socketPath, paths);
 
@@ -90,7 +90,9 @@ describe('skills and trust integration', () => {
     } = await client.call('skills/install', { source });
     expect(installed).toMatchObject({ name: 'engine-guide', scope: 'platform', version: '1.0.0' });
     expect(
-      (await client.call('skills/list', { projectId: project.projectId })).skills[0],
+      (await client.call('skills/list', { projectId: project.projectId })).skills.find(
+        (skill) => skill.name === 'engine-guide',
+      ),
     ).toMatchObject({
       name: 'engine-guide',
       enablement: { enabled: false },
@@ -120,7 +122,7 @@ describe('skills and trust integration', () => {
           workType: 'code',
         })
       ).entries,
-    ).toEqual([]);
+    ).not.toContainEqual(expect.objectContaining({ name: 'engine-guide' }));
 
     const task = await client.call('task/create', {
       projectId: project.projectId,
@@ -241,5 +243,146 @@ describe('skills and trust integration', () => {
     expect((await client.call('roles/list', {})).roles.map((role) => role.name)).toContain(
       'engine-engineer',
     );
+  }, 60_000);
+  it('ships searchable guides, enforces Project controls and reads references through RPC and role tools', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-bundled-integration-'));
+    temporaryDirectories.push(root);
+    const projectsDirectory = path.join(root, 'projects');
+    mkdirSync(projectsDirectory);
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
+    service = await startService(paths);
+    client = await connectService(service.socketPath, paths);
+    const project = await client.call('project/create', {
+      name: 'Bundled Skills',
+      engine: { family: 'godot' },
+      parentDirectory: projectsDirectory,
+      folderName: 'bundled',
+    });
+    currentProjectId = project.projectId;
+    const entries = (await client.call('skills/list', { projectId: project.projectId })).skills;
+    const guide = entries.find((skill) => skill.name === 'asset-pipeline')!;
+    expect(guide).toMatchObject({
+      source: 'builtin:gamecrafter',
+      scope: 'platform',
+      enablement: { enabled: true },
+    });
+    expect(entries.filter((skill) => skill.source === 'builtin:gamecrafter')).toHaveLength(30);
+    const names = (
+      await client.call('skills/catalog', { projectId: project.projectId })
+    ).entries.map((skill) => skill.name);
+    expect(names).toContain('godot-scene-audit');
+    expect(names).not.toContain('unreal-development');
+    expect(names).not.toContain('unity-development');
+    await expect(
+      client.call('skills/read-resource', {
+        projectId: project.projectId,
+        name: 'unreal-development',
+        resource: 'SKILL.md',
+      }),
+    ).rejects.toMatchObject({ code: -32050 });
+    const read = await client.call('skills/read-resource', {
+      projectId: project.projectId,
+      name: guide.name,
+      resource: 'references/workflows.md',
+      maxLines: 3,
+    });
+    expect(read).toMatchObject({
+      schemaVersion: 1,
+      name: guide.name,
+      startLine: 1,
+      endLine: 3,
+      truncated: true,
+      hash: guide.hash,
+    });
+    const next = await client.call('skills/read-resource', {
+      projectId: project.projectId,
+      name: guide.name,
+      resource: read.resource,
+      startLine: 4,
+      maxLines: 3,
+    });
+    expect(next.startLine).toBe(4);
+    await expect(
+      client.call('skills/read-resource', {
+        projectId: project.projectId,
+        name: guide.name,
+        resource: '../secret',
+      }),
+    ).rejects.toMatchObject({ code: -32051 });
+    const task = await client.call('task/create', {
+      projectId: project.projectId,
+      kind: 'noop.tool',
+      title: 'Read bundled reference',
+      goal: 'Consult an asset handoff guide',
+      assignee: { role: 'asset-producer' },
+      input: {
+        toolId: 'skills/read-resource',
+        toolInput: { name: guide.name, resource: read.resource, maxLines: 3 },
+      },
+      maxAttempts: 1,
+    });
+    expect((await waitForTask(task.task.taskId)).state).toBe('succeeded');
+    await client.call('skills/enable', {
+      projectId: project.projectId,
+      name: guide.name,
+      enabled: false,
+    });
+    await expect(
+      client.call('skills/read-resource', {
+        projectId: project.projectId,
+        name: guide.name,
+        resource: read.resource,
+      }),
+    ).rejects.toMatchObject({ code: -32050 });
+    await client.call('skills/enable', {
+      projectId: project.projectId,
+      name: guide.name,
+      enabled: true,
+      pin: true,
+    });
+    const overrideSource = path.join(root, 'override');
+    writeSkill(overrideSource, guide.name, [], []);
+    await client.call('skills/install', { source: overrideSource });
+    await expect(
+      client.call('skills/read-resource', {
+        projectId: project.projectId,
+        name: guide.name,
+        resource: 'SKILL.md',
+      }),
+    ).rejects.toMatchObject({ code: -32051 });
+    await client.call('skills/enable', {
+      projectId: project.projectId,
+      name: guide.name,
+      enabled: true,
+      pin: false,
+    });
+    let duplicates = (
+      await client.call('skills/list', { projectId: project.projectId })
+    ).skills.filter((skill) => skill.name === guide.name);
+    expect(duplicates.find((skill) => !skill.shadowedBy)?.source).not.toBe('builtin:gamecrafter');
+    expect(
+      duplicates.find((skill) => skill.source === 'builtin:gamecrafter')?.shadowedBy,
+    ).toBeTruthy();
+    writeSkill(path.join(project.path, '.agents/skills'), guide.name, [], []);
+    duplicates = (await client.call('skills/list', { projectId: project.projectId })).skills.filter(
+      (skill) => skill.name === guide.name,
+    );
+    expect(duplicates.find((skill) => !skill.shadowedBy)?.scope).toBe('project');
+    await client.call('project/trust', { projectId: project.projectId, trusted: false });
+    await expect(
+      client.call('skills/read-resource', {
+        projectId: project.projectId,
+        name: guide.name,
+        resource: 'SKILL.md',
+      }),
+    ).rejects.toMatchObject({ code: -32057 });
+    expect(
+      await client.call('skills/read-resource', {
+        projectId: project.projectId,
+        name: 'game-development',
+        resource: 'SKILL.md',
+        maxLines: 1,
+      }),
+    ).toMatchObject({ name: 'game-development', endLine: 1 });
   }, 60_000);
 });

@@ -64,6 +64,8 @@ import {
   type SkillCatalogEntry,
   type SkillEnablement,
   type SkillRecord,
+  type SkillResourceReadParams,
+  type SkillResourceReadResult,
   type ProjectCreateInput,
   type ProjectSkillEntry,
   type ProjectSummary,
@@ -82,6 +84,7 @@ import {
 import type { ServiceClient } from '@gamecrafter/service-client';
 import type { ControlRoomClient, ControlRoomService } from '../common/control-room-protocol';
 import { PlatformServiceConnection } from './service-connection';
+import { deliverClientNotification } from './client-notification';
 
 @injectable()
 export class ControlRoomServiceImpl implements ControlRoomService {
@@ -175,90 +178,90 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     this.removeServiceStatusListener?.();
     this.client = client;
     this.removeProjectChangedListener = this.platformConnection.onProjectChanged((event) => {
-      this.client?.onProjectChanged(event);
+      this.notifyClient((client) => client.onProjectChanged(event));
     });
     this.removeModelDeltaListener = this.platformConnection.onModelDelta((event) => {
-      this.client?.onModelDelta(event);
+      this.notifyClient((client) => client.onModelDelta(event));
     });
     this.removeSettingsChangedListener = this.platformConnection.onSettingsChanged((event) => {
-      this.client?.onSettingsChanged(event);
+      this.notifyClient((client) => client.onSettingsChanged(event));
     });
     this.removeTaskChangedListener = this.platformConnection.onTaskChanged((event) => {
-      this.client?.onTaskChanged(event);
+      this.notifyClient((client) => client.onTaskChanged(event));
     });
     this.removeTaskQuestionListener = this.platformConnection.onTaskQuestion((event) => {
-      this.client?.onTaskQuestion(event);
+      this.notifyClient((client) => client.onTaskQuestion(event));
     });
     this.removeApprovalRequestedListener = this.platformConnection.onApprovalRequested((event) => {
-      this.client?.onApprovalRequested(event);
+      this.notifyClient((client) => client.onApprovalRequested(event));
     });
     this.removeApprovalResolvedListener = this.platformConnection.onApprovalResolved((event) => {
-      this.client?.onApprovalResolved(event);
+      this.notifyClient((client) => client.onApprovalResolved(event));
     });
     this.removeToolCalledListener = this.platformConnection.onToolCalled((event) => {
-      this.client?.onToolCalled(event);
+      this.notifyClient((client) => client.onToolCalled(event));
     });
     this.removeMcpStateChangedListener = this.platformConnection.onMcpStateChanged((event) => {
-      this.client?.onMcpStateChanged(event);
+      this.notifyClient((client) => client.onMcpStateChanged(event));
     });
     this.removeMcpInputRequiredListener = this.platformConnection.onMcpInputRequired((event) => {
-      this.client?.onMcpInputRequired(event);
+      this.notifyClient((client) => client.onMcpInputRequired(event));
     });
     this.removeBoardThreadChangedListener = this.platformConnection.onBoardThreadChanged(
       (event) => {
-        this.client?.onBoardThreadChanged(event);
+        this.notifyClient((client) => client.onBoardThreadChanged(event));
       },
     );
     this.removeBoardMessagePostedListener = this.platformConnection.onBoardMessagePosted(
       (event) => {
-        this.client?.onBoardMessagePosted(event);
+        this.notifyClient((client) => client.onBoardMessagePosted(event));
       },
     );
     this.removeBoardDecisionChangedListener = this.platformConnection.onBoardDecisionChanged(
       (event) => {
-        this.client?.onBoardDecisionChanged(event);
+        this.notifyClient((client) => client.onBoardDecisionChanged(event));
       },
     );
     this.removePluginWorkerChangedListener = this.platformConnection.onPluginWorkerChanged(
-      (event) => this.client?.onPluginWorkerChanged(event),
+      (event) => this.notifyClient((client) => client.onPluginWorkerChanged(event)),
     );
     this.removePluginChangedListener = this.platformConnection.onPluginChanged((event) =>
-      this.client?.onPluginChanged(event),
+      this.notifyClient((client) => client.onPluginChanged(event)),
     );
     this.removeEngineCapabilitiesChangedListener =
       this.platformConnection.onEngineCapabilitiesChanged((event) =>
-        this.client?.onEngineCapabilitiesChanged(event),
+        this.notifyClient((client) => client.onEngineCapabilitiesChanged(event)),
       );
     this.removeEngineRunChangedListener = this.platformConnection.onEngineRunChanged((event) =>
-      this.client?.onEngineRunChanged(event),
+      this.notifyClient((client) => client.onEngineRunChanged(event)),
     );
     this.removeDccCapabilitiesChangedListener = this.platformConnection.onDccCapabilitiesChanged(
-      (event) => this.client?.onDccCapabilitiesChanged(event),
+      (event) => this.notifyClient((client) => client.onDccCapabilitiesChanged(event)),
     );
     this.removeDccRunChangedListener = this.platformConnection.onDccRunChanged((event) =>
-      this.client?.onDccRunChanged(event),
+      this.notifyClient((client) => client.onDccRunChanged(event)),
     );
     this.removeAssetJobChangedListener = this.platformConnection.onAssetJobChanged((event) =>
-      this.client?.onAssetJobChanged(event),
+      this.notifyClient((client) => client.onAssetJobChanged(event)),
     );
     this.removeBackupRunChangedListener = this.platformConnection.onBackupRunChanged((event) =>
-      this.client?.onBackupRunChanged(event),
+      this.notifyClient((client) => client.onBackupRunChanged(event)),
     );
     this.removeKnowledgeIndexChangedListener = this.platformConnection.onKnowledgeIndexChanged(
-      (event) => this.client?.onKnowledgeIndexChanged(event),
+      (event) => this.notifyClient((client) => client.onKnowledgeIndexChanged(event)),
     );
     this.removeKnowledgeRecordChangedListener = this.platformConnection.onKnowledgeRecordChanged(
-      (event) => this.client?.onKnowledgeRecordChanged(event),
+      (event) => this.notifyClient((client) => client.onKnowledgeRecordChanged(event)),
     );
     this.removeChangeLockChangedListener = this.platformConnection.onChangeLockChanged((event) =>
-      this.client?.onChangeLockChanged(event),
+      this.notifyClient((client) => client.onChangeLockChanged(event)),
     );
     this.removeChangeIntegrationChangedListener =
       this.platformConnection.onChangeIntegrationChanged((event) =>
-        this.client?.onChangeIntegrationChanged(event),
+        this.notifyClient((client) => client.onChangeIntegrationChanged(event)),
       );
     this.removeChangeRequestChangedListener = this.platformConnection.onChangeRequestChanged(
-      (event) => this.client?.onChangeRequestChanged(event),
+      (event) => this.notifyClient((client) => client.onChangeRequestChanged(event)),
     );
     this.removeServiceStatusListener = this.platformConnection.onServiceStatus((status) => {
       void this.setStatus(status);
@@ -333,6 +336,15 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     return result.settings;
   }
 
+  async importSettings(input: RpcParams<'settings/import'>): Promise<RpcResult<'settings/import'>> {
+    return (await this.getPlatformClient()).call('settings/import', input);
+  }
+
+  async exportSettings(projectId?: string): Promise<RpcResult<'settings/export'>> {
+    const client = await this.getPlatformClient();
+    return client.call('settings/export', { projectId });
+  }
+
   async setSetting(
     key: string,
     scope: SettingsScope,
@@ -347,6 +359,10 @@ export class ControlRoomServiceImpl implements ControlRoomService {
       projectId,
       sessionId: scope === 'session' ? client.sessionId : undefined,
     });
+  }
+
+  async readAudit(projectId: string, afterSeq?: number): Promise<RpcResult<'audit/read'>> {
+    return (await this.getPlatformClient()).call('audit/read', { projectId, afterSeq, limit: 500 });
   }
 
   async listTasks(projectId: string): Promise<TaskRecord[]> {
@@ -549,6 +565,11 @@ export class ControlRoomServiceImpl implements ControlRoomService {
   }> {
     const client = await this.getPlatformClient();
     return client.call('router/stats', { taskType });
+  }
+
+  async readSkillResource(input: SkillResourceReadParams): Promise<SkillResourceReadResult> {
+    const client = await this.getPlatformClient();
+    return client.call('skills/read-resource', input);
   }
 
   async listSkills(projectId?: string): Promise<ProjectSkillEntry[]> {
@@ -1257,8 +1278,13 @@ export class ControlRoomServiceImpl implements ControlRoomService {
     }
   }
 
+  private notifyClient(deliver: (client: ControlRoomClient) => unknown): void {
+    const client = this.client;
+    if (client) deliverClientNotification(() => deliver(client));
+  }
+
   private async setStatus(status: { connected: boolean; message?: string }): Promise<void> {
-    this.client?.onServiceStatus(status);
+    this.notifyClient((client) => client.onServiceStatus(status));
   }
 }
 

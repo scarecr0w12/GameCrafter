@@ -424,7 +424,7 @@ async function startService(
 ): Promise<void> {
   const root = mkdtempSync(path.join(tmpdir(), 'gc-knowledge-integration-'));
   temporaryDirectories.push(root);
-  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
   service = await PlatformService.start({
     paths,
     platformVersion: '0.1.0',

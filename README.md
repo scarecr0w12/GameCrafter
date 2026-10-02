@@ -12,6 +12,7 @@ This repository holds both the design and the code. The design describes the com
 - [Decision register](docs/OPEN_DECISIONS.md): every identified unresolved product, technical, and verification decision, with recommended defaults and status.
 - [Development plan](docs/DEVELOPMENT_PLAN.md): work packages ordered by technical dependency, what each implements, and their current status.
 - [Implementation status and remaining work](docs/STATUS.md): what exists today, how far it has been verified, and what is still open, grouped by area.
+- [Full project review](docs/FULL_PROJECT_REVIEW.md): repaired defects, verification evidence, and remaining implementation/verification gaps across the complete system.
 - [Research notes](docs/research/): sourced reference material. Each note carries a "Last researched" date; re-verify before relying on a fast-moving fact.
 
 ## Code

@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams, type SpawnOptions } from 'node:child_process';
+import crossSpawn from 'cross-spawn';
 import { TextDecoder } from 'node:util';
 import { JsonRpcTransportError, type JsonRpcMessage, type JsonRpcTransport } from './types';
 
@@ -45,7 +46,7 @@ export class StdioTransport implements JsonRpcTransport {
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     };
-    const child = (this.options.spawnProcess ?? spawn)(
+    const child = (this.options.spawnProcess ?? crossSpawn)(
       this.options.command,
       this.options.args,
       spawnOptions,

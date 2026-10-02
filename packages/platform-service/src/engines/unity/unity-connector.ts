@@ -8,6 +8,7 @@ import {
   type EngineOperationCapability,
 } from '@gamecrafter/contracts';
 import { executableCandidates, probeCommand, readUtf8 } from '../utils';
+import { readTestReport } from '../test-report';
 import type {
   EngineCapabilityContext,
   EngineConnector,
@@ -62,6 +63,9 @@ export class UnityConnector implements EngineConnector {
     const cliOperations = ['build', 'test', 'run', 'export'];
     if (cliOperations.includes(operation)) {
       return (
+        installations.find(
+          (installation) => installation.kind === 'editor' && installation.source === 'manual',
+        ) ??
         installations.find((installation) => installation.kind === 'cli') ??
         installations.find((installation) => installation.kind === 'editor') ??
         null
@@ -111,7 +115,11 @@ export class UnityConnector implements EngineConnector {
   operations(context: EngineCapabilityContext): EngineOperationCapability[] {
     const identity = context.identity.proven;
     const editor = context.installations.find((installation) => installation.kind === 'editor');
-    const cli = context.installations.find((installation) => installation.kind === 'cli');
+    const cli = context.installations.some(
+      (installation) => installation.kind === 'editor' && installation.source === 'manual',
+    )
+      ? undefined
+      : context.installations.find((installation) => installation.kind === 'cli');
     const headless = (
       operation: EngineOperation,
       available: boolean,
@@ -127,7 +135,7 @@ export class UnityConnector implements EngineConnector {
         command,
         sideEffects,
         `Unity ${operation} through the configured CLI or batch-mode Editor.`,
-        reason,
+        available ? null : reason,
       );
     return [
       cap(
@@ -173,7 +181,7 @@ export class UnityConnector implements EngineConnector {
         'build',
         identity && (cli !== undefined || editor !== undefined),
         cli
-          ? 'unity build --project-path <game>'
+          ? 'unity build <game> --target <target> --execute-method <method>'
           : '<Unity> -batchmode -nographics -quit -projectPath <game> -executeMethod <method>',
         identity
           ? 'No Unity CLI or Editor installation is available.'
@@ -183,8 +191,8 @@ export class UnityConnector implements EngineConnector {
         'test',
         identity && (cli !== undefined || editor !== undefined),
         cli
-          ? 'unity test --project-path <game>'
-          : '<Unity> -batchmode -nographics -quit -projectPath <game> -runTests -testPlatform <EditMode|PlayMode>',
+          ? 'unity test <game> --mode <EditMode|PlayMode> --output <report>'
+          : '<Unity> -batchmode -nographics -projectPath <game> -runTests -testPlatform <EditMode|PlayMode>',
         identity
           ? 'No Unity CLI or Editor installation is available.'
           : 'Unity project identity is not proven.',
@@ -194,7 +202,7 @@ export class UnityConnector implements EngineConnector {
         'run',
         identity && (cli !== undefined || editor !== undefined),
         cli
-          ? 'unity run --project-path <game>'
+          ? 'unity run <game>'
           : '<Unity> -batchmode -nographics -quit -projectPath <game> -executeMethod <method>',
         identity
           ? 'No Unity CLI or Editor installation is available.'
@@ -204,7 +212,7 @@ export class UnityConnector implements EngineConnector {
         'export',
         identity && (cli !== undefined || editor !== undefined),
         cli
-          ? 'unity build --project-path <game>'
+          ? 'unity build <game> --target <target> --execute-method <method>'
           : '<Unity> -batchmode -nographics -quit -projectPath <game> -executeMethod <method>',
         identity
           ? 'No Unity CLI or Editor installation is available.'
@@ -270,7 +278,10 @@ export class UnityConnector implements EngineConnector {
     let args: string[];
     const sideArtifacts: EngineOperationOutcome['artifacts'] = [];
     if (installation.kind === 'cli') {
-      args = cliArguments(operation, game, params);
+      args = cliArguments(operation, game, params, context.runDirectory);
+      if (!args.length) return unavailable('Unity build operations require params.method.');
+      if (operation === 'build' || operation === 'export')
+        sideArtifacts.push(context.writeArtifact('log', 'editor.log', ''));
     } else {
       args = editorArguments(operation, game, params, context.runDirectory);
       if (!args.length) return unavailable('Unity Editor operations require params.method.');
@@ -278,14 +289,19 @@ export class UnityConnector implements EngineConnector {
       sideArtifacts.push(logArtifact);
       const logPath = path.join(context.runDirectory, 'editor.log');
       args.push('-logFile', logPath);
-      if (operation === 'test') {
-        const report = context.writeArtifact('report', 'results.xml', '');
-        sideArtifacts.push(report);
-        args.push('-testResults', path.join(context.runDirectory, 'results.xml'));
-      }
+    }
+    if (operation === 'test') {
+      sideArtifacts.push(context.writeArtifact('report', 'results.xml', ''));
     }
     const result = await context.runProcess(installation.executable, args);
-    return processOutcome(`Unity ${operation}`, result, sideArtifacts);
+    const outcome = processOutcome(`Unity ${operation}`, result, sideArtifacts);
+    if (operation === 'test') {
+      const report = readTestReport(path.join(context.runDirectory, 'results.xml'), 'unity');
+      if (!report.passed) outcome.status = 'failed';
+      outcome.summary += ` ${report.detail}`;
+      outcome.evidence.push({ kind: 'process', ref: 'results.xml', detail: report.detail });
+    }
+    return outcome;
   }
 
   private async inspect(
@@ -335,12 +351,52 @@ function cliArguments(
   operation: EngineOperation,
   game: string,
   params: Record<string, unknown>,
+  runDir: string,
 ): string[] {
-  const project = ['--project-path', game];
-  if (operation === 'build' || operation === 'export') return ['build', ...project];
-  if (operation === 'test') return ['test', ...project, '--test-platform', testPlatform(params)];
-  if (operation === 'run') return ['run', ...project];
-  if (operation === 'import' || operation === 'validate') return ['import', ...project];
+  const project = [
+    game,
+    '--non-interactive',
+    ...(typeof params.editorPath === 'string' && params.editorPath.trim()
+      ? ['--editor-path', params.editorPath.trim()]
+      : []),
+  ];
+  const method = typeof params.method === 'string' ? params.method.trim() : '';
+  if (operation === 'build' || operation === 'export') {
+    if (!method) return [];
+    const target =
+      typeof params.target === 'string' && params.target.trim()
+        ? params.target.trim()
+        : process.platform === 'win32'
+          ? 'StandaloneWindows64'
+          : process.platform === 'darwin'
+            ? 'StandaloneOSX'
+            : 'StandaloneLinux64';
+    return [
+      'build',
+      ...project,
+      '--target',
+      target,
+      '--execute-method',
+      method,
+      '--log-file',
+      path.join(runDir, 'editor.log'),
+    ];
+  }
+  if (operation === 'test')
+    return [
+      'test',
+      ...project,
+      '--mode',
+      testPlatform(params),
+      '--output',
+      path.join(runDir, 'results.xml'),
+      ...(typeof params.testFilter === 'string' && params.testFilter.trim()
+        ? ['--filter', params.testFilter.trim()]
+        : []),
+    ];
+  if (operation === 'run')
+    return ['run', ...project, ...(method ? ['--', '-executeMethod', method] : [])];
+  if (operation === 'import' || operation === 'validate') return ['run', ...project];
   return [];
 }
 
@@ -354,12 +410,15 @@ function editorArguments(
   if (operation === 'import' || operation === 'validate') return base;
   if (operation === 'test')
     return [
-      ...base,
+      ...base.filter((argument) => argument !== '-quit'),
       '-runTests',
       '-testPlatform',
       testPlatform(params),
       '-testResults',
       path.join(runDir, 'results.xml'),
+      ...(typeof params.testFilter === 'string' && params.testFilter.trim()
+        ? ['-testFilter', params.testFilter.trim()]
+        : []),
     ];
   const method = typeof params.method === 'string' ? params.method.trim() : '';
   if (['build', 'export', 'run'].includes(operation) && method)
@@ -444,6 +503,6 @@ function isUnityCli(executable: string): boolean {
   return (
     !editorPath &&
     (baseName === 'unity' ||
-      (process.platform === 'win32' && baseName.toLowerCase() === 'unity.exe'))
+      (process.platform === 'win32' && ['unity', 'unity.exe'].includes(baseName.toLowerCase())))
   );
 }

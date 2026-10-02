@@ -78,7 +78,7 @@ export function modelUsage(model: Model, inputTokens: number, outputTokens: numb
 }
 
 export function safeExcerpt(body: string, credential?: string): string {
-  let excerpt = body.slice(0, 512);
+  let excerpt = body;
   if (credential) excerpt = excerpt.replaceAll(credential, '[REDACTED]');
   excerpt = excerpt
     .replace(/(bearer\s+)[A-Za-z0-9._~+/-]+=*/gi, '$1[REDACTED]')
@@ -88,7 +88,7 @@ export function safeExcerpt(body: string, credential?: string): string {
     )
     .replace(/(?:sk|ghp|xox[abp]|AKIA)[A-Za-z0-9_-]{16,}/g, '[REDACTED]')
     .replace(/[A-Fa-f0-9]{40,}/g, '[REDACTED]');
-  return excerpt;
+  return excerpt.slice(0, 512);
 }
 
 function providerError(

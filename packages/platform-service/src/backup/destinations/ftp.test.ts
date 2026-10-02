@@ -14,6 +14,9 @@ describe('FTP backup destination', () => {
     const controlSockets = new Set<Socket>();
     const control = createServer((socket) => {
       controlSockets.add(socket);
+      socket.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ECONNRESET') throw error;
+      });
       socket.on('close', () => controlSockets.delete(socket));
       let currentDirectory = '/';
       let commandBuffer = '';

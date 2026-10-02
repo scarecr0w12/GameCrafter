@@ -309,7 +309,14 @@ export class UpdateService {
   }
 
   install(): UpdateInstallResult {
-    const downloaded = this.store.get().downloaded;
+    const state = this.store.get();
+    if (!state.compatibility.ok) {
+      throw new RpcError(
+        `Update is not compatible: ${state.compatibility.reasons.join('; ')}`,
+        RpcErrorCode.UpdateIncompatible,
+      );
+    }
+    const downloaded = state.downloaded;
     if (!downloaded) {
       throw new RpcError(
         'No downloaded update is ready to install',
@@ -451,7 +458,7 @@ export class UpdateService {
     const signature = await this.tryFetchText(
       new URL(CHECKSUMS_SIGNATURE_ASSET, asset.url).toString(),
     );
-    if (checksums === null || signature === null) return 'unavailable';
+    if (checksums === null || signature === null) return 'failed';
     let verified = false;
     try {
       verified = verifyContents(

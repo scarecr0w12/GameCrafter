@@ -141,6 +141,61 @@ describe('KnowledgeRetriever', () => {
     expect(semantic.hits).toEqual([]);
   });
 
+  it('ranks declared task resources and fits complete quotes within an estimated token budget', async () => {
+    database = Database.open(':memory:');
+    migrate(database, projectMigrations);
+    const store = new KnowledgeStore(database);
+    const projectId = uuidv7();
+    store.replaceIndexedPath(
+      indexed(projectId, 'char.large', 'accepted', 'docs/large.md', 'Harborfall '.repeat(300)),
+    );
+    store.replaceIndexedPath(
+      indexed(
+        projectId,
+        'char.sailor',
+        'draft',
+        'docs/sailor.md',
+        'Harborfall sailor repairs the lighthouse',
+      ),
+    );
+    store.replaceIndexedPath(
+      indexed(projectId, 'char.docks', 'draft', 'docs/docks.md', 'Harborfall docks open tomorrow'),
+    );
+    const taskId = uuidv7();
+    const retriever = new KnowledgeRetriever({
+      store: () => store,
+      embeddingProfile: () => null,
+      vectorStore: () => fakeVectorStore([]),
+      embed: async () => ({ vectors: [] }),
+      taskContext: (requestedProject, requestedTask) => {
+        expect(requestedProject).toBe(projectId);
+        expect(requestedTask).toBe(taskId);
+        return { goal: 'Repair the lighthouse', resources: ['file:docs/sailor.md'] };
+      },
+    });
+    const relevant = await retriever.search({
+      projectId,
+      taskId,
+      query: 'Harborfall',
+      mode: 'lexical',
+    });
+    expect(relevant.hits[0]?.path).toBe('docs/sailor.md');
+    const budgeted = await retriever.search({
+      projectId,
+      taskId,
+      query: 'Harborfall',
+      mode: 'lexical',
+      maxTokens: 45,
+    });
+    expect(budgeted.hits).toHaveLength(1);
+    expect(budgeted.hits[0]?.quote.text).toBe('Harborfall sailor repairs the lighthouse');
+    expect(budgeted.hits[0]?.citation).toContain('#L1-L1');
+    expect(
+      (await retriever.search({ projectId, query: 'Harborfall', mode: 'lexical', maxTokens: 0 }))
+        .hits,
+    ).toEqual([]);
+  });
+
   it('degrades cleanly to lexical results when semantic search is disabled', async () => {
     database = Database.open(':memory:');
     migrate(database, projectMigrations);

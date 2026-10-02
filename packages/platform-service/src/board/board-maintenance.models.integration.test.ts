@@ -100,7 +100,7 @@ describe('board maintenance model integration', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-board-audit-'));
     temporaryDirectories.push(root);
     const projectsDirectory = path.join(root, 'projects');
-    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
     service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
     client = await connectService(service.socketPath, paths);
     const project = await client.call('project/create', {

@@ -1,0 +1,17 @@
+{
+  "skill_name": "level-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Design a ten-minute ruined outpost with a shortcut back to the entrance.",
+      "expected_output": "Editable greybox, route diagram, traversal captures, and an explicit art handoff.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

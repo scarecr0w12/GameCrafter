@@ -1,0 +1,17 @@
+{
+  "skill_name": "discussion-board-maintenance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Organize a thread that chose server authority but left hosting unresolved.",
+      "expected_output": "Linked decision/task summary with hosting visibly unresolved and read-back evidence.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

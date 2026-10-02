@@ -16,7 +16,7 @@ function makePaths() {
   const directory = mkdtempSync(path.join(tmpdir(), 'gc-lock-'));
   directories.push(directory);
   mkdirSync(directory, { recursive: true });
-  return resolvePaths({ GAMECRAFTER_PROFILE_DIR: directory }, 'linux');
+  return resolvePaths({ GAMECRAFTER_PROFILE_DIR: directory });
 }
 
 describe('service lock', () => {

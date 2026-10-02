@@ -90,7 +90,7 @@ export class BackupsWidget extends ReactWidget {
       (plan) => plan.scope === 'profile' || plan.projectId === this.projectId,
     );
     return (
-      <div className="gamecrafter-backups">
+      <div className="gamecrafter-backups gamecrafter-surface">
         <header className="gamecrafter-backups-header">
           <div>
             <h2>Backups</h2>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RpcErrorCode, RpcMethods, RpcNotifications, uuidv7 } from '../index';
-import { compile, compileJsonSchema2020 } from '../validation';
+import { compile, compileExternalJsonSchema, compileJsonSchema2020 } from '../validation';
 import {
   MCP_SUPPORTED_REVISIONS,
   McpConnectionConfigSchema,
@@ -133,6 +133,35 @@ describe('MCP connection contracts', () => {
     expect(validateToolInput.check({ args: [-1] })).toBe(false);
     expect(() =>
       compileJsonSchema2020({ $ref: 'https://example.invalid/remote-schema.json' }),
+    ).toThrow();
+  });
+
+  it('uses explicit legacy SDK schema semantics without resolving remote references or sharing IDs', () => {
+    const schema = {
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      $id: 'fixture',
+      type: 'array',
+      items: [{ type: 'integer' }, { type: 'string' }],
+      additionalItems: false,
+    };
+    const validator = compileExternalJsonSchema(schema);
+    expect(validator.check([1, 'value'])).toBe(true);
+    expect(validator.check(['value', 1])).toBe(false);
+    expect(validator.check([1, 'value', 3])).toBe(false);
+    expect(
+      compileExternalJsonSchema({ ...schema, items: [{ type: 'string' }] }).check(['changed']),
+    ).toBe(true);
+    expect(() =>
+      compileExternalJsonSchema({
+        $schema: schema.$schema,
+        $ref: 'https://example.invalid/schema.json',
+      }),
+    ).toThrow();
+    expect(() =>
+      compileExternalJsonSchema({
+        $schema: 'https://example.invalid/unknown-draft',
+        type: 'string',
+      }),
     ).toThrow();
   });
 

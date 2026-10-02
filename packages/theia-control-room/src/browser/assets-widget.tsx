@@ -107,7 +107,7 @@ export class AssetsWidget extends ReactWidget {
     const jobKinds = availableAssetJobKinds(selectedProvider);
     const formats = availableAssetOutputFormats(selectedProvider);
     return (
-      <div className="gamecrafter-assets">
+      <div className="gamecrafter-assets gamecrafter-surface">
         <header className="gamecrafter-assets-header">
           <div>
             <h1>Assets</h1>

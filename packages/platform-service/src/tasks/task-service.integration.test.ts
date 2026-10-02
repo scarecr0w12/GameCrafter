@@ -48,7 +48,7 @@ beforeEach(async () => {
   stopRequested = new Promise<void>((resolve) => {
     resolveStopRequested = resolve;
   });
-  pathsForLastProfile = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir }, 'linux');
+  pathsForLastProfile = resolvePaths({ GAMECRAFTER_PROFILE_DIR: profileDir });
   service = await startService(pathsForLastProfile);
   client = await connectToService(service.socketPath, pathsForLastProfile);
   const project = await client.call('project/create', {

@@ -65,7 +65,9 @@ export async function assetProviderJson<T>(
         headers: {
           authorization: `Bearer ${context.apiKey}`,
           accept: 'application/json',
-          ...(init.body === undefined ? {} : { 'content-type': 'application/json' }),
+          ...(init.body === undefined || init.body instanceof FormData
+            ? {}
+            : { 'content-type': 'application/json' }),
           ...Object.fromEntries(new Headers(init.headers).entries()),
         },
         signal: AbortSignal.timeout(context.timeoutMs),
@@ -104,14 +106,15 @@ export async function assetProviderJson<T>(
 
 export function safeProviderText(value: unknown, apiKey?: string): string {
   if (typeof value !== 'string') return '';
-  let message = value.slice(0, 512);
+  let message = value;
   if (apiKey) message = message.replaceAll(apiKey, '[REDACTED]');
   return redact(message)
     .replace(/(bearer\s+)[A-Za-z0-9._~+/-]+=*/gi, '$1[REDACTED]')
     .replace(
       /((?:api[-_]?key|token|secret|password|authorization)\s*[:=]\s*)[^\s,;}]+/gi,
       '$1[REDACTED]',
-    );
+    )
+    .slice(0, 512);
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

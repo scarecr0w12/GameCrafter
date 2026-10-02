@@ -117,7 +117,7 @@ export class ConnectionsWidget extends ReactWidget {
 
   protected render(): React.ReactNode {
     return (
-      <div className="gamecrafter-connections">
+      <div className="gamecrafter-connections gamecrafter-surface">
         <header className="gamecrafter-connections-header">
           <h1>Connections</h1>
           <label>

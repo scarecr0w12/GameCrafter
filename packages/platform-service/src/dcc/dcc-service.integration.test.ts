@@ -21,7 +21,7 @@ let root: string | undefined;
 
 beforeEach(async () => {
   root = mkdtempSync(path.join(tmpdir(), 'gc-dcc-service-integration-'));
-  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
   service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
   client = await connect({
     socketPath: service.socketPath,
@@ -170,7 +170,9 @@ describe('DCC connector service integration', () => {
       tool: '3dsmax',
       refresh: true,
     });
-    expect(unsupported.layers.headless.status).toBe('unsupported-os');
+    expect(unsupported.layers.headless.status).toBe(
+      process.platform === 'win32' ? 'unavailable' : 'unsupported-os',
+    );
     expect(unsupported.operations.every((entry) => !entry.available)).toBe(true);
     expect(
       readFileSync(

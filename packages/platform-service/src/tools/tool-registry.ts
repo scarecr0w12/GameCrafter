@@ -1,6 +1,6 @@
 import {
   compile,
-  compileJsonSchema2020,
+  compileExternalJsonSchema,
   ToolDefinitionSchema,
   ValidationError,
   type AccessMode,
@@ -45,15 +45,15 @@ export class ToolRegistry {
       throw new Error(`Tool already registered: ${definition.toolId}`);
     }
     compile<ToolDefinition>(ToolDefinitionSchema).assert(definition);
-    const inputValidator = usesJsonSchema2020(definition.source)
-      ? compileJsonSchema2020<unknown>(
-          definition.inputSchema as Parameters<typeof compileJsonSchema2020>[0],
+    const inputValidator = usesExternalJsonSchema(definition.source)
+      ? compileExternalJsonSchema<unknown>(
+          definition.inputSchema as Parameters<typeof compileExternalJsonSchema>[0],
         )
       : compile<unknown>(definition.inputSchema as Parameters<typeof compile>[0]);
     const outputValidator = definition.outputSchema
-      ? usesJsonSchema2020(definition.source)
-        ? compileJsonSchema2020<unknown>(
-            definition.outputSchema as Parameters<typeof compileJsonSchema2020>[0],
+      ? usesExternalJsonSchema(definition.source)
+        ? compileExternalJsonSchema<unknown>(
+            definition.outputSchema as Parameters<typeof compileExternalJsonSchema>[0],
           )
         : compile<unknown>(definition.outputSchema as Parameters<typeof compile>[0])
       : undefined;
@@ -112,6 +112,6 @@ export class ToolRegistry {
   }
 }
 
-function usesJsonSchema2020(source: string): boolean {
+function usesExternalJsonSchema(source: string): boolean {
   return source.startsWith('mcp:') || source.startsWith('plugin:');
 }

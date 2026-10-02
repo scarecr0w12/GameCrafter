@@ -1,0 +1,17 @@
+{
+  "skill_name": "game-performance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Entering a village causes intermittent frame hitches.",
+      "expected_output": "Raw captures, frame-time comparison, and observed gameplay/visual tradeoffs.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import {
   type SkillCatalogEntry,
   type SkillEnablement,
   type SkillRecord,
+  type SkillResourceReadParams,
+  type SkillResourceReadResult,
 } from '@gamecrafter/contracts';
 import type { SettingsService } from '../settings/settings-service';
 import type { TaskService } from '../tasks/task-service';
@@ -15,6 +17,7 @@ import { SkillCatalog, type SkillCatalogRequest } from './skill-catalog';
 import { SkillInstaller } from './skill-installer';
 import { SkillRegistry, type SkillEnableInput } from './skill-registry';
 import { loadSkillDir } from './skill-loader';
+import { readSkillResource } from './skill-resource';
 import type { RoleRegistry } from '../roles/role-registry';
 
 export class SkillService {
@@ -94,6 +97,35 @@ export class SkillService {
     sessionId?: string,
     effectiveAccessMode?: AccessMode,
   ): Promise<SkillActivationResult> {
+    this.assertEligible(projectId, name, taskId, sessionId, effectiveAccessMode);
+    return this.registry.activate(projectId, name, taskId, agentId);
+  }
+
+  readResource(
+    request: SkillResourceReadParams,
+    sessionId?: string,
+    effectiveAccessMode?: AccessMode,
+  ): SkillResourceReadResult {
+    this.assertEligible(
+      request.projectId,
+      request.name,
+      request.taskId,
+      sessionId,
+      effectiveAccessMode,
+    );
+    return readSkillResource(
+      this.registry.activatableSkill(request.projectId, request.name),
+      request,
+    );
+  }
+
+  private assertEligible(
+    projectId: string,
+    name: string,
+    taskId?: string,
+    sessionId?: string,
+    effectiveAccessMode?: AccessMode,
+  ): void {
     this.registry.activatableSkill(projectId, name);
     const task = taskId ? this.tasks.get(projectId, taskId) : undefined;
     const accessMode = effectiveAccessMode ?? this.accessMode(projectId, sessionId);
@@ -115,7 +147,6 @@ export class SkillService {
         RpcErrorCode.SkillNotFound,
       );
     }
-    return this.registry.activate(projectId, name, taskId, agentId);
   }
 
   validate(directory: string): {

@@ -547,7 +547,10 @@ export class ToolBroker {
       const role = this.options.roles.get(roleName, projectId);
       const permissionToolId = toolId === 'board/propose-decision' ? 'board/post' : toolId;
       const roleAllowsSkillTools =
-        (toolId === 'skills/activate' || toolId === 'skills/search') && role.skills.length > 0;
+        (toolId === 'skills/activate' ||
+          toolId === 'skills/search' ||
+          toolId === 'skills/read-resource') &&
+        role.skills.length > 0;
       const roleAllowsLockTools = toolId.startsWith('locks/') && role.locks.length > 0;
       const roleAllowsMemory = toolId === 'memory/write' && role.memory === 'project';
       return (

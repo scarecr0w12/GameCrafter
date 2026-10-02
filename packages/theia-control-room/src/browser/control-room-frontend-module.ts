@@ -39,9 +39,14 @@ import { GameCrafterSettingsWidget } from './settings-widget';
 import { SettingsViewContribution } from './settings-view-contribution';
 import { TaskQuestionHandler } from './task-question-handler';
 import { ToolApprovalHandler } from './tool-approval-handler';
+import { AuditWidget } from './audit-widget';
+import { AuditViewContribution } from './audit-view-contribution';
+import { GameCrafterThemeContribution } from './theme-contribution';
 import '../../src/browser/style/index.css';
+import '../../src/browser/style/workstation.css';
 
 export default new ContainerModule((bind) => {
+  bind(FrontendApplicationContribution).to(GameCrafterThemeContribution).inSingletonScope();
   bind(ControlRoomClientEvents).toSelf().inSingletonScope();
   bind(ControlRoomClientToken).toService(ControlRoomClientEvents);
   bind(ControlRoomService)
@@ -54,6 +59,14 @@ export default new ContainerModule((bind) => {
     )
     .inSingletonScope();
 
+  bind(AuditWidget).toSelf().inSingletonScope();
+  bind(WidgetFactory)
+    .toDynamicValue((context) => ({
+      id: AuditWidget.ID,
+      createWidget: () => context.container.get(AuditWidget),
+    }))
+    .inSingletonScope();
+  bindViewContribution(bind, AuditViewContribution);
   bind(ProjectHomeWidget).toSelf().inSingletonScope();
   bind(GameCrafterSettingsWidget).toSelf().inSingletonScope();
   bind(ModelsWidget).toSelf().inSingletonScope();

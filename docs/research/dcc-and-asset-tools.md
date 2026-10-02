@@ -56,6 +56,8 @@ Record documented automation surfaces, MCP bridge examples, and API behavior for
 
 ### Tripo3D
 
+Request/upload contracts were re-checked on 2026-10-01; see [Tripo v3 adapter verification](asset-provider-api-verification.md) for source links, implemented corrections, and the remaining unverified live behavior.
+
 - API requests use an API key in `Authorization: Bearer <key>`; the v3 base URL is `https://openapi.tripo3d.ai/v3` ([API overview](https://developers.tripo3d.ai/en/docs)).
 - Generation is asynchronous: POST to a generation endpoint, retain `task_id`, poll `GET /v3/tasks/{task_id}` or configure a webhook, and download the output on success. The task lifecycle documents queued/running/success/failed/cancelled and expired states ([task lifecycle](https://developers.tripo3d.ai/en/docs/task-lifecycle)).
 - The text-generation result example includes `output.model_url`; the separate conversion endpoint documents GLTF, USDZ, FBX, OBJ, STL, and 3MF support ([text-to-model](https://developers.tripo3d.ai/en/docs/generation-text-to-model), [conversion](https://developers.tripo3d.ai/en/docs/models-convert)). Download links can be temporary and should be fetched promptly ([SDK download guidance](https://developers.tripo3d.ai/en/docs/sdk)).

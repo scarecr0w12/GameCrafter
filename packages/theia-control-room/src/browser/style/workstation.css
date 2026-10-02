@@ -1,0 +1,370 @@
+/* Shared workstation surfaces follow the selected IDE theme, including high contrast. */
+.gamecrafter-surface {
+  --gc-surface: var(--theia-editor-background);
+  --gc-panel: var(--theia-sideBar-background);
+  --gc-border: var(--theia-widget-border);
+  --gc-accent: var(--theia-focusBorder);
+  background:
+    radial-gradient(
+      ellipse at top right,
+      color-mix(in srgb, var(--gc-accent) 5%, transparent),
+      transparent 55%
+    ),
+    var(--gc-surface);
+  box-sizing: border-box;
+  color: var(--theia-foreground);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: clamp(18px, 2.5vw, 38px);
+  scrollbar-color: color-mix(in srgb, var(--gc-accent) 20%, var(--gc-panel)) transparent;
+}
+.gamecrafter-surface :is(button, input, select, textarea) {
+  border: 1px solid var(--gc-border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  font: inherit;
+  line-height: 1.4;
+  min-height: 32px;
+}
+.gamecrafter-surface :is(input, select, textarea) {
+  background: var(--theia-input-background);
+  color: var(--theia-input-foreground);
+  padding: 7px 10px;
+}
+.gamecrafter-surface :is(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--gc-accent);
+  min-height: initial;
+}
+.gamecrafter-surface button,
+.gamecrafter-surface button.theia-button.secondary {
+  background: var(--theia-button-secondaryBackground, var(--gc-panel));
+  color: var(--theia-button-secondaryForeground, var(--theia-foreground));
+  cursor: pointer;
+  padding: 8px 13px;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+.gamecrafter-surface button:hover:not(:disabled) {
+  background: var(--theia-button-secondaryHoverBackground, var(--gc-panel));
+  border-color: var(--gc-accent);
+}
+.gamecrafter-surface :focus-visible {
+  outline: 2px solid var(--gc-accent);
+  outline-offset: 3px;
+}
+.gamecrafter-surface button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.gamecrafter-surface h1 {
+  font-size: clamp(25px, 2.2vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.7px;
+  line-height: 1.2;
+}
+.gamecrafter-surface h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+.gamecrafter-project-home {
+  background-image:
+    radial-gradient(
+      ellipse at top right,
+      color-mix(in srgb, var(--gc-accent) 7%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(color-mix(in srgb, var(--gc-border) 20%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--gc-border) 20%, transparent) 1px,
+      transparent 1px
+    );
+  background-size:
+    auto,
+    48px 48px,
+    48px 48px;
+}
+.gamecrafter-home-header {
+  border-bottom: 1px solid var(--gc-border);
+  margin-bottom: 22px;
+  padding: 10px 0 24px;
+}
+.gamecrafter-home-header h1 {
+  font-size: clamp(34px, 3vw, 44px);
+  margin: 0 0 8px;
+}
+.gamecrafter-home-subtitle {
+  color: var(--theia-descriptionForeground);
+  font-size: 17px;
+  margin: 0 0 16px;
+}
+.gamecrafter-home-header [role='status'] {
+  color: var(--theia-textLink-foreground);
+  font-size: 12px;
+}
+.gamecrafter-project-home-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+.gamecrafter-project-home-actions button {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin: 0;
+  min-height: 48px;
+  white-space: normal;
+}
+.gamecrafter-project-home-actions .codicon {
+  color: var(--theia-descriptionForeground);
+  font-size: 20px;
+}
+.gamecrafter-project-home .gamecrafter-primary-action {
+  background: var(--theia-button-background);
+  border-color: transparent;
+  color: var(--theia-button-foreground);
+  font-weight: 650;
+}
+.gamecrafter-project-home .gamecrafter-primary-action .codicon {
+  color: inherit;
+}
+.gamecrafter-project-home .gamecrafter-primary-action:hover:not(:disabled) {
+  background: var(--theia-button-hoverBackground);
+}
+.gamecrafter-home-guides {
+  gap: 22px;
+  margin-bottom: 28px;
+}
+.gamecrafter-home-guides article {
+  background: var(--gc-panel);
+  border: 1px solid var(--gc-border);
+  border-radius: 8px;
+  padding: 20px;
+}
+.gamecrafter-home-guide-kicker {
+  color: var(--theia-descriptionForeground);
+  font-size: 12px;
+}
+.gamecrafter-home-projects-heading {
+  border-top: 1px solid var(--gc-border);
+  padding-top: 22px;
+}
+.gamecrafter-project-home-empty {
+  border: 1px dashed var(--gc-border);
+  border-radius: 8px;
+  color: var(--theia-descriptionForeground);
+  padding: 50px 20px;
+  text-align: center;
+}
+.gamecrafter-project-home-table {
+  background: var(--gc-panel);
+  border: 1px solid var(--gc-border);
+}
+.gamecrafter-project-home-table :is(th, td) {
+  padding: 12px;
+}
+.gamecrafter-project-home-table th {
+  color: var(--theia-descriptionForeground);
+  font-size: 12px;
+  font-weight: 600;
+}
+.gamecrafter-project-home-table tbody tr:hover {
+  background: color-mix(in srgb, var(--gc-accent) 5%, var(--gc-panel));
+}
+:is(
+  .gamecrafter-setting-row,
+  .gamecrafter-model-card,
+  .gamecrafter-knowledge-section,
+  .gamecrafter-swarm-panel,
+  .gamecrafter-assets-library,
+  .gamecrafter-assets-viewer,
+  .gamecrafter-assets-generation,
+  .gamecrafter-chat-message,
+  .gamecrafter-chat-composer,
+  .gamecrafter-settings-import-preview
+) {
+  border: 1px solid var(--gc-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.gamecrafter-setting-row {
+  margin-bottom: 12px;
+}
+.gamecrafter-settings-groups {
+  gap: 6px;
+}
+.gamecrafter-settings-group {
+  border-radius: 6px;
+  padding: 12px;
+}
+.gamecrafter-settings-group.is-active {
+  border-color: var(--gc-accent);
+}
+.gamecrafter-settings-import-button {
+  border: 1px solid var(--gc-border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 6px;
+  padding: 8px;
+}
+.gamecrafter-settings-import-button input {
+  max-width: 220px;
+}
+.gamecrafter-settings-import-preview {
+  background: var(--gc-panel);
+  margin: 16px 0;
+}
+.gamecrafter-settings-import-preview ul {
+  max-height: 180px;
+  overflow: auto;
+}
+.gamecrafter-settings-import-preview button + button {
+  margin-left: 8px;
+}
+.gamecrafter-chat {
+  padding: 0;
+}
+.gamecrafter-chat-sidebar {
+  padding: 22px 14px;
+}
+.gamecrafter-chat-main {
+  padding: 24px;
+}
+.gamecrafter-chat-composer {
+  box-sizing: border-box;
+}
+.gamecrafter-audit {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  overflow: auto;
+}
+.gamecrafter-audit-toolbar {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.gamecrafter-audit label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.gamecrafter-audit table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.gamecrafter-audit :is(th, td) {
+  border-bottom: 1px solid var(--gc-border);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.gamecrafter-audit pre {
+  background: var(--gc-panel);
+  border: 1px solid var(--gc-border);
+  border-radius: 6px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+.gamecrafter-audit-error {
+  color: var(--theia-errorForeground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gamecrafter-project-home-actions button {
+    transition: none;
+  }
+}
+@media (max-width: 700px) {
+  .gamecrafter-home-guides {
+    grid-template-columns: 1fr;
+  }
+  .gamecrafter-project-home-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gamecrafter-project-home-table {
+    display: block;
+    overflow: auto;
+  }
+}
+
+.gamecrafter-home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.gamecrafter-home-brand {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.gamecrafter-home-brand > .codicon {
+  font-size: 64px;
+  color: var(--gc-accent);
+}
+.gamecrafter-home-header .gamecrafter-primary-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 12px 22px;
+  white-space: nowrap;
+}
+.gamecrafter-home-header .gamecrafter-primary-action .codicon {
+  font-size: 20px;
+}
+.gamecrafter-project-home-empty > .codicon {
+  font-size: 56px;
+  color: var(--theia-descriptionForeground);
+}
+.gamecrafter-project-home-empty h3 {
+  color: var(--theia-foreground);
+  font-size: 18px;
+  margin: 18px 0 8px;
+}
+.gamecrafter-project-home-empty p {
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .gamecrafter-home-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .gamecrafter-home-brand > .codicon {
+    font-size: 44px;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1100px) {
+  .gamecrafter-project-home-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.gamecrafter-skill-reader-content {
+  max-height: 34rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  border: 1px solid var(--theia-panel-border);
+  border-radius: 8px;
+  background: var(--theia-editor-background);
+  color: var(--theia-editor-foreground);
+  font-family: var(--theia-code-font-family);
+}
+.gamecrafter-skill-reader select {
+  max-width: 100%;
+}

@@ -17,7 +17,7 @@ let root: string | undefined;
 
 beforeEach(async () => {
   root = mkdtempSync(path.join(tmpdir(), 'gc-backup-integration-'));
-  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
   service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
   const options = {
     socketPath: service.socketPath,
@@ -53,6 +53,16 @@ describe('backup service integration', () => {
       kind: 'proposal',
       body: 'A thread to preserve in a backup.',
       type: 'proposal',
+    });
+    const conversation = await client!.call('chat/create', {
+      projectId: project.projectId,
+      title: 'Restore history',
+    });
+    const chatMessage = await client!.call('chat/append', {
+      projectId: project.projectId,
+      conversationId: conversation.conversationId,
+      role: 'user',
+      content: 'Preserve my history',
     });
     const gameAsset = path.join(project.path, 'game', 'large-test-asset.bin');
     writeFileSync(gameAsset, randomBytes(8 * 1024 * 1024));
@@ -141,6 +151,20 @@ describe('backup service integration', () => {
       projectId: restored.registeredProjectId,
     });
     expect(restoredSummary.path).toBe(restoredPath);
+    expect(
+      (
+        await client!.call('chat/messages', {
+          projectId: restored.registeredProjectId!,
+          conversationId: conversation.conversationId,
+        })
+      ).messages,
+    ).toMatchObject([
+      {
+        projectId: restored.registeredProjectId,
+        messageId: chatMessage.messageId,
+        content: 'Preserve my history',
+      },
+    ]);
     const restoredManifest = JSON.parse(
       readFileSync(path.join(restoredPath, 'gamecrafter.project.json'), 'utf8'),
     );
@@ -256,7 +280,7 @@ async function waitForRun(runId: string) {
 
 beforeEach(async () => {
   root = mkdtempSync(path.join(tmpdir(), 'gc-backup-integration-'));
-  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') }, 'linux');
+  const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
   service = await PlatformService.start({ paths, platformVersion: '0.1.0' });
   const connection = {
     socketPath: service.socketPath,

@@ -185,6 +185,8 @@ export const SearchRequestSchema = Type.Object(
     statuses: Type.Optional(Type.Array(CanonStatusSchema, { uniqueItems: true })),
     includeInactive: Type.Optional(Type.Boolean({ default: false })),
     limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, default: 10 })),
+    taskId: Type.Optional(Type.String({ format: 'uuid' })),
+    maxTokens: Type.Optional(Type.Integer({ minimum: 0, maximum: 200000 })),
     mode: Type.Optional(
       Type.Union([Type.Literal('hybrid'), Type.Literal('lexical'), Type.Literal('semantic')], {
         default: 'hybrid',

@@ -72,7 +72,7 @@ export class ChatWidget extends ReactWidget {
     const activeEditor = this.editorManager.currentEditor;
     const editorName = activeEditor?.getResourceUri()?.path.base ?? 'No editor open';
     return (
-      <div className="gamecrafter-chat">
+      <div className="gamecrafter-chat gamecrafter-surface">
         <aside className="gamecrafter-chat-sidebar">
           <header>
             <strong>Conversations</strong>

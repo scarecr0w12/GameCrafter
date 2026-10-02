@@ -88,7 +88,7 @@ export class SwarmWidget extends ReactWidget {
   protected render(): React.ReactNode {
     const currentRequest = this.requests.find((request) => request.requestId === this.requestId);
     return (
-      <main className="gamecrafter-swarm">
+      <main className="gamecrafter-swarm gamecrafter-surface">
         <header className="gamecrafter-swarm-header">
           <div>
             <h1>Swarm</h1>

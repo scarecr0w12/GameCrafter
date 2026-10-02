@@ -49,6 +49,10 @@ describe('WorktreeManager', () => {
     });
     writeFileSync(path.join(projectPath, 'gamecrafter.project.json'), JSON.stringify(manifest));
     execFileSync('git', ['init', '-b', 'main'], { cwd: projectPath, stdio: 'ignore' });
+    execFileSync('git', ['config', 'core.autocrlf', 'false'], {
+      cwd: projectPath,
+      stdio: 'ignore',
+    });
     execFileSync('git', ['add', '-A'], { cwd: projectPath, stdio: 'ignore' });
     execFileSync(
       'git',

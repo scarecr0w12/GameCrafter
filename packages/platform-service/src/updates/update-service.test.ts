@@ -491,7 +491,7 @@ describe('UpdateService download', () => {
     expect(store.get().error).toContain('signature');
   });
 
-  it('marks the signature unavailable when a configured key has no published signature', async () => {
+  it('rejects unsigned releases when a trusted signing key is configured', async () => {
     const keys = generateKeyPairSync('ed25519');
     const publicKey = keys.publicKey.export({ format: 'pem', type: 'spki' }).toString();
     const update = createService({
@@ -504,8 +504,10 @@ describe('UpdateService download', () => {
       }),
     });
     await update.check();
-    const state = await update.download();
-    expect(state.downloaded?.verified).toEqual({ sha256: true, signature: 'unavailable' });
+    await expectRpcRejection(update.download(), RpcErrorCode.UpdateVerificationFailed);
+    expect(existsSync(assetPath())).toBe(false);
+    expect(readdirSync(updatesDir())).toEqual([]);
+    expect(store.get().downloaded).toBeNull();
   });
 
   it('rejects unsafe asset names without writing outside the updates directory', async () => {
@@ -570,6 +572,14 @@ describe('UpdateService install and rollback', () => {
     expect(result.instructions).toContain('does not replace the running installation');
     expect(store.get().currentVersion).toBe(CURRENT_VERSION);
     expect(store.get().previous).toBeNull();
+  });
+
+  it('refuses installation when compatibility changes after download', async () => {
+    const update = createService({ fetch: releaseFetch() });
+    await update.check();
+    await update.download();
+    store.save({ ...store.get(), compatibility: { ok: false, reasons: ['Schema mismatch'] } });
+    expectRpcError(() => update.install(), RpcErrorCode.UpdateIncompatible);
   });
 
   it('refuses to install without a downloaded update or when the file is missing', async () => {

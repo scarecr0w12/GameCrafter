@@ -1,0 +1,17 @@
+{
+  "skill_name": "game-build-release",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Prepare a Windows patch for Steam without publishing it.",
+      "expected_output": "Build/depot identifiers, compatibility report, and a concrete default-branch proposal.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "skill_name": "narrative-style-guide",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a guard conversation that changes after the bridge is repaired.",
+      "expected_output": "Source, state graph, voice examples, and transcripts for each entry condition.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Review this task when the expected live tool is unavailable. Deliver the concrete authored result where possible and qualify the evidence.",
+      "expected_output": "A scoped result with explicit unavailable verification and no fabricated tool/API execution.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+using UnrealBuildTool;
+public class AcceptanceEditorTarget : TargetRules { public AcceptanceEditorTarget(TargetInfo Target) : base(Target) { Type=TargetType.Editor; DefaultBuildSettings=BuildSettingsVersion.V7; IncludeOrderVersion=EngineIncludeOrderVersion.Unreal5_8; ExtraModuleNames.Add("Acceptance"); } }

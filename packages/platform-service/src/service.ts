@@ -3,6 +3,7 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   PROTOCOL_VERSION,
+  redact,
   RpcError,
   RpcErrorCode,
   isTerminal,
@@ -52,7 +53,7 @@ import { createBuiltinModelProviders } from './models/providers';
 import { RoleRegistry } from './roles/role-registry';
 import { SkillCatalog } from './skills/skill-catalog';
 import { SkillInstaller } from './skills/skill-installer';
-import { SkillRegistry } from './skills/skill-registry';
+import { findBundledSkillsDirectory, SkillRegistry } from './skills/skill-registry';
 import { SkillService } from './skills/skill-service';
 import { registerSkillTools } from './skills/skill-tools';
 import { ToolBroker } from './tools/tool-broker';
@@ -226,6 +227,7 @@ export class PlatformService {
       profile,
       projectDatabases,
       installer: skillInstaller,
+      bundledSkillsDirectory: findBundledSkillsDirectory(),
       settings: settingsService,
       pluginSkillDirectories: (projectId) => pluginRegistry.skillDirectories(projectId),
     });
@@ -599,6 +601,12 @@ export class PlatformService {
           sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
         }),
       }),
+      'settings/export': (params, context) =>
+        settingsService.export({
+          projectId: params.projectId,
+          sessionId: sessionIdForRequest(params.sessionId, context.sessionId),
+        }),
+      'settings/import': (params) => settingsService.import(params),
       'settings/set': (params, context) =>
         settingsService.set(params.key, params.scope, params.value, {
           projectId: params.projectId,
@@ -687,6 +695,22 @@ export class PlatformService {
       }),
       'tool/list': ({ projectId }) => ({ tools: toolBroker.listTools(projectId) }),
       'tool/call': (request, context) => toolBroker.call(request, { sessionId: context.sessionId }),
+      'audit/read': ({ projectId, afterSeq, limit }) => {
+        const pageLimit = limit ?? 500;
+        const events = taskService.eventsForProject(projectId, {
+          afterSeq: afterSeq ?? 0,
+          limit: pageLimit,
+        });
+        return redact({
+          schemaVersion: 1 as const,
+          projectId,
+          exportedAt: new Date().toISOString(),
+          limit: pageLimit,
+          nextAfterSeq: events.at(-1)?.seq ?? afterSeq ?? 0,
+          calls: toolBroker.listCalls(projectId, { limit: pageLimit }),
+          events,
+        });
+      },
       'tool/calls': ({ projectId, taskId, toolId, limit }) => ({
         calls: toolBroker.listCalls(projectId, { taskId, toolId, limit: limit ?? 200 }),
       }),
@@ -773,6 +797,8 @@ export class PlatformService {
           request.agentId,
           context.sessionId,
         ),
+      'skills/read-resource': (request, context) =>
+        skillService.readResource(request, context.sessionId),
       'skills/search': (request, context) => ({
         entries: skillService.search(
           request.projectId,
