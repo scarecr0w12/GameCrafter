@@ -18,12 +18,16 @@ files:
   - '!node_modules/**/examples{,/**/*}'
   - '!node_modules/**/src{,/**/*}'
 extraResources:
+  - from: ../../LICENSE
+    to: LICENSE.GameCrafter.txt
+  - from: ../../NOTICE
+    to: NOTICE.GameCrafter.txt
   - from: ../../plugins
     to: plugins
     filter:
       - '**/*'
 directories:
-  output: dist
+  output: dist/${version}
 linux:
   category: Development
   maintainer: GameCrafter

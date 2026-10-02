@@ -17,6 +17,8 @@ Start with the [complete documentation index](docs/README.md): [user workflows](
 - [Full project review](docs/FULL_PROJECT_REVIEW.md): repaired defects, verification evidence, and remaining implementation/verification gaps across the complete system.
 - [Research notes](docs/research/): sourced reference material. Each note carries a "Last researched" date; re-verify before relying on a fast-moving fact.
 
+For versioned installers and a local Windows test executable, see the [release guide](docs/RELEASE_GUIDE.md).
+
 ## Code
 
 | Path                          | Package                             | Purpose                                                                                                                                                 |

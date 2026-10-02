@@ -105,7 +105,7 @@ Run the appropriate native host/toolchain. Windows packaging includes a native b
 
 The update service distinguishes available release metadata, compatibility, download checksum, signature availability/validity and installation. A trusted Ed25519 public key must be provisioned for signature verification. With no public key configured, signature status is unavailable; a configured key with a missing/invalid signature fails verification.
 
-Current evidence includes local Linux artifacts, a native Windows x64 NSIS artifact, startup/service behavior and hosted package workflows. Installer install/uninstall, previous-installer capture, signing-key provisioning, tagged signed release and rollback validation remain open in WP19. Do not describe the system as having accepted unattended update/rollback until those tests exist.
+The [release guide](RELEASE_GUIDE.md) describes the tagged testing-prerelease workflow and versioned local Windows launcher. Current evidence includes local Linux artifacts, a native Windows x64 NSIS artifact, startup/service behavior and hosted package workflows. Installer install/uninstall, previous-installer capture, signing-key provisioning, tagged signed release and rollback validation remain open in WP19. Do not describe the system as having accepted unattended update/rollback until those tests exist.
 
 Generated installers and Windows release staging directories stay local/ignored. Publish distribution artifacts through the release workflow after validation; Git source commits should contain sources and reproducible build scripts.
 

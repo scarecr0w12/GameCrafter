@@ -19,7 +19,8 @@
     "test": "turbo run test",
     "test:ui": "node scripts/live-ui-smoke.cjs",
     "format": "node node_modules/prettier/bin/prettier.cjs --write .",
-    "format:check": "node node_modules/prettier/bin/prettier.cjs --check ."
+    "format:check": "node node_modules/prettier/bin/prettier.cjs --check .",
+    "release:version": "node scripts/set-release-version.cjs"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

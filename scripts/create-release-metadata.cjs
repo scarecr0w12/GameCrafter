@@ -14,9 +14,17 @@ async function main() {
   const signingKey = process.env.UPDATE_SIGNING_PRIVATE_KEY;
   const tag = process.env.GITHUB_REF_NAME;
   const commit = process.env.GITHUB_SHA;
-  if (!signingKey || !tag || !commit) {
-    throw new Error('UPDATE_SIGNING_PRIVATE_KEY, GITHUB_REF_NAME, and GITHUB_SHA are required.');
-  }
+  if (!tag || !commit) throw new Error('GITHUB_REF_NAME and GITHUB_SHA are required.');
+  const unsignedPrerelease =
+    process.argv.includes('--allow-unsigned-prerelease') &&
+    process.env.RELEASE_PRERELEASE === 'true';
+  if (!signingKey && !unsignedPrerelease)
+    throw new Error(
+      'UPDATE_SIGNING_PRIVATE_KEY is required unless explicitly creating an unsigned testing prerelease.',
+    );
+  const key = signingKey ? createPrivateKey(signingKey.replace(/\\n/g, '\n')) : undefined;
+  if (key && key.asymmetricKeyType !== 'ed25519')
+    throw new Error('Release signing key must be Ed25519.');
 
   const { version } = JSON.parse(
     readFileSync(path.resolve('apps/control-room/package.json'), 'utf8'),
@@ -27,7 +35,11 @@ async function main() {
 
   const files = readdirSync(directory)
     .map((name) => ({ name, filePath: path.join(directory, name) }))
-    .filter(({ filePath }) => statSync(filePath).isFile());
+    .filter(
+      ({ name, filePath }) =>
+        statSync(filePath).isFile() &&
+        (name.endsWith('.AppImage') || name.endsWith('.deb') || name.endsWith('.exe')),
+    );
   const platforms = [];
   for (const file of files) {
     const lower = file.name.toLowerCase();
@@ -69,7 +81,9 @@ async function main() {
       ),
       minUpgradeFromVersion: '0.1.0',
     },
-    notes: '',
+    notes: key
+      ? 'Signed release metadata.'
+      : 'Unsigned testing prerelease. Checksums establish file integrity; publisher signature verification is unavailable.',
   };
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
   const manifestPath = path.join(directory, 'gamecrafter-release.json');
@@ -86,9 +100,15 @@ async function main() {
   const checksumPath = path.join(directory, 'SHA256SUMS.txt');
   writeFileSync(checksumPath, checksumBytes);
 
-  const key = createPrivateKey(signingKey.replace(/\\n/g, '\n'));
-  writeFileSync(`${manifestPath}.sig`, `${sign(null, manifestBytes, key).toString('base64')}\n`);
-  writeFileSync(`${checksumPath}.sig`, `${sign(null, checksumBytes, key).toString('base64')}\n`);
+  if (key) {
+    writeFileSync(`${manifestPath}.sig`, `${sign(null, manifestBytes, key).toString('base64')}\n`);
+    writeFileSync(`${checksumPath}.sig`, `${sign(null, checksumBytes, key).toString('base64')}\n`);
+  } else {
+    const { rmSync } = require('node:fs');
+    for (const file of [`${manifestPath}.sig`, `${checksumPath}.sig`])
+      rmSync(file, { force: true });
+    process.stdout.write('Created checksum-verified unsigned testing prerelease metadata.\n');
+  }
 }
 
 function latestMigrationVersion(migrations) {

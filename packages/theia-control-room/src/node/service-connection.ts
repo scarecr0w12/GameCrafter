@@ -8,7 +8,7 @@ import type { RpcNotificationParams } from '@gamecrafter/contracts';
 
 const localRequire = createRequire(__filename);
 const CLIENT_NAME = 'GameCrafter Control Room';
-const CLIENT_VERSION = '0.1.0';
+const CLIENT_VERSION = (localRequire('../../package.json') as { version: string }).version;
 const RETRY_INTERVAL_MS = 200;
 const CONNECTION_TIMEOUT_MS = 10_000;
 

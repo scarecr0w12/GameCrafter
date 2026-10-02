@@ -17,6 +17,10 @@ GameCrafter is a local game-development workspace with a Theia desktop Control R
 | Administrator configuring defaults     | [Settings reference](SETTINGS_REFERENCE.md)           | All 75 builtin settings, defaults, valid scopes, value schemas                                       |
 | Game-development agent or skill author | [Game-development skills](GAME_DEVELOPMENT_SKILLS.md) | Bundled skills, domain coverage, reference loading, research and evaluation evidence                 |
 
+## Versioned builds
+
+See the [release and local Windows testing guide](RELEASE_GUIDE.md) for version/tag agreement, GitHub draft prereleases, checksums, package commands and isolated local test launchers. [0.1.1 testing notes](releases/v0.1.1.md) describe the candidate contents and limitations.
+
 ## Design authority
 
 - [Platform design](PLATFORM_DESIGN.md) owns user-confirmed requirements and the complete product design.

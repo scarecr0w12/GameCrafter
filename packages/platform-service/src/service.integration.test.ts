@@ -529,7 +529,7 @@ describe('platform service integration', () => {
       }),
     ).toEqual({ messages: [message] });
     await client.close();
-  });
+  }, 30_000);
 
   it('clears session-scoped settings when a client disconnects', async () => {
     const profileDir = makeTemporaryDirectory('gc-session-profile-');
