@@ -175,7 +175,10 @@ async function finish() {
     const target = path.join(root, name);
     const formatted = await prettier.format(text, { ...config, filepath: target });
     if (check) {
-      if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== formatted)
+      if (
+        !fs.existsSync(target) ||
+        fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n') !== formatted.replace(/\r\n/g, '\n')
+      )
         throw new Error(`Generated documentation is stale: ${name}`);
     } else {
       fs.mkdirSync(path.dirname(target), { recursive: true });

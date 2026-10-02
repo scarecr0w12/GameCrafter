@@ -19,7 +19,7 @@ GameCrafter is a local game-development workspace with a Theia desktop Control R
 
 ## Versioned builds
 
-See the [release and local Windows testing guide](RELEASE_GUIDE.md) for version/tag agreement, GitHub draft prereleases, checksums, package commands and isolated local test launchers. [0.1.1 testing notes](releases/v0.1.1.md) describe the candidate contents and limitations.
+See the [release and local Windows testing guide](RELEASE_GUIDE.md) for version/tag agreement, GitHub draft prereleases, checksums, package commands and isolated local test launchers. [0.1.1 testing notes](releases/v0.1.1.md) describe the contents and limitations. [Release acceptance](RELEASE_ACCEPTANCE.md) records source identity, local packaging, runtime/UI verification, and hosted publication results.
 
 ## Design authority
 
