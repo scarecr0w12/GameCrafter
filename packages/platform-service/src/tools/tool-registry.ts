@@ -101,9 +101,16 @@ export class ToolRegistry {
   }
 
   validateOutput(tool: RegisteredTool, output: unknown): string[] {
-    if (!tool.outputValidator || tool.outputValidator.check(output)) return [];
+    // MCP outputSchema describes structuredContent, not the CallToolResult envelope.
+    // Keep content blocks (including images/resources) in the recorded result.
+    const value = tool.definition.source.startsWith('mcp:')
+      ? typeof output === 'object' && output !== null && 'structuredContent' in output
+        ? output.structuredContent
+        : undefined
+      : output;
+    if (!tool.outputValidator || tool.outputValidator.check(value)) return [];
     try {
-      tool.outputValidator.assert(output);
+      tool.outputValidator.assert(value);
     } catch (error) {
       if (error instanceof ValidationError) return error.errors;
       throw error;

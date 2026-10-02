@@ -4,6 +4,7 @@ import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { ControlRoomReactWidget } from './control-room-react-widget';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import type {
+  ApprovalRequest,
   ChangeRequest,
   ImpactResult,
   IntegrationRecord,
@@ -36,10 +37,12 @@ export class SwarmWidget extends ControlRoomReactWidget {
   private questions: TaskQuestion[] = [];
   private locks: ResourceLock[] = [];
   private integrations: IntegrationRecord[] = [];
+  private approvals: ApprovalRequest[] = [];
   private readonly drafts = new Map<string, string>();
   private errorMessage?: string;
   private notice?: string;
   private busy = false;
+  private refreshPending = false;
   private highlightedTaskId?: string;
 
   constructor(
@@ -52,6 +55,7 @@ export class SwarmWidget extends ControlRoomReactWidget {
     this.title.label = 'Swarm';
     this.title.iconClass = 'codicon codicon-hubot';
     this.title.closable = true;
+    this.toDispose.push(this.clientEvents.projectChanged(() => void this.refreshProjects()));
     this.toDispose.push(
       this.clientEvents.taskChanged((event) => {
         if (event.projectId === this.projectId) void this.refresh();
@@ -77,12 +81,32 @@ export class SwarmWidget extends ControlRoomReactWidget {
         if (event.projectId === this.projectId) void this.refresh();
       }),
     );
+    this.toDispose.push(
+      this.clientEvents.approvalRequested((event) => {
+        if (event.projectId === this.projectId) void this.refresh();
+      }),
+    );
+    this.toDispose.push(
+      this.clientEvents.approvalResolved((event) => {
+        if (event.projectId === this.projectId) void this.refresh();
+      }),
+    );
     void this.refreshProjects();
   }
 
   protected onActivateRequest(message: Message): void {
     super.onActivateRequest(message);
-    void this.refresh();
+    void this.refreshProjects();
+  }
+
+  async revealRequest(selection: { projectId: string; requestId?: string }): Promise<void> {
+    this.projectId = selection.projectId;
+    this.requestId = selection.requestId ?? '';
+    this.requests = [];
+    this.taskTree = undefined;
+    this.questions = [];
+    this.approvals = [];
+    await this.refreshProjects();
   }
 
   protected render(): React.ReactNode {
@@ -104,6 +128,7 @@ export class SwarmWidget extends ControlRoomReactWidget {
                 this.requests = [];
                 this.requestId = '';
                 this.taskTree = undefined;
+                this.approvals = [];
                 void this.refresh();
               }}
             >
@@ -248,6 +273,37 @@ export class SwarmWidget extends ControlRoomReactWidget {
               )}
             </section>
 
+            <section className="gamecrafter-swarm-panel" aria-label="Pending approvals">
+              <h2>Approvals</h2>
+              {this.approvals.length === 0 ? (
+                <p>No pending approvals.</p>
+              ) : (
+                <ul>
+                  {this.approvals.map((approval) => (
+                    <li key={approval.approvalId}>
+                      <p>
+                        {approval.summary} · {approval.toolId} · {approval.sideEffects}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={this.busy}
+                        onClick={() => void this.resolveApproval(approval, true)}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        disabled={this.busy}
+                        onClick={() => void this.resolveApproval(approval, false)}
+                      >
+                        Reject
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
             <section className="gamecrafter-swarm-panel">
               <h2>Resource locks</h2>
               {this.locks.length === 0 ? (
@@ -379,8 +435,8 @@ export class SwarmWidget extends ControlRoomReactWidget {
             </span>
             <label>
               Progress
-              <progress value={node.progress ?? 0} max={100} />
-              {node.progress === null ? 'pending' : `${node.progress}%`}
+              {node.progress !== null && <progress value={node.progress} max={100} />}
+              {node.progress === null ? task.state.replaceAll('_', ' ') : `${node.progress}%`}
             </label>
             {!['succeeded', 'failed', 'blocked', 'cancelled'].includes(task.state) && (
               <button type="button" onClick={() => void this.cancelTask(task)} disabled={this.busy}>
@@ -388,6 +444,23 @@ export class SwarmWidget extends ControlRoomReactWidget {
               </button>
             )}
           </div>
+          {task.error && (
+            <p className="gamecrafter-swarm-error" role="alert">
+              {task.error.message}
+            </p>
+          )}
+          {task.result && (
+            <div className="gamecrafter-swarm-result">
+              <p>{task.result.summary}</p>
+              {task.result.artifacts.length > 0 && (
+                <ul>
+                  {task.result.artifacts.map((artifact, index) => (
+                    <li key={index}>{artifact.path}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {node.pendingQuestions.map((question) => this.renderQuestion(task, question))}
           {task.state === 'succeeded' && task.result?.reviewStatus !== 'accepted' && (
             <div className="gamecrafter-swarm-feedback">
@@ -464,36 +537,62 @@ export class SwarmWidget extends ControlRoomReactWidget {
   }
 
   private async refresh(): Promise<void> {
-    if (this.busy) return;
+    if (this.busy) {
+      this.refreshPending = true;
+      return;
+    }
     this.busy = true;
+    this.refreshPending = false;
+    const projectId = this.projectId;
     try {
-      if (!this.projectId) return;
-      const [requests, locks, integrations, allQuestions] = await Promise.all([
-        this.service.listChangeRequests({ projectId: this.projectId, limit: 100 }),
-        this.service.listResourceLocks(this.projectId),
-        this.service.listIntegrations({ projectId: this.projectId }),
-        this.service.listTaskQuestions(true),
-      ]);
+      if (!projectId) return;
+      const [requestResult, lockResult, integrationResult, questionResult, approvalResult] =
+        await Promise.allSettled([
+          this.service.listChangeRequests({ projectId, limit: 100 }),
+          this.service.listResourceLocks(projectId),
+          this.service.listIntegrations({ projectId }),
+          this.service.listTaskQuestions(true),
+          this.service.listApprovals(projectId, true),
+        ]);
+      if (projectId !== this.projectId) return;
+      const failures = [
+        requestResult,
+        lockResult,
+        integrationResult,
+        questionResult,
+        approvalResult,
+      ]
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result) =>
+          result.reason instanceof Error ? result.reason.message : String(result.reason),
+        );
+      const requests = requestResult.status === 'fulfilled' ? requestResult.value : this.requests;
+      const locks = lockResult.status === 'fulfilled' ? lockResult.value : [];
+      const integrations = integrationResult.status === 'fulfilled' ? integrationResult.value : [];
+      const allQuestions = questionResult.status === 'fulfilled' ? questionResult.value : [];
+      const approvals = approvalResult.status === 'fulfilled' ? approvalResult.value : [];
       this.requests = requests;
       this.locks = locks;
       this.integrations = integrations;
+      this.approvals = approvals;
       if (!requests.some((request) => request.requestId === this.requestId)) {
         this.requestId = requests[0]?.requestId ?? '';
       }
       const selected = requests.find((request) => request.requestId === this.requestId);
       if (selected) {
-        const tasks = await this.service.getTaskTree(this.projectId, selected.rootTaskId);
+        const tasks = await this.service.getTaskTree(projectId, selected.rootTaskId);
         const taskIds = new Set(tasks.map((task) => task.taskId));
         this.questions = allQuestions.filter((question) => taskIds.has(question.taskId));
         const eventResults = await Promise.all(
           tasks.map((task) =>
             this.service.listTaskEvents({
-              projectId: this.projectId!,
+              projectId,
               taskId: task.taskId,
               limit: 100,
             }),
           ),
         );
+        if (projectId !== this.projectId || selected.requestId !== this.requestId) return;
         this.taskTree = buildTaskTree(
           tasks,
           selected.rootTaskId,
@@ -504,12 +603,13 @@ export class SwarmWidget extends ControlRoomReactWidget {
         this.taskTree = undefined;
         this.questions = [];
       }
-      this.errorMessage = undefined;
+      this.errorMessage = failures.length ? failures.join('; ') : undefined;
     } catch (error) {
       this.errorMessage = error instanceof Error ? error.message : String(error);
     } finally {
       this.busy = false;
       this.update();
+      if (this.refreshPending) void this.refresh();
     }
   }
 
@@ -544,6 +644,18 @@ export class SwarmWidget extends ControlRoomReactWidget {
   private async releaseLock(lock: ResourceLock): Promise<void> {
     await this.run(async () => {
       await this.service.releaseResourceLock(lock.projectId, lock.lockId);
+      await this.refreshAfterAction();
+    });
+  }
+
+  private async resolveApproval(approval: ApprovalRequest, approve: boolean): Promise<void> {
+    await this.run(async () => {
+      await this.service.approve(
+        approval.projectId,
+        approval.approvalId,
+        approve,
+        `Selected ${approve ? 'Approve' : 'Reject'} in Swarm`,
+      );
       await this.refreshAfterAction();
     });
   }
@@ -611,6 +723,7 @@ export class SwarmWidget extends ControlRoomReactWidget {
     } finally {
       this.busy = false;
       this.update();
+      if (this.refreshPending) void this.refresh();
     }
   }
 

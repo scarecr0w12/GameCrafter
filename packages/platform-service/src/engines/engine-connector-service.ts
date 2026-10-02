@@ -867,9 +867,13 @@ export class EngineConnectorService {
       const proven =
         identityResult?.projectId === projectId ||
         (identityResult?.projectPath !== undefined &&
-          [projectPath, path.join(projectPath, 'game')].some((expected) =>
-            sameNativePath(identityResult.projectPath!, expected),
-          ));
+          [
+            projectPath,
+            path.join(projectPath, 'game'),
+            ...identity.evidence
+              .filter((entry) => entry.kind === 'file' && entry.ref.endsWith('.uproject'))
+              .map((entry) => path.join(projectPath, entry.ref)),
+          ].some((expected) => sameNativePath(identityResult.projectPath!, expected)));
       return {
         entry,
         identityProven: proven,
@@ -894,13 +898,20 @@ export class EngineConnectorService {
   ): EngineOperationCapability {
     if (!['edit-scene', 'screenshot', 'console'].includes(capability.operation)) return capability;
     const suffixes: Record<string, string[]> = {
-      'edit-scene': ['edit_scene', 'edit-scene', 'editScene'],
+      'edit-scene': ['edit_scene', 'edit-scene', 'editScene', 'execute_python'],
       screenshot: ['screenshot'],
       console: ['console', 'execute_console'],
     };
-    const tool = bridge.tools.find((entry) =>
+    let tool = bridge.tools.find((entry) =>
       suffixes[capability.operation]?.includes(entry.toolId.split('/').at(-1) ?? ''),
     );
+    if (
+      !tool &&
+      ['screenshot', 'console'].includes(capability.operation) &&
+      bridge.tools.some((entry) => entry.toolId.endsWith('/get_project_context'))
+    ) {
+      tool = bridge.tools.find((entry) => entry.toolId.endsWith('/invoke'));
+    }
     const available = Boolean(
       bridge.entry?.state.status === 'connected' && bridge.identityProven && tool,
     );
@@ -958,7 +969,15 @@ export class EngineConnectorService {
       {
         projectId: context.projectId,
         toolId: tool.toolId,
-        input: params,
+        input: tool.toolId.endsWith('/invoke')
+          ? {
+              command: operation === 'screenshot' ? 'take_screenshot' : 'execute_console_command',
+              arguments:
+                operation === 'screenshot'
+                  ? { ...params, file_path: path.join(runDirectory, 'editor-capture.png') }
+                  : params,
+            }
+          : params,
         ...(context.taskId ? { taskId: context.taskId } : {}),
       },
       { accessCeiling: context.accessMode, agentRole: context.agentRole, signal: context.signal },
@@ -999,7 +1018,15 @@ export class EngineConnectorService {
     const image = findImage(output);
     if (!image) {
       // Official Unity Pipeline returns a PNG file path rather than inline MCP image data.
-      const result = parseMcpObject(output);
+      let result = parseMcpObject(output);
+      if (
+        result?.status === 'success' &&
+        isRecord(result.result) &&
+        result.result.success === true &&
+        typeof result.result.file_path === 'string'
+      ) {
+        result = { success: true, path: result.result.file_path };
+      }
       if (!result || typeof result.path !== 'string' || result.success !== true) return null;
       try {
         const source = realpathSync(path.resolve(path.join(projectPath, 'game'), result.path));
@@ -1037,12 +1064,22 @@ function isIdentityTool(name: string): boolean {
     'project_info',
     'identity',
     'editor_status',
+    'get_project_context',
   ].includes(name);
 }
 
 function parseIdentityResult(value: unknown): { projectId?: string; projectPath?: string } | null {
   const result = parseMcpObject(value);
   if (!result) return null;
+  if (
+    result.status === 'success' &&
+    isRecord(result.result) &&
+    isRecord(result.result.data) &&
+    isRecord(result.result.data.project)
+  ) {
+    const nativePath = result.result.data.project.path;
+    return typeof nativePath === 'string' ? { projectPath: nativePath } : null;
+  }
   return {
     ...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
     ...(typeof result.projectPath === 'string' ? { projectPath: result.projectPath } : {}),

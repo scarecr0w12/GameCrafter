@@ -42,6 +42,7 @@ interface AgentCheckpoint {
   activatedSkills: string[];
   eligibleSkills: string[];
   evidence: Array<{ kind: string; ref: string }>;
+  maxCompletionTokens?: number;
 }
 
 export async function runAgentTask(context: TaskHandlerContext): Promise<TaskResult> {
@@ -60,6 +61,7 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
     buildSystemTranscript(context.task.goal, input, role, context.task.contract);
   let pinnedCount = checkpoint?.pinnedCount ?? transcript.length;
   let turn = checkpoint?.turn ?? 0;
+  let maxCompletionTokens = checkpoint?.maxCompletionTokens ?? 4096;
   const activatedSkills = checkpoint?.activatedSkills ?? [];
   let eligibleSkills = checkpoint?.eligibleSkills ?? [...role.skills];
   const evidence = checkpoint?.evidence ?? [];
@@ -138,13 +140,43 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
     );
 
     const requestId = `agent:${context.task.taskId}:${turn + 1}`;
-    const response = await requestCompletion(context, role, transcript, toolDefinitions, requestId);
+    const response = await requestCompletion(
+      context,
+      role,
+      transcript,
+      toolDefinitions,
+      requestId,
+      maxCompletionTokens,
+    );
     turn += 1;
     const usage = usageFrom(response);
     spentCost += usage.costUsd;
     spentTokens += usage.tokens;
     await context.reportUsage({ costUsd: usage.costUsd, tokens: usage.tokens });
     evidence.push({ kind: 'model-call', ref: requestId });
+    if (response.finishReason === 'length') {
+      if (maxCompletionTokens >= 32768) {
+        throw new RpcError(
+          'Agent model response was truncated at 32768 output tokens. Split the requested work into smaller tasks.',
+          RpcErrorCode.ProviderRequestFailed,
+        );
+      }
+      maxCompletionTokens *= 2;
+      context.progress(
+        `Model response was truncated; retrying with ${maxCompletionTokens} output tokens.`,
+      );
+      await saveCheckpoint(
+        context,
+        transcript,
+        turn,
+        pinnedCount,
+        activatedSkills,
+        eligibleSkills,
+        evidence,
+        maxCompletionTokens,
+      );
+      continue;
+    }
     transcript.push({
       role: 'assistant',
       content: response.content,
@@ -158,6 +190,7 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
       activatedSkills,
       eligibleSkills,
       evidence,
+      maxCompletionTokens,
     );
 
     if (response.toolCalls.length === 0) {
@@ -174,6 +207,7 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
         activatedSkills,
         eligibleSkills,
         evidence,
+        maxCompletionTokens,
       );
       continue;
     }
@@ -217,6 +251,7 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
         activatedSkills,
         eligibleSkills,
         evidence,
+        maxCompletionTokens,
       );
       if (completion) break;
     }
@@ -239,6 +274,7 @@ async function requestCompletion(
   transcript: ChatMessage[],
   tools: NonNullable<ChatRequest['tools']>,
   requestId: string,
+  maxCompletionTokens = 4096,
 ): Promise<ChatResponse> {
   const response = await context.tool('model/complete', {
     requestId,
@@ -246,7 +282,7 @@ async function requestCompletion(
     request: {
       messages: transcript,
       tools,
-      maxTokens: 4096,
+      maxTokens: maxCompletionTokens,
     },
   });
   if (typeof response !== 'object' || response === null) {
@@ -354,6 +390,7 @@ async function saveCheckpoint(
   activatedSkills: string[],
   eligibleSkills: string[],
   evidence: Array<{ kind: string; ref: string }>,
+  maxCompletionTokens = 4096,
 ): Promise<void> {
   const checkpoint: AgentCheckpoint = {
     transcript,
@@ -362,6 +399,7 @@ async function saveCheckpoint(
     activatedSkills,
     eligibleSkills,
     evidence,
+    maxCompletionTokens,
   };
   await context.checkpoint(checkpoint);
 }
@@ -433,6 +471,7 @@ function asCheckpoint(value: unknown): AgentCheckpoint | undefined {
     activatedSkills: checkpoint.activatedSkills ?? [],
     eligibleSkills: checkpoint.eligibleSkills ?? [],
     evidence: checkpoint.evidence ?? [],
+    maxCompletionTokens: positiveInteger(checkpoint.maxCompletionTokens, 4096),
   };
 }
 

@@ -13,6 +13,7 @@ import type {
   ProviderRuntimeAccount,
 } from './provider';
 import { endpoint, modelUsage, providerFetch, providerJson, safeExcerpt } from './http-utils';
+import { providerToolNames } from './tool-names';
 
 interface OpenAIModelList {
   data?: Record<string, unknown>[];
@@ -63,9 +64,14 @@ export class OpenAICompatibleProvider implements ModelProvider {
     request: ChatRequest,
     hooks: ProviderCompletionHooks,
   ): Promise<ChatResponse> {
-    return request.stream
-      ? this.completeStream(account, model, request, hooks)
-      : this.completeJson(account, model, request, hooks);
+    const names = providerToolNames(request);
+    const response = await (request.stream
+      ? this.completeStream(account, model, names.request, hooks)
+      : this.completeJson(account, model, names.request, hooks));
+    return {
+      ...response,
+      toolCalls: response.toolCalls.map((call) => ({ ...call, name: names.decode(call.name) })),
+    };
   }
 
   async embed(

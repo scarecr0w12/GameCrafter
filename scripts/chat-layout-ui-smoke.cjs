@@ -41,14 +41,36 @@ async function main() {
         response.writeHead(200, { 'content-type': 'application/json' });
         response.end(
           JSON.stringify({
-            data: ['selected-chat', 'optional-chat'].map((id) => ({
-              id,
-              capabilities: { chat: true, streaming: true },
-            })),
+            data: [
+              { id: 'plain-chat' },
+              ...['selected-chat', 'optional-chat'].map((id) => ({
+                id,
+                capabilities: { chat: true, streaming: true },
+              })),
+            ],
           }),
         );
       } else if (request.url === '/v1/chat/completions') {
         const input = JSON.parse(body);
+        if (input.model === 'plain-chat') {
+          assert.equal(
+            input.stream,
+            undefined,
+            'Chat without streaming metadata uses a complete response',
+          );
+          response.writeHead(200, { 'content-type': 'application/json' });
+          response.end(
+            JSON.stringify({
+              choices: [
+                {
+                  message: { content: 'Answer without streaming metadata.' },
+                  finish_reason: 'stop',
+                },
+              ],
+            }),
+          );
+          return;
+        }
         response.writeHead(200, { 'content-type': 'text/event-stream' });
         response.write(
           `data: ${JSON.stringify({ choices: [{ delta: { content: 'Stream owned by origin. ' } }] })}\n\n`,
@@ -163,6 +185,10 @@ async function main() {
         [
           ...(packagedExecutable ? [] : [path.resolve('apps/control-room')]),
           `--remote-debugging-port=${debugPort}`,
+          // Keep startup/layout work running when the automated window is occluded.
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-background-timer-throttling',
           `--user-data-dir=${path.join(directory, 'electron')}`,
           '--electronUserData',
           path.join(directory, 'electron'),
@@ -487,6 +513,53 @@ $windowRect = New-Object SmokeWindow+Rect
     );
     checks.push(
       'Same-project conversation switching during a real RPC/provider response preserves destination storage and transcript',
+    );
+    // Reproduce ordinary provider discovery: IDs only, no capability extension.
+    await client.call('model/update', {
+      modelId: `${account.accountId}/selected-chat`,
+      patch: { enabled: false },
+    });
+    const plainDiscovery = await client.call('model/discover', {
+      accountId: account.accountId,
+      providerModelIds: ['plain-chat'],
+    });
+    const plainModelId = plainDiscovery.models[0].modelId;
+    await client.call('pool/create', {
+      name: 'Plain chat pool',
+      scope: 'platform',
+      target: { kind: 'task-type', id: 'chat' },
+      modelIds: [plainModelId],
+    });
+    await open('Chat', '.gamecrafter-chat');
+    await wait(
+      (id) =>
+        [...document.querySelectorAll('select[aria-label="Chat model"] option')].some(
+          (option) => option.value === id,
+        ),
+      plainModelId,
+    );
+    for (const modelId of ['', plainModelId]) {
+      await (await reachable('select[aria-label="Chat model"]')).select(modelId);
+      await (await reachable('button[aria-label="New chat"]')).asLocator().click();
+      await (
+        await reachable('textarea[aria-label="Message"]')
+      )
+        .asLocator()
+        .fill(modelId ? 'Plain manual chat' : 'Plain auto chat');
+      await page.keyboard.press('Enter');
+      await wait(() =>
+        document
+          .querySelector('.gamecrafter-chat-message.is-assistant')
+          ?.textContent.includes('Answer without streaming metadata.'),
+      );
+      assert(
+        !(await page.$('.gamecrafter-chat-error')),
+        'Plain chat should complete without routing errors',
+      );
+    }
+    await page.screenshot({ path: path.join(directory, 'chat-without-streaming-metadata.png') });
+    checks.push(
+      'ID-only provider discovery appears in the model picker and answers with both Auto route and manual selection through a chat pool',
     );
     assert.deepEqual(errors, []);
     const report = {

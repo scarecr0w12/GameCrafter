@@ -2,6 +2,8 @@ import {
   RpcError,
   RpcErrorCode,
   uuidv7,
+  compile,
+  ToolIdSchema,
   type ApprovalRequest,
   type ToolCallRecord,
 } from '@gamecrafter/contracts';
@@ -276,7 +278,7 @@ export class ToolStore {
 }
 
 function callFromRow(row: ToolCallRow): ToolCallRecord {
-  return {
+  return normalizeRecordedCall({
     callId: row.callId,
     projectId: row.projectId,
     taskId: row.taskId,
@@ -293,6 +295,18 @@ function callFromRow(row: ToolCallRow): ToolCallRecord {
     costUsd: row.costUsd,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
+  });
+}
+
+const toolIdValidator = compile<string>(ToolIdSchema);
+
+/** Keep malformed model requests auditable without violating the RPC record contract. */
+export function normalizeRecordedCall(record: ToolCallRecord): ToolCallRecord {
+  if (toolIdValidator.check(record.toolId)) return record;
+  return {
+    ...record,
+    toolId: 'broker/invalid-tool',
+    input: { requestedToolId: record.toolId, input: record.input },
   };
 }
 

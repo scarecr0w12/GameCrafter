@@ -277,6 +277,7 @@ export class UnrealConnector implements EngineConnector {
         `-platform=${platform}`,
         '-clientconfig=Development',
         '-build',
+        '-ubtargs=-NoHotReloadFromIDE',
         '-cook',
         '-stage',
         '-pak',
@@ -343,6 +344,15 @@ export class UnrealConnector implements EngineConnector {
       ],
       artifacts: [...result.artifacts, ...engineArtifacts],
     };
+    if ((operation === 'build' || operation === 'export') && outcome.status === 'succeeded') {
+      const archive = path.join(context.runDirectory, 'archive');
+      if (existsSync(archive)) {
+        outcome.artifacts.push({
+          kind: operation,
+          path: path.relative(context.projectPath, archive).split(path.sep).join('/'),
+        });
+      }
+    }
     if (operation === 'test') {
       const reportPath = path.join(context.runDirectory, 'index.json');
       const report = readTestReport(reportPath, 'unreal');

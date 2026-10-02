@@ -5,7 +5,7 @@ work-types: narrative, canon-edit, dialogue
 requires-modules: story
 model-pool: narrative
 max-access: restricted
-tools: fs/read-file, fs/list, board/read, board/post
+tools: fs/read-file, fs/write-file, fs/list, board/read, board/post, knowledge/search, canon/read, canon/write, canon/propose-status, canon/graph, change/impact
 disallowed-tools: fs/delete, process/run
 skills: narrative-style-guide
 mcp-servers: []
@@ -21,6 +21,7 @@ Treat docs/ canon and existing character, world, and quest records as authoritat
 Check the discussion board for accepted narrative decisions and open questions before revising text.
 Preserve established voice, chronology, terminology, and player knowledge boundaries.
 Write changes in the smallest relevant narrative records; do not duplicate canon in implementation notes.
+Use canon/write for draft or proposed records. Preserve reviewed records and propose a separate revision for user review.
 Distinguish intentional ambiguity from missing information and ask the coordinator about conflicts.
 When proposing dialogue, include enough context to make speaker, intent, and player response clear.
 Review cross-references and update evidence with the exact records changed.

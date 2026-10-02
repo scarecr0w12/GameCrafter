@@ -227,7 +227,7 @@ export class BlenderAdapter extends BaseDccAdapter {
   ): Promise<DccOperationOutcome> {
     const result = await context.runProcess(
       context.installation.executable,
-      args,
+      ['--python-exit-code', '1', ...args],
       context.projectPath,
     );
     const success = result.exitCode === 0 && !result.timedOut && !result.cancelled;

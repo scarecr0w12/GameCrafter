@@ -104,6 +104,16 @@ export class DiscussionBoardWidget extends ControlRoomReactWidget {
         if (event.projectId === this.projectId) void this.refresh();
       }),
     );
+    this.toDispose.push(
+      this.clientEvents.taskChanged((event) => {
+        if (
+          event.projectId === this.projectId &&
+          event.task.kind.startsWith('board-maintenance.')
+        ) {
+          void this.refresh();
+        }
+      }),
+    );
     void this.refresh();
   }
 

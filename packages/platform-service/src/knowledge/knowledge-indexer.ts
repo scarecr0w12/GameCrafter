@@ -402,7 +402,7 @@ export class KnowledgeIndexer {
           includeMessages: true,
           limit: 1000,
         });
-        const summary = this.options.board.summary(projectId, thread.threadId);
+        const { summary } = this.options.board.summary(projectId, thread.threadId);
         for (const message of detail.messages) {
           const text = [thread.title, thread.kind, summary, message.type, message.body]
             .filter(Boolean)

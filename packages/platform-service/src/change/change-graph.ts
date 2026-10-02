@@ -154,6 +154,10 @@ export class ChangeGraph {
     for (const record of records) {
       const from = `canon:${record.id}`;
       ensureNode(from, record.title);
+      addEdge(from, `file:${record.path}`, 'defined-in', 1, 'author', record.path);
+      if (record.supersedes && recordIds.has(record.supersedes)) {
+        addEdge(from, `canon:${record.supersedes}`, 'supersedes', 1, 'author', record.path);
+      }
       const decisionRecord =
         record.type === 'decision' ||
         record.provenance.some((provenance) => provenance.kind === 'decision');
@@ -163,7 +167,7 @@ export class ChangeGraph {
           from,
           `canon:${reference.target}`,
           reference.rel,
-          1,
+          reference.confidence,
           decisionRecord || reference.source === 'decision' ? 'decision' : 'author',
           `Canon reference from ${record.id}`,
         );
@@ -228,7 +232,9 @@ export class ChangeGraph {
       const scene = ['tscn', 'unity', 'umap'].includes(extension);
       const fileNode = scene ? `scene:${file.path}` : `file:${file.path}`;
       ensureNode(fileNode, path.basename(file.path));
-      for (const match of text.matchAll(/\b[a-z]+\.[a-z0-9-]+\b/g)) {
+      for (const match of text.matchAll(
+        /(?<![a-z0-9_.-])[a-z][a-z0-9]*(?:\.[a-z0-9][a-z0-9-]*)+(?![a-z0-9_.-])/g,
+      )) {
         if (!canonIds.has(match[0]!)) continue;
         addEdge(fileNode, `canon:${match[0]}`, 'mentions', 0.5, 'inferred', match[0]!);
       }
@@ -278,17 +284,19 @@ export function calculateImpact(
     }
   }
 
-  let truncated = false;
+  const omittedCandidates = new Set<string>();
   while (queue.length > 0) {
     const current = queue.shift()!;
     if (current.depth >= options.maxDepth) {
-      if ((adjacency.get(current.node.nodeId) ?? []).length > 0) truncated = true;
+      for (const candidate of adjacency.get(current.node.nodeId) ?? []) {
+        omittedCandidates.add(candidate.nodeId);
+      }
       continue;
     }
     for (const candidate of adjacency.get(current.node.nodeId) ?? []) {
       const pathConfidence = current.pathConfidence * candidate.edge.confidence;
       if (pathConfidence < 0.05) {
-        truncated = true;
+        omittedCandidates.add(candidate.nodeId);
         continue;
       }
       const depth = current.depth + 1;
@@ -317,7 +325,7 @@ export function calculateImpact(
       (left, right) =>
         left.depth - right.depth || left.node.nodeId.localeCompare(right.node.nodeId),
     ),
-    truncated,
+    truncated: [...omittedCandidates].some((nodeId) => !best.has(nodeId)),
   };
 }
 

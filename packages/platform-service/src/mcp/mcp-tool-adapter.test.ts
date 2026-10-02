@@ -33,6 +33,83 @@ const tools: McpToolDescriptor[] = [
 ];
 
 describe('McpToolAdapter', () => {
+  it('validates structured MCP content while retaining the response envelope', async () => {
+    const registry = new ToolRegistry();
+    const adapter = new McpToolAdapter(registry);
+    const output = {
+      content: [{ type: 'text', text: 'Scene inspected' }],
+      structuredContent: { value: 'Scene' },
+    };
+    adapter.register(
+      connection,
+      [{ name: 'scene', inputSchema: objectSchema, outputSchema: objectSchema }],
+      () => ({ sideEffects: 'none', executionMode: 'live-editor' }),
+      async () => output,
+    );
+    const tool = registry.get('fixture-tools/scene')!;
+    expect(registry.validateOutput(tool, output)).toEqual([]);
+    expect(
+      registry.validateOutput(tool, { ...output, structuredContent: { value: 42 } }),
+    ).not.toEqual([]);
+    expect(registry.validateOutput(tool, { content: output.content })).not.toEqual([]);
+    expect(registry.validateOutput(tool, { value: 'Scene' })).not.toEqual([]);
+    const result = await tool.handler(
+      {
+        projectId: uuidv7(),
+        projectPath: '/tmp/project',
+        taskId: null,
+        agentId: null,
+        accessMode: 'full',
+        callId: uuidv7(),
+        signal: new AbortController().signal,
+      },
+      {},
+    );
+    expect(result.output).toEqual(output);
+  });
+  it.each([
+    { status: 'error', error: 'Python NameError', result: { success: false } },
+    { status: 'error', error: 'No running editor' },
+  ])('reports CodeFizz failures while preserving successful results: %j', async (failure) => {
+    const registry = new ToolRegistry();
+    const adapter = new McpToolAdapter(registry);
+    let failed = true;
+    adapter.register(
+      connection,
+      ['get_project_context', 'connect_editor', 'execute_python'].map((name) => ({
+        name,
+        inputSchema: objectSchema,
+      })),
+      () => ({ sideEffects: null, executionMode: null }),
+      async () => ({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              failed ? failure : { status: 'success', result: { success: true } },
+            ),
+          },
+        ],
+      }),
+    );
+    const context = {
+      projectId: uuidv7(),
+      projectPath: '/tmp/project',
+      taskId: null,
+      agentId: null,
+      accessMode: 'full' as const,
+      callId: uuidv7(),
+      signal: new AbortController().signal,
+    };
+    await expect(
+      registry.get('fixture-tools/execute_python')!.handler(context, {}),
+    ).rejects.toThrow(failure.error);
+    failed = false;
+    expect(
+      (await registry.get('fixture-tools/execute_python')!.handler(context, {})).output,
+    ).toBeDefined();
+  });
+
   it('registers namespaced tools with safe default metadata and user overrides', async () => {
     const registry = new ToolRegistry();
     const adapter = new McpToolAdapter(registry);

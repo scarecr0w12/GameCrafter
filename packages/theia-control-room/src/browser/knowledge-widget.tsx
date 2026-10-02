@@ -87,6 +87,7 @@ export class KnowledgeWidget extends ControlRoomReactWidget {
       this.clientEvents.knowledgeIndexChanged(({ projectId, status }) => {
         if (projectId !== this.projectId) return;
         this.indexStatus = status;
+        this.graph = undefined;
         void this.refreshRecords();
         this.update();
       }),
@@ -95,6 +96,8 @@ export class KnowledgeWidget extends ControlRoomReactWidget {
       this.clientEvents.knowledgeRecordChanged(({ projectId, record }) => {
         if (projectId !== this.projectId) return;
         this.records = [record, ...this.records.filter((entry) => entry.id !== record.id)];
+        this.graph = undefined;
+        if (record.id === this.selectedRecordId) void this.refreshSelectedRecord();
         this.update();
       }),
     );
@@ -203,8 +206,8 @@ export class KnowledgeWidget extends ControlRoomReactWidget {
             <h2>Index status</h2>
             {status ? (
               <p>
-                {status.records} records · {status.chunks} chunks · {status.vectors ?? 'no vectors'}{' '}
-                vectors · {status.pending} pending
+                {status.records} records · {status.chunks} chunks · {status.vectors ?? 0} vectors ·{' '}
+                {status.pending} pending
               </p>
             ) : (
               <p>Loading index status…</p>
@@ -665,8 +668,28 @@ export class KnowledgeWidget extends ControlRoomReactWidget {
     ) {
       this.selectedRecordId = '';
       this.recordDetail = undefined;
+      this.graph = undefined;
+    } else if (this.selectedRecordId) {
+      await this.refreshSelectedRecord();
     }
     this.update();
+  }
+
+  private async refreshSelectedRecord(): Promise<void> {
+    const projectId = this.projectId;
+    const recordId = this.selectedRecordId;
+    if (!projectId || !recordId) return;
+    try {
+      const detail = await this.service.getKnowledgeRecord({ projectId, recordId });
+      if (this.projectId !== projectId || this.selectedRecordId !== recordId) return;
+      this.recordDetail = detail;
+      this.update();
+    } catch (error) {
+      if (this.projectId !== projectId || this.selectedRecordId !== recordId) return;
+      this.recordDetail = undefined;
+      this.errorMessage = error instanceof Error ? error.message : String(error);
+      this.update();
+    }
   }
 
   private async refreshSettings(): Promise<void> {

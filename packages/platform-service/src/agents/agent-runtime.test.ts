@@ -12,6 +12,42 @@ import { runAgentTask } from './agent-runtime';
 const timestamp = '2026-09-29T00:00:00.000Z';
 
 describe('agent runtime', () => {
+  it('retries a truncated completion with more output room without executing partial tool calls', async () => {
+    const limits: number[] = [];
+    let writes = 0;
+    const partial = response([
+      { id: 'partial', name: 'fs/write-file', arguments: '{"path":"art/crystal.py","content":"' },
+    ]);
+    partial.finishReason = 'length';
+    const context = createContext(
+      [
+        partial,
+        response([
+          {
+            id: 'done',
+            name: 'tasks/complete',
+            arguments: JSON.stringify({
+              summary: 'Complete',
+              artifacts: [],
+              evidence: [],
+              claims: [{ kind: 'generated', ref: 'complete' }],
+            }),
+          },
+        ]),
+      ],
+      {
+        tool: async (id, input) => {
+          if (id === 'model/complete')
+            limits.push((input as { request: { maxTokens: number } }).request.maxTokens);
+          if (id === 'fs/write-file') writes++;
+        },
+      },
+    );
+    expect((await runAgentTask(context)).summary).toBe('Complete');
+    expect(limits).toEqual([4096, 8192]);
+    expect(writes).toBe(0);
+  });
+
   it('resumes from a checkpoint without replaying completed tool calls', async () => {
     const script = [
       response([{ id: 'call-once', name: 'test/do-once', arguments: '{}' }]),

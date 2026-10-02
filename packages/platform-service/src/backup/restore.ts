@@ -170,7 +170,26 @@ export function restoreStagingPath(targetPath: string, suffix: string): string {
 }
 
 export function removeRestoreStaging(targetPath: string): void {
-  rmSync(targetPath, { recursive: true, force: true });
+  try {
+    rmSync(targetPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'EPERM' && code !== 'EACCES') throw error;
+    // Restored Git objects and directories can be read-only. Only change this
+    // disposable tree; never follow archive symlinks into another location.
+    makeStagingWritable(targetPath);
+    rmSync(targetPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  }
+}
+
+function makeStagingWritable(targetPath: string): void {
+  if (!existsSync(targetPath)) return;
+  const stat = lstatSync(targetPath);
+  if (stat.isSymbolicLink()) return;
+  chmodSync(targetPath, stat.mode | (stat.isDirectory() ? 0o700 : 0o600));
+  if (stat.isDirectory()) {
+    for (const name of readdirSync(targetPath)) makeStagingWritable(path.join(targetPath, name));
+  }
 }
 
 function validateRelativePath(value: string): string {

@@ -37,19 +37,26 @@ async function createFakeServer(): Promise<string> {
           authorization: request.headers.authorization,
         });
         const model =
-          profile === 'cheap'
-            ? {
-                id: 'cheap-low-quality',
-                display_name: 'Cheap low-quality',
-                capabilities: { chat: true, tools: true, streaming: true },
-                pricing: { inputPerMTokUsd: 0.1, outputPerMTokUsd: 0.1 },
-              }
-            : {
-                id: 'good-expensive',
-                display_name: 'Good expensive',
-                capabilities: { chat: true, tools: true, streaming: true, structuredOutput: true },
-                pricing: { inputPerMTokUsd: 1, outputPerMTokUsd: 1 },
-              };
+          profile === 'plain'
+            ? { id: 'plain-chat', display_name: 'Plain chat' }
+            : profile === 'cheap'
+              ? {
+                  id: 'cheap-low-quality',
+                  display_name: 'Cheap low-quality',
+                  capabilities: { chat: true, tools: true, streaming: true },
+                  pricing: { inputPerMTokUsd: 0.1, outputPerMTokUsd: 0.1 },
+                }
+              : {
+                  id: 'good-expensive',
+                  display_name: 'Good expensive',
+                  capabilities: {
+                    chat: true,
+                    tools: true,
+                    streaming: true,
+                    structuredOutput: true,
+                  },
+                  pricing: { inputPerMTokUsd: 1, outputPerMTokUsd: 1 },
+                };
         response.writeHead(200, { 'content-type': 'application/json' });
         response.end(JSON.stringify({ data: [model] }));
         return;
@@ -182,6 +189,43 @@ describe('model registry and adaptive routing integration', () => {
     for (const directory of temporaryDirectories.splice(0)) {
       rmSync(directory, { recursive: true, force: true });
     }
+  });
+
+  it('routes discovered models without streaming metadata through a chat pool and returns a complete answer', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-plain-chat-'));
+    temporaryDirectories.push(root);
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
+    service = await startService(paths);
+    client = await connectService(service.socketPath, paths);
+    const account = await addAccount(await createFakeServer(), 'Plain chat account', 'plain');
+    const discovered = await client.call('model/discover', { accountId: account.accountId });
+    const model = discovered.models[0]!;
+    expect(model.capabilities).toMatchObject({ chat: true, streaming: false });
+    await client.call('pool/create', {
+      name: 'Chat models',
+      scope: 'platform',
+      target: { kind: 'task-type', id: 'chat' },
+      modelIds: [model.modelId],
+    });
+    for (const manualModelId of [undefined, model.modelId]) {
+      const result = await client.call('model/complete', {
+        route: {
+          taskType: 'chat',
+          requiredCapabilities: ['chat'],
+          ...(manualModelId ? { manualModelId } : {}),
+        },
+        request: { messages: [{ role: 'user', content: 'Hello' }], stream: true },
+      });
+      expect(result.modelId).toBe(model.modelId);
+      expect(result.content).toBe('Hello world');
+      expect(fakeRequests.at(-1)?.body?.stream).toBeUndefined();
+    }
+    await expect(
+      client.call('router/route', {
+        taskType: 'chat',
+        requiredCapabilities: ['chat', 'streaming'],
+      }),
+    ).rejects.toMatchObject({ code: -32042, data: { stage: 'capabilities' } });
   });
 
   it('discovers, routes, streams, records outcomes, applies constraints, and unlinks removed models', async () => {
@@ -461,12 +505,20 @@ describe('model registry and adaptive routing integration', () => {
     const agentRequests = fakeRequests.filter((request) => request.path === '/v1/chat/completions');
     expect(agentRequests).toHaveLength(2);
     const offeredTools = agentRequests[0]!.body!.tools as Array<{
-      function: { name: string; parameters: Record<string, unknown> };
+      function: { name: string; description: string; parameters: Record<string, unknown> };
     }>;
-    const offeredNames = offeredTools.map((tool) => tool.function.name);
+    expect(offeredTools.every((tool) => /^[a-zA-Z0-9_-]{1,64}$/.test(tool.function.name))).toBe(
+      true,
+    );
+    const offeredNames = offeredTools.map(
+      (tool) =>
+        tool.function.description.match(/\(Platform tool: (.+)\)$/)?.[1] ?? tool.function.name,
+    );
     expect(offeredNames).toContain('board/read');
     expect(offeredNames).not.toContain('fs/write-file');
-    const activateSkill = offeredTools.find((tool) => tool.function.name === 'skills/activate');
+    const activateSkill = offeredTools.find((tool) =>
+      tool.function.description.endsWith('(Platform tool: skills/activate)'),
+    );
     expect(activateSkill?.function.parameters).toMatchObject({
       properties: { name: { enum: expect.arrayContaining(['project-planning']) } },
     });

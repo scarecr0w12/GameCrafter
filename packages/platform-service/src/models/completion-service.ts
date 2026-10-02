@@ -47,12 +47,19 @@ export class CompletionService {
       );
     }
     const provider = this.registry.getProvider(account.providerKind);
-    const requestId = params.request.stream ? (params.requestId ?? uuidv7()) : params.requestId;
+    // Streaming is a delivery preference. Callers that require it can also declare
+    // the streaming routing capability; otherwise return a complete response for
+    // models whose discovery metadata does not advertise streaming support.
+    const request = {
+      ...params.request,
+      stream: !!params.request.stream && model.capabilities.streaming,
+    };
+    const requestId = request.stream ? (params.requestId ?? uuidv7()) : params.requestId;
     const startedAt = this.now().getTime();
     try {
-      const response = await provider.complete(account, model, params.request, {
+      const response = await provider.complete(account, model, request, {
         signal: context.signal ?? new AbortController().signal,
-        ...(params.request.stream && context.notify
+        ...(request.stream && context.notify
           ? {
               onDelta: (delta: string) => {
                 context.notify?.('model/delta', { requestId: requestId ?? uuidv7(), delta });

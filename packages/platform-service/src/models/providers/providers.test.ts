@@ -6,6 +6,77 @@ import { AnthropicProvider } from './anthropic';
 import { OpenAICompatibleProvider } from './openai-compatible';
 
 describe('OpenAI-compatible provider', () => {
+  it.each([false, true])('round-trips namespaced tool names with streaming=%s', async (stream) => {
+    let wireName = '';
+    let bodySeen: {
+      tools: Array<{ function: { name: string } }>;
+      messages: Array<{ name?: string; tool_calls?: Array<{ function: { name: string } }> }>;
+    } = { tools: [], messages: [] };
+    const server = createServer((request, response) => {
+      let body = '';
+      request.on('data', (chunk) => (body += chunk.toString()));
+      request.on('end', () => {
+        bodySeen = JSON.parse(body);
+        wireName = bodySeen.tools[0]!.function.name;
+        const names = bodySeen.tools.map((tool) => tool.function.name);
+        if (names.some((name: string) => !/^[a-zA-Z0-9_-]{1,64}$/.test(name))) {
+          response.writeHead(400);
+          response.end('Invalid function name');
+          return;
+        }
+        if (stream) {
+          response.writeHead(200, { 'content-type': 'text/event-stream' });
+          response.end(
+            `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call', function: { name: wireName, arguments: '{}' } }] }, finish_reason: 'tool_calls' }] })}\n\ndata: [DONE]\n\n`,
+          );
+        } else {
+          response.writeHead(200, { 'content-type': 'application/json' });
+          response.end(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: '',
+                    tool_calls: [{ id: 'call', function: { name: wireName, arguments: '{}' } }],
+                  },
+                  finish_reason: 'tool_calls',
+                },
+              ],
+            }),
+          );
+        }
+      });
+    });
+    const baseUrl = await listen(server, '/v1');
+    try {
+      const response = await new OpenAICompatibleProvider().complete(
+        openAIAccount(baseUrl),
+        model(openAIAccount(baseUrl), 'fake-model'),
+        {
+          messages: [
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [{ id: 'prior', name: 'fs/read-file', arguments: '{}' }],
+            },
+            { role: 'tool', name: 'fs/read-file', toolCallId: 'prior', content: 'file contents' },
+          ],
+          tools: [
+            { name: 'fs/read-file', description: 'Read a file', inputSchema: { type: 'object' } },
+            { name: 'fs_read-file', description: 'Distinct tool', inputSchema: { type: 'object' } },
+          ],
+          stream,
+        },
+        { signal: new AbortController().signal },
+      );
+      expect(response.toolCalls[0]?.name).toBe('fs/read-file');
+      expect(bodySeen.messages[0]!.tool_calls?.[0]?.function.name).toBe(wireName);
+      expect(bodySeen.messages[1].name).toBe(wireName);
+      expect(bodySeen.tools[1].function.name).not.toBe(wireName);
+    } finally {
+      await closeServer(server);
+    }
+  });
   it('lists models and maps chat tools, usage, and authentication', async () => {
     let observedBody: Record<string, unknown> | undefined;
     const server = createServer((request, response) => {

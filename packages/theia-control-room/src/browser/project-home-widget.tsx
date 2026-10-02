@@ -27,6 +27,7 @@ import { ASSETS_OPEN_COMMAND_ID } from './assets-view-contribution';
 import { BACKUPS_OPEN_COMMAND_ID } from './backups-view-contribution';
 import { AUDIT_OPEN_COMMAND_ID } from './audit-view-contribution';
 import { CHAT_OPEN_COMMAND_ID } from './chat-view-contribution';
+import { UPDATES_OPEN_COMMAND_ID } from './updates-view-contribution';
 
 @injectable()
 export class ProjectHomeWidget extends ControlRoomReactWidget {
@@ -296,6 +297,7 @@ export class ProjectHomeWidget extends ControlRoomReactWidget {
 }
 
 const HOME_ACTIONS = [
+  { label: 'Updates', command: UPDATES_OPEN_COMMAND_ID, icon: 'sync' },
   { label: 'Settings', command: SETTINGS_OPEN_COMMAND_ID, icon: 'settings-gear' },
   { label: 'Models', command: MODELS_OPEN_COMMAND_ID, icon: 'hubot' },
   { label: 'Chat', command: CHAT_OPEN_COMMAND_ID, icon: 'comment-discussion' },

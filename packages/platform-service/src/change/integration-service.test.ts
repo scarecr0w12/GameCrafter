@@ -42,6 +42,44 @@ afterEach(() => {
 });
 
 describe('IntegrationService', () => {
+  it.each(['aborted', 'rejected', 'integrated'] as const)(
+    'preserves a %s integration when a completed task is observed after restart',
+    async (status) => {
+      fixture = createFixture();
+      const task = fixture.tasks.create({
+        projectId: fixture.projectId,
+        kind: 'agent.run',
+        title: 'Previously reviewed artifact',
+        goal: 'Preserve the recorded integration decision',
+        isolation: 'none',
+      }).task;
+      const graph = fixture.tasks.runtime(fixture.projectId).graph;
+      graph.transition(task.taskId, 'claimed', 'test', 'test');
+      graph.transition(task.taskId, 'running', 'test', 'test');
+      graph.transition(task.taskId, 'succeeded', 'test', 'test', {
+        result: { summary: 'Previously completed', artifacts: [], evidence: [] },
+      });
+      const record = fixture.changes.saveIntegration({
+        ...integrationRecord(task, { path: '', branch: '', baseCommit: '' }),
+        worktreePath: null,
+        branch: null,
+        baseCommit: null,
+        status: status === 'aborted' ? 'conflict' : status,
+      });
+      graph.update(task.taskId, { integration: record });
+      if (status === 'aborted') {
+        await fixture.integration.abort(fixture.projectId, record.integrationId);
+      }
+      const reviewed = fixture.changes.integrationForTask(fixture.projectId, task.taskId);
+
+      // A restarted service has not added this historical task to processedTasks.
+      await fixture.integration.processTask(fixture.tasks.get(fixture.projectId, task.taskId));
+
+      expect(fixture.changes.integrationForTask(fixture.projectId, task.taskId)).toEqual(reviewed);
+      expect(reviewed?.status).toBe(status);
+    },
+  );
+
   it('downgrades unbacked validation claims and rejects unmet required claims', async () => {
     fixture = createFixture();
     const task = fixture.tasks.create({

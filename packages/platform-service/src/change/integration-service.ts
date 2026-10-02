@@ -444,6 +444,7 @@ export class IntegrationService {
       this.options.changes.integrationForTask(task.projectId, task.taskId) ??
       task.integration ??
       (await this.newIntegration(task));
+    if (['integrated', 'rejected', 'aborted'].includes(integration.status)) return;
     if (!integration.worktreePath || !integration.branch) {
       const changedFiles = filesFromResult(task.result);
       const conflicts = this.detectActiveConflicts(task, changedFiles);

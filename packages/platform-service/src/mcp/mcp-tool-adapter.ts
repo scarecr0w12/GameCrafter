@@ -31,10 +31,20 @@ export class McpToolAdapter {
     invoke: McpToolInvoker,
   ): void {
     this.unregister(config.connectionId);
+    const codeFizz =
+      tools.some((tool) => tool.name === 'get_project_context') &&
+      tools.some((tool) => tool.name === 'connect_editor');
     for (const tool of tools) {
       const definition = toToolDefinition(config, tool, getClassification(tool.name));
       this.registry.register(definition, async (context, input) => {
         const output = await invoke(tool.name, input, context);
+        const embeddedError = codeFizz ? codeFizzError(output) : null;
+        if (embeddedError) {
+          throw new RpcError(
+            `MCP tool ${config.name}/${tool.name}: ${embeddedError}`,
+            RpcErrorCode.McpRequestFailed,
+          );
+        }
         if (isRecord(output) && output.isError === true) {
           throw new RpcError(
             `MCP tool ${config.name}/${tool.name} returned an error`,
@@ -58,6 +68,22 @@ export class McpToolAdapter {
     const source = mcpToolSource(connectionId);
     return this.registry.list().filter((tool) => tool.source === source);
   }
+}
+
+function codeFizzError(output: unknown): string | null {
+  if (!isRecord(output) || !Array.isArray(output.content)) return null;
+  for (const block of output.content) {
+    if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue;
+    try {
+      const value: unknown = JSON.parse(block.text);
+      if (isRecord(value) && value.status === 'error') {
+        return typeof value.error === 'string' ? value.error : 'Editor operation failed.';
+      }
+    } catch {
+      /* Ordinary text is not an error envelope. */
+    }
+  }
+  return null;
 }
 
 function toToolDefinition(

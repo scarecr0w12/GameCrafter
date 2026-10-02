@@ -26,6 +26,68 @@ afterEach(async () => {
 });
 
 describe('engine connector integration', () => {
+  it('recognizes CodeFizz native Unreal identity and rejects another project file', async () => {
+    await startService('cfa-identity');
+    const project = await client!.call('project/create', {
+      name: 'Crystal',
+      engine: { family: 'unreal' },
+      parentDirectory: path.join(temporaryDirectories[0]!, 'projects'),
+      folderName: 'crystal',
+    });
+    const native = path.join(project.path, 'game', 'Crystal.uproject');
+    writeFileSync(native, JSON.stringify({ FileVersion: 3, EngineAssociation: '5.8' }));
+    const screenshotPath = path.join(project.path, 'game', 'capture.png');
+    writeFileSync(
+      screenshotPath,
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aI4sAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    );
+    const editor = { projectPath: native, identityFormat: 'cfa' as const, screenshotPath };
+    fixture = await startMcp2026HttpFixture(0, '', editor);
+    const bridge = await client!.call('mcp/add', {
+      config: {
+        name: 'cfa',
+        scope: 'project',
+        projectId: project.projectId,
+        mode: 'endpoint',
+        endpoint: { url: fixture.url, transport: 'streamable-http', headers: {} },
+        tags: ['live-editor'],
+        enabled: false,
+      },
+    });
+    await client!.call('mcp/connect', { connectionId: bridge.connectionId });
+    await client!.call('engine/setLiveBridge', {
+      projectId: project.projectId,
+      connectionId: bridge.connectionId,
+    });
+    expect(
+      (await client!.call('engine/capabilities', { projectId: project.projectId, refresh: true }))
+        .layers['live-editor'].status,
+    ).toBe('ready');
+    await client!.call('settings/set', {
+      key: 'access.mode',
+      scope: 'project',
+      projectId: project.projectId,
+      value: 'full',
+    });
+    const capture = await client!.call('engine/run', {
+      projectId: project.projectId,
+      operation: 'screenshot',
+    });
+    expect(capture.status).toBe('succeeded');
+    expect(capture.artifacts.some((artifact) => artifact.kind === 'screenshot')).toBe(true);
+    expect(
+      fixture.requests.filter((request) => request.method === 'tools/call').length,
+    ).toBeLessThan(20);
+    editor.projectPath = path.join(project.path, 'game', 'Other.uproject');
+    expect(
+      (await client!.call('engine/capabilities', { projectId: project.projectId, refresh: true }))
+        .layers['live-editor'].status,
+    ).toBe('unavailable');
+  }, 30000);
+
   it('accepts native game-folder identity and collects a file-backed screenshot only within its Project', async () => {
     await startService('native-editor-identity');
     const project = await client!.call('project/create', {

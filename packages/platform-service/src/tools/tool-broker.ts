@@ -20,7 +20,7 @@ import type { SettingsService } from '../settings/settings-service';
 import type { TaskService } from '../tasks/task-service';
 import type { RoleRegistry } from '../roles/role-registry';
 import type { LockManager } from '../change/lock-manager';
-import { ToolStore } from './tool-store';
+import { ToolStore, normalizeRecordedCall } from './tool-store';
 import {
   ToolRegistry,
   type RegisteredTool,
@@ -528,14 +528,14 @@ export class ToolBroker {
   }
 
   private finishRecord(store: ToolStore, record: ToolCallRecord): ToolCallRecord {
-    const storedRecord: ToolCallRecord = {
+    const storedRecord: ToolCallRecord = normalizeRecordedCall({
       ...record,
       input: redact(record.input),
       output: redact(record.output),
       error: record.error === null ? null : redact(record.error),
       evidence: redact(record.evidence),
       finishedAt: record.finishedAt ?? this.now().toISOString(),
-    };
+    });
     store.finalizeCall(storedRecord);
     this.options.events.toolCalled(record.projectId, storedRecord);
     return { ...storedRecord, input: record.input, output: record.output };
@@ -694,6 +694,11 @@ export class ToolBroker {
   }
 
   private executionTimeoutMs(definition: ToolDefinition, input: unknown): number {
+    if (definition.toolId === 'tasks/await') {
+      // Let the supervised wait return its timedOut result before the broker aborts it.
+      const waitMs = Math.min(300_000, Math.max(1, Number(asRecord(input).timeoutMs) || 300_000));
+      return waitMs + 1_000;
+    }
     if (definition.toolId === 'process/run') {
       const timeout = Number(asRecord(input).timeoutMs ?? 60_000);
       return Number.isFinite(timeout) && timeout > 0 ? timeout : 60_000;

@@ -13,14 +13,14 @@ describe('asset providers', () => {
       expect(request.headers.authorization).toBe('Bearer test-meshy-key');
       requests.push({ method: request.method ?? '', url: request.url ?? '', body });
       if (request.method === 'POST') {
-        sendJson(response, 200, { result: { id: `task-${requests.length}` } });
+        sendJson(response, 200, { result: `task-${requests.length}` });
         return;
       }
       sendJson(response, 200, {
         result: {
           status: 'SUCCEEDED',
           progress: 100,
-          credit_usage: 12,
+          consumed_credits: 12,
           model_urls: {
             glb: 'https://cdn.example.test/model.glb',
             obj: 'https://cdn.example.test/model.obj',
@@ -59,7 +59,7 @@ describe('asset providers', () => {
         kind: 'refine',
         sourceJobId: '00000000-0000-7000-8000-000000000001',
         outputFormat: 'glb',
-        providerOptions: { sourceProviderTaskId: 'source-preview-id' },
+        providerOptions: { sourceProviderTaskId: 'text:source-preview-id' },
       });
       expect(requests[2]?.body).toMatchObject({
         mode: 'refine',
@@ -205,6 +205,26 @@ describe('asset providers', () => {
       status: 'failed',
       error: 'Invalid Bearer [REDACTED]',
     });
+  });
+
+  it('preserves Meshy task errors and redacts their credentials', async () => {
+    const context: ProviderContext = {
+      baseUrl: 'https://provider.example.test',
+      apiKey: 'test-meshy-key',
+      timeoutMs: 2000,
+      fetch: async () =>
+        Response.json({
+          status: 'FAILED',
+          task_error: { message: 'Invalid Bearer test-meshy-key' },
+        }),
+    };
+    expect(await new MeshyProvider().poll(context, 'text:failed-task')).toMatchObject({
+      status: 'failed',
+      error: expect.stringContaining('[REDACTED]'),
+    });
+    expect((await new MeshyProvider().poll(context, 'text:failed-task')).error).not.toContain(
+      'test-meshy-key',
+    );
   });
 
   it('redacts API keys from provider HTTP errors', async () => {

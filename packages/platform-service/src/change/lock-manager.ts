@@ -1,4 +1,11 @@
-import { RpcError, RpcErrorCode, uuidv7, type ResourceLock } from '@gamecrafter/contracts';
+import {
+  ChangeNodeRefSchema,
+  RpcError,
+  RpcErrorCode,
+  uuidv7,
+  type ResourceLock,
+} from '@gamecrafter/contracts';
+import { Value } from '@sinclair/typebox/value';
 import type { ProjectDatabases } from '../projects/project-databases';
 import type { SettingsService } from '../settings/settings-service';
 
@@ -45,6 +52,12 @@ export class LockManager {
     resources: string[],
     mode: ResourceLock['mode'],
   ): ResourceLock[] {
+    if (resources.some((resource) => !Value.Check(ChangeNodeRefSchema, resource))) {
+      throw new RpcError(
+        'Lock resources must be typed references such as file:art/crystal.py.',
+        RpcErrorCode.InvalidParams,
+      );
+    }
     const orderedResources = [...new Set(resources)].sort((left, right) =>
       left.localeCompare(right),
     );

@@ -20,7 +20,14 @@ export class SwarmViewContribution extends AbstractViewContribution<SwarmWidget>
   registerCommands(commands: CommandRegistry): void {
     commands.registerCommand(
       { id: SWARM_OPEN_COMMAND_ID, label: 'GameCrafter: Open Swarm' },
-      { execute: () => this.openView({ activate: true, reveal: true }) },
+      {
+        execute: async (selection?: { projectId: string; requestId?: string }) => {
+          const widget = await this.openView({ activate: true, reveal: true });
+          if (selection && typeof selection.projectId === 'string')
+            await widget.revealRequest(selection);
+          return widget;
+        },
+      },
     );
   }
 

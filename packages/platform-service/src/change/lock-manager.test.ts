@@ -32,6 +32,20 @@ afterEach(() => {
 });
 
 describe('LockManager', () => {
+  it('rejects malformed resource references without persisting any locks', () => {
+    const env = createLockEnvironment();
+    expect(() =>
+      env.manager.acquire(
+        projectId,
+        uuidv7(),
+        'worker-a',
+        ['file:valid', 'art/crystal.py'],
+        'exclusive',
+      ),
+    ).toThrow(expect.objectContaining({ code: RpcErrorCode.InvalidParams }));
+    expect(env.manager.list(projectId)).toEqual([]);
+  });
+
   it('acquires sorted resources atomically and enforces the shared/exclusive matrix', () => {
     const env = createLockEnvironment();
     const firstTask = uuidv7();

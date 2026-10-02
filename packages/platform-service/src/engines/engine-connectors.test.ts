@@ -305,10 +305,18 @@ describe('engine connector adapters', () => {
     ) as string[];
     expect(outcome.status).toBe('succeeded');
     expect(args[0]).toBe('BuildCookRun');
+    expect(args).toContain('-ubtargs=-NoHotReloadFromIDE');
     expect(args).toContain(`-project=${path.join(gamePath, 'Smoke.uproject')}`);
     expect(args).toContain('-platform=Linux');
     expect(args).toContain('-clientconfig=Development');
     expect(args).toContain('-archive');
+    expect(outcome.artifacts).toContainEqual({
+      kind: 'build',
+      path: path
+        .relative(root, path.join(context.runDirectory, 'archive'))
+        .split(path.sep)
+        .join('/'),
+    });
     expect(await connector.proveIdentity(gamePath)).toMatchObject({
       proven: true,
       projectVersion: '5.4',

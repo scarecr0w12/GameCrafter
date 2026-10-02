@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { ChatConversation, ChatEntry, ProjectSummary } from '@gamecrafter/contracts';
+import type { ChatConversation, ChatEntry, Model, ProjectSummary } from '@gamecrafter/contracts';
 import type { ControlRoomService } from '../common/control-room-protocol';
 import type { ControlRoomClientEvents } from './control-room-client';
 import type { EditorManager } from '@theia/editor/lib/browser/editor-manager';
@@ -44,6 +44,7 @@ interface Harness {
   draft: string;
   mode: 'chat' | 'agent';
   messages: ChatEntry[];
+  models: Model[];
   busy: boolean;
   error?: string;
   pendingSend?: { requestId?: string; streamText: string };
@@ -76,7 +77,14 @@ async function fixture() {
   let onDelta!: (input: { requestId: string; delta: string }) => void;
   const service = {
     listProjects: vi.fn(async () => projects),
-    listModels: vi.fn(async () => []),
+    listModels: vi.fn(async (): Promise<Model[]> => []),
+    getEngineCapabilities: vi.fn(async (projectId: string) => ({
+      projectId,
+      family: 'unreal',
+      detectedVersion: '5.8.3',
+    })),
+    listDccInstallations: vi.fn(async () => [{ tool: 'blender', version: '5.2.2', kind: 'batch' }]),
+    listTools: vi.fn(async () => [{ toolId: 'dcc/run-script' }, { toolId: 'fs/write-file' }]),
     listChatConversations: vi.fn(async (projectId: string) =>
       conversations.filter((c) => c.projectId === projectId),
     ),
@@ -127,6 +135,49 @@ async function fixture() {
 }
 
 describe('chat request ownership', () => {
+  it('grounds Chat in current local engine, authoring, and Agent tool capabilities', async () => {
+    const f = await fixture();
+    const send = f.widget.send();
+    await f.entered.promise;
+    const call = f.service.completeChat.mock.calls[0] as unknown as [
+      { request: { messages: { role: string; content: string }[] } },
+    ];
+    const system = call[0].request.messages[0]!.content;
+    expect(system).toContain('5.8.3');
+    expect(system).toContain('blender 5.2.2');
+    expect(system).toContain('dcc/run-script');
+    expect(f.service.getEngineCapabilities).toHaveBeenCalledWith('A');
+    f.completion.resolve({ content: 'Grounded answer', modelId: 'model-A' });
+    await send;
+  });
+  it('opens the exact Project and change request after an Agent handoff', async () => {
+    const f = await fixture();
+    f.widget.mode = 'agent';
+    await f.widget.send();
+    expect(f.commands.executeCommand).toHaveBeenCalledWith('swarm', {
+      projectId: 'A',
+      requestId: 'change-A',
+    });
+  });
+  it.each(['auto', 'manual'])(
+    'offers chat models without streaming metadata for %s routing',
+    async (mode) => {
+      const f = await fixture();
+      const model = { modelId: 'model-A', capabilities: { chat: true, streaming: false } } as Model;
+      f.service.listModels.mockResolvedValue([model]);
+      await f.widget.refresh();
+      expect(f.widget.models).toEqual([model]);
+      f.widget.selectedModelId = mode === 'manual' ? model.modelId : '';
+      const sending = f.widget.send();
+      await f.entered.promise;
+      expect(f.service.completeChat.mock.calls[0]).toMatchObject([
+        { route: { taskType: 'chat', requiredCapabilities: ['chat'] } },
+      ]);
+      f.completion.resolve({ content: 'Answer', modelId: model.modelId });
+      await sending;
+      expect(f.storage.at(-1)?.content).toBe('Answer');
+    },
+  );
   it.each(['project', 'conversation', 'new conversation'] as const)(
     'retains origin while navigating to a different %s during completion',
     async (destination) => {

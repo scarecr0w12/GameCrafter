@@ -218,9 +218,10 @@ export class DccWidget extends ControlRoomReactWidget {
             <select
               aria-label="DCC installation kind"
               value={this.installationKind}
-              onChange={(event) =>
-                (this.installationKind = event.currentTarget.value as DccInstallationKind)
-              }
+              onChange={(event) => {
+                this.installationKind = event.currentTarget.value as DccInstallationKind;
+                this.update();
+              }}
             >
               <option value="gui">GUI</option>
               <option value="python">Python</option>
@@ -302,7 +303,10 @@ export class DccWidget extends ControlRoomReactWidget {
             <select
               aria-label="DCC live bridge"
               value={this.selectedBridgeId}
-              onChange={(event) => (this.selectedBridgeId = event.currentTarget.value)}
+              onChange={(event) => {
+                this.selectedBridgeId = event.currentTarget.value;
+                this.update();
+              }}
             >
               <option value="">No live bridge</option>
               {connections.map((entry) => (
@@ -342,10 +346,11 @@ export class DccWidget extends ControlRoomReactWidget {
           </label>
           {fields.map((field) => (
             <label className={field === 'script' ? 'gamecrafter-dcc-wide' : undefined} key={field}>
-              {field}
+              {field === 'script' ? 'Python code' : field}
               {field === 'script' ? (
                 <textarea
                   aria-label="DCC script"
+                  placeholder="Paste Python code here, rather than a script file path."
                   value={this.params[field] ?? ''}
                   onChange={(event) => this.setParam(field, event.currentTarget.value)}
                   rows={8}

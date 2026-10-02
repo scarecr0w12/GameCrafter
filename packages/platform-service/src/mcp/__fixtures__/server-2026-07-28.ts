@@ -84,6 +84,7 @@ export interface Mcp2026HttpFixture {
 interface EditorFixtureOptions {
   projectPath?: string;
   screenshotPath?: string;
+  identityFormat?: 'cfa';
 }
 
 export async function startMcp2026HttpFixture(
@@ -189,12 +190,38 @@ function handleMessage(
   if (message.method === 'tools/list') {
     return rpcResult(message.id, {
       resultType: 'complete',
-      tools: mcp2026Tools.map((tool) =>
-        editor.projectPath && tool.name === 'project_identity'
-          ? { ...tool, name: 'editor_status' }
-          : tool,
-      ),
-      ttlMs: 60_000,
+      tools: mcp2026Tools
+        .filter((tool) => editor.identityFormat !== 'cfa' || tool.name !== 'console')
+        .map((tool) =>
+          editor.identityFormat === 'cfa' && tool.name === 'screenshot'
+            ? {
+                ...tool,
+                name: 'invoke',
+                annotations: {},
+                inputSchema: {
+                  type: 'object',
+                  properties: { command: { type: 'string' }, arguments: { type: 'object' } },
+                  required: ['command'],
+                },
+              }
+            : editor.identityFormat === 'cfa' && tool.name === 'edit_scene'
+              ? {
+                  ...tool,
+                  name: 'execute_python',
+                  inputSchema: {
+                    type: 'object',
+                    properties: { code: { type: 'string' } },
+                    required: ['code'],
+                  },
+                }
+              : editor.projectPath && tool.name === 'project_identity'
+                ? {
+                    ...tool,
+                    name: editor.identityFormat === 'cfa' ? 'get_project_context' : 'editor_status',
+                  }
+                : tool,
+        ),
+      ttlMs: editor.identityFormat === 'cfa' ? 0 : 60_000,
       cacheScope: 'connection',
     });
   }
@@ -234,17 +261,37 @@ function handleMessage(
         content: [{ type: 'text', text: process.env.MCP_FIXTURE_SECRET ?? '' }],
       });
     }
-    if (name === 'project_identity' || name === 'editor_status') {
+    if (name === 'project_identity' || name === 'editor_status' || name === 'get_project_context') {
       return rpcResult(message.id, {
         resultType: 'complete',
         content: [
           {
             type: 'text',
             text: JSON.stringify(
-              editor.projectPath
-                ? { projectPath: editor.projectPath, status: 'ready' }
-                : { projectId },
+              editor.identityFormat === 'cfa'
+                ? { status: 'success', result: { data: { project: { path: editor.projectPath } } } }
+                : editor.projectPath
+                  ? { projectPath: editor.projectPath, status: 'ready' }
+                  : { projectId },
             ),
+          },
+        ],
+      });
+    }
+    if (name === 'invoke' && editor.identityFormat === 'cfa') {
+      const args = isRecord(params.arguments) ? params.arguments : {};
+      return rpcResult(message.id, {
+        resultType: 'complete',
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              status: 'success',
+              result: {
+                success: true,
+                ...(args.command === 'take_screenshot' ? { file_path: editor.screenshotPath } : {}),
+              },
+            }),
           },
         ],
       });

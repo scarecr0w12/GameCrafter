@@ -31,6 +31,94 @@ afterEach(async () => {
 });
 
 describe('knowledge service integration', () => {
+  it('lets the narrative role draft canon without overwriting reviewed records or identities', async () => {
+    await startService();
+    const project = await client!.call('project/create', {
+      name: 'Narrative correctness',
+      engine: { family: 'unreal' },
+      modules: ['story'],
+      parentDirectory: path.join(temporaryDirectories[0]!, 'narrative-projects'),
+    });
+    await client!.call('project/trust', { projectId: project.projectId, trusted: true });
+    await client!.call('settings/set', {
+      projectId: project.projectId,
+      scope: 'project',
+      key: 'access.mode',
+      value: 'full',
+    });
+    const original = await client!.call('knowledge/write', {
+      projectId: project.projectId,
+      record: { id: 'char.mara', type: 'character', title: 'Mara', status: 'accepted' },
+      body: 'Mara is the village keeper.',
+      path: 'docs/canon/characters/mara.md',
+    });
+    const task = await client!.call('task/create', {
+      projectId: project.projectId,
+      kind: 'knowledge.reindex',
+      title: 'Draft a quest',
+      goal: 'Draft a quest',
+      assignee: { role: 'narrative-designer' },
+    });
+    const draft = await client!.call('tool/call', {
+      projectId: project.projectId,
+      taskId: task.task.taskId,
+      toolId: 'canon/write',
+      input: {
+        recordId: 'quest.embers',
+        type: 'quest',
+        title: 'Embers',
+        body: 'Restore the ward.',
+      },
+    });
+    expect(draft.status).toBe('completed');
+    await expect(
+      client!.call('tool/call', {
+        projectId: project.projectId,
+        taskId: task.task.taskId,
+        toolId: 'canon/write',
+        input: {
+          recordId: 'char.mara',
+          type: 'character',
+          title: 'Mara',
+          body: 'Unreviewed replacement.',
+        },
+      }),
+    ).rejects.toMatchObject({ code: RpcErrorCode.CanonStatusNotAllowed });
+    expect(
+      (
+        await client!.call('knowledge/record', {
+          projectId: project.projectId,
+          recordId: original.id,
+        })
+      ).body,
+    ).toContain('village keeper');
+    await expect(
+      client!.call('knowledge/write', {
+        projectId: project.projectId,
+        record: { id: original.id, type: 'character', title: 'Duplicate', status: 'draft' },
+        body: 'Duplicate',
+        path: 'docs/canon/characters/duplicate.md',
+      }),
+    ).rejects.toMatchObject({ code: RpcErrorCode.CanonDuplicateId });
+    await expect(
+      client!.call('knowledge/write', {
+        projectId: project.projectId,
+        record: { id: 'char.other', type: 'character', title: 'Other', status: 'draft' },
+        body: 'Other',
+        path: original.path,
+      }),
+    ).rejects.toMatchObject({ code: RpcErrorCode.CanonDuplicateId });
+    const updated = await client!.call('knowledge/write', {
+      projectId: project.projectId,
+      record: { id: original.id, type: 'character', title: 'Mara', status: 'accepted' },
+      body: 'Mara is the reviewed village keeper.',
+    });
+    expect(updated.path).toBe(original.path);
+    expect(
+      (await client!.call('knowledge/index/status', { projectId: project.projectId })).conflicts,
+    ).toEqual([]);
+  }, 60_000);
+
   it('reconciles canon, decision, board, code, and asset metadata with citations and idempotence', async () => {
     await startService();
     const project = await client!.call('project/create', {
@@ -131,6 +219,7 @@ describe('knowledge service integration', () => {
       mode: 'lexical',
     });
     expect(boardHit.hits[0]?.path).toContain(thread.thread.threadId);
+    expect(boardHit.hits[0]?.quote.text).not.toContain('[object Object]');
     const codeHit = await client!.call('knowledge/search', {
       projectId: project.projectId,
       query: 'north quay',

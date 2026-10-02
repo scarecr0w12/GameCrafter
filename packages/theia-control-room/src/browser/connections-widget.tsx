@@ -262,6 +262,10 @@ export class ConnectionsWidget extends ControlRoomReactWidget {
               Name
               <input
                 aria-label="Connection name"
+                pattern="[a-z0-9][a-z0-9-]{0,63}"
+                title="Use 1–64 lowercase letters, numbers, or hyphens; start with a letter or number."
+                placeholder="my-connection"
+                required
                 value={this.connectionName}
                 onChange={(event) => this.setField('connectionName', event.currentTarget.value)}
               />

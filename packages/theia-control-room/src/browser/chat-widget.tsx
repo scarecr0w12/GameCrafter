@@ -82,7 +82,7 @@ export class ChatWidget extends ControlRoomReactWidget {
       (conversation) => conversation.conversationId === this.conversationId,
     );
     const activeEditor = this.editorManager.currentEditor;
-    const editorName = activeEditor?.getResourceUri()?.path.base ?? 'No editor open';
+    const editorName = activeEditor?.getResourceUri()?.path.base ?? 'No file open';
     return (
       <div className="gamecrafter-chat gamecrafter-surface">
         <aside className="gamecrafter-chat-sidebar">
@@ -198,8 +198,8 @@ export class ChatWidget extends ControlRoomReactWidget {
           )}
           {this.models.length === 0 && this.projectId && (
             <p className="gamecrafter-chat-empty" role="status">
-              No enabled streaming chat models are available. Add an account and discover a model in
-              Models &amp; Routing.
+              No enabled chat models are available. Add an account and discover a model in Models
+              &amp; Routing.
             </p>
           )}
           <section className="gamecrafter-chat-transcript" aria-label="Conversation messages">
@@ -300,7 +300,7 @@ export class ChatWidget extends ControlRoomReactWidget {
                     this.update();
                   }}
                 />
-                Attach editor context <small>{editorName}</small>
+                Attach active file <small>{editorName}</small>
               </label>
             </div>
             <textarea
@@ -387,9 +387,7 @@ export class ChatWidget extends ControlRoomReactWidget {
       )
         return;
       this.conversations = conversations;
-      this.models = models.filter(
-        (model) => model.capabilities.chat && model.capabilities.streaming,
-      );
+      this.models = models.filter((model) => model.capabilities.chat);
       if (
         conversationId &&
         !conversations.some((entry) => entry.conversationId === conversationId)
@@ -531,17 +529,22 @@ export class ChatWidget extends ControlRoomReactWidget {
           role: 'assistant',
           content: `Delegated to the Project swarm. Change request ${change.requestId} was created. Open Swarm to follow task progress, questions, approvals, and results.`,
         });
-        if (this.isCurrentSend(context)) await this.commands.executeCommand(SWARM_OPEN_COMMAND_ID);
+        if (this.isCurrentSend(context))
+          await this.commands.executeCommand(SWARM_OPEN_COMMAND_ID, {
+            projectId: context.projectId,
+            requestId: change.requestId,
+          });
       } else {
         const requestId = uuidv7();
         context.requestId = requestId;
+        const liveContext = await this.liveProjectContext(context.projectId);
         const result = await this.service.completeChat({
           projectId: context.projectId,
           requestId,
           route: {
             taskType: 'chat',
             projectId: context.projectId,
-            requiredCapabilities: ['chat', 'streaming'],
+            requiredCapabilities: ['chat'],
             ...(selectedModelId ? { manualModelId: selectedModelId } : {}),
           },
           request: {
@@ -556,6 +559,7 @@ export class ChatWidget extends ControlRoomReactWidget {
                   `Description: ${project?.description ?? ''}`,
                   `Engine: ${project?.engine.family ?? 'Unknown'}`,
                   `Genres: ${project?.genres.join(', ') || 'not specified'}`,
+                  ...liveContext,
                 ].join('\n'),
               },
               ...history
@@ -584,6 +588,33 @@ export class ChatWidget extends ControlRoomReactWidget {
       this.pendingSend = undefined;
       this.update();
     }
+  }
+
+  private async liveProjectContext(projectId: string): Promise<string[]> {
+    const [engine, dcc, tools] = await Promise.allSettled([
+      this.service.getEngineCapabilities(projectId),
+      this.service.listDccInstallations(),
+      this.service.listTools(projectId),
+    ]);
+    const context = [
+      `Current date: ${new Date().toISOString().slice(0, 10)}`,
+      'Treat detected local versions as authoritative even when your training knowledge is older.',
+      'Agent mode can author scripts and editable assets through the listed tools, subject to Project access and approvals. Do not claim those operations are unavailable merely because Chat mode cannot execute them.',
+    ];
+    if (engine.status === 'fulfilled') {
+      context.push(`Detected Project engine: ${JSON.stringify(engine.value)}`);
+    } else context.push('Current Project engine capabilities could not be retrieved.');
+    if (dcc.status === 'fulfilled') {
+      context.push(
+        `Installed authoring tools: ${dcc.value.map(({ tool, version, kind }) => `${tool} ${version ?? 'unknown version'} (${kind})`).join(', ') || 'none detected'}`,
+      );
+    } else context.push('Installed authoring tools could not be retrieved.');
+    if (tools.status === 'fulfilled') {
+      context.push(
+        `Available Project tool IDs: ${tools.value.map(({ toolId }) => toolId).join(', ')}`,
+      );
+    } else context.push('Current Project tool inventory could not be retrieved.');
+    return context;
   }
 
   private async delegateLastRequest(): Promise<void> {

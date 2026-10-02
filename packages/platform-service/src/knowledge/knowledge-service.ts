@@ -493,10 +493,16 @@ export class KnowledgeService {
     }
     const existingId = typeof args.recordId === 'string' ? args.recordId : undefined;
     const id = existingId ?? defaultRecordId(type, title);
-    const existing = existingId ? this.store(context.projectId).recordsById(existingId) : [];
+    const existing = this.store(context.projectId).recordsById(id);
     if (existing.length > 1)
       throw new RpcError(`Canon record id is conflicted: ${id}`, RpcErrorCode.CanonDuplicateId);
     const previous = existing[0];
+    if (context.agentRole && previous && !['draft', 'proposed'].includes(previous.status)) {
+      throw new RpcError(
+        `Reviewed canon ${id} requires a separate proposal; agents cannot overwrite it.`,
+        RpcErrorCode.CanonStatusNotAllowed,
+      );
+    }
     const record = canonInputValidator.assert({
       id,
       type,
@@ -583,11 +589,34 @@ export class KnowledgeService {
       );
     }
     const fileInput = { record, body, path: recordPath, provenance };
+    const existing = this.store(projectId).recordsById(record.id);
+    if (existing.length > 1) {
+      throw new RpcError(
+        `Canon record id is conflicted: ${record.id}`,
+        RpcErrorCode.CanonDuplicateId,
+      );
+    }
+    fileInput.path ??= existing[0]?.path;
     let relativePath: string;
     try {
       relativePath = this.canonStore.pathFor(fileInput);
     } catch (error) {
       throw new RpcError(errorMessage(error), RpcErrorCode.InvalidParams);
+    }
+    if (existing[0] && existing[0].path !== relativePath) {
+      throw new RpcError(
+        `Canon id ${record.id} already belongs to ${existing[0].path}.`,
+        RpcErrorCode.CanonDuplicateId,
+      );
+    }
+    const owner = this.store(projectId)
+      .listRecords({ includeInactive: true })
+      .find((candidate) => candidate.path === relativePath && candidate.id !== record.id);
+    if (owner) {
+      throw new RpcError(
+        `Canon path ${relativePath} already belongs to ${owner.id}.`,
+        RpcErrorCode.CanonDuplicateId,
+      );
     }
     const content = this.canonStore.serialize(fileInput);
     const call = await this.options.toolBroker.call(

@@ -20,6 +20,8 @@ import {
 import { connect, type ServiceClient } from '@gamecrafter/service-client';
 import { resolvePaths, type ServicePaths } from '../paths';
 import { PlatformService } from '../service';
+import type { ToolBroker } from './tool-broker';
+import { Database } from '../db/database';
 
 const temporaryDirectories: string[] = [];
 let service: PlatformService | undefined;
@@ -59,6 +61,33 @@ afterEach(async () => {
 });
 
 describe('Tool broker integration', () => {
+  it('keeps malformed model tool names and legacy audit rows readable', async () => {
+    const broker = (service as unknown as { toolBroker: ToolBroker }).toolBroker;
+    await expect(broker.call({ projectId, toolId: 'canon_read', input: {} })).rejects.toMatchObject(
+      { code: RpcErrorCode.ToolNotFound },
+    );
+    const first = await client!.call('tool/calls', { projectId });
+    expect(first.calls[0]).toMatchObject({
+      toolId: 'broker/invalid-tool',
+      input: { requestedToolId: 'canon_read' },
+      status: 'failed',
+    });
+    const database = Database.open(path.join(projectPath, '.gamecrafter', 'project.sqlite'));
+    try {
+      database
+        .prepare('UPDATE tool_calls SET tool_id = ? WHERE call_id = ?')
+        .run('broken tool name', first.calls[0]!.callId);
+    } finally {
+      database.close();
+    }
+    const historical = await client!.call('tool/calls', { projectId });
+    expect(historical.calls[0]).toMatchObject({
+      toolId: 'broker/invalid-tool',
+      input: { requestedToolId: 'broken tool name' },
+      status: 'failed',
+    });
+  });
+
   it('lists the builtin tools with their execution metadata', async () => {
     const result = await client!.call('tool/list', { projectId });
     expect(result.tools).toHaveLength(51);

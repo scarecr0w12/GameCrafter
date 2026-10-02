@@ -388,7 +388,7 @@ export class BackupService {
         error: redact(error, { ...this.destinationSecrets(destination), secret: input.secret }),
       };
     } finally {
-      rmSync(verifyDirectory, { recursive: true, force: true });
+      removeRestoreStaging(verifyDirectory);
     }
   }
 
@@ -471,7 +471,7 @@ export class BackupService {
     if (existsSync(stagingDirectory)) {
       for (const name of readdirSync(stagingDirectory)) {
         if (name.startsWith('run-') || name.startsWith('verify-')) {
-          rmSync(path.join(stagingDirectory, name), { recursive: true, force: true });
+          removeRestoreStaging(path.join(stagingDirectory, name));
         }
       }
     }
@@ -769,7 +769,7 @@ export class BackupService {
       if (current.planId) this.finishPlan(current.planId, finishedAt);
     } finally {
       archiveKey?.fill(0);
-      rmSync(runDirectory, { recursive: true, force: true });
+      removeRestoreStaging(runDirectory);
     }
   }
 

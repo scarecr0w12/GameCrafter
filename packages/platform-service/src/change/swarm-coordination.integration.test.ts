@@ -329,7 +329,23 @@ async function startFakeModelServer(): Promise<string> {
       }
       const input = JSON.parse(body) as Record<string, unknown>;
       providerRequests.push(input);
-      const scripted = scriptedResponse(input);
+      const definitions = input.tools as Array<{ function: { name: string; description: string } }>;
+      const wireNames = new Map(
+        definitions.map((tool) => [
+          tool.function.name,
+          tool.function.description.match(/\(Platform tool: (.+)\)$/)?.[1] ?? tool.function.name,
+        ]),
+      );
+      const messages = input.messages as Array<Record<string, unknown>>;
+      const scripted = scriptedResponse({
+        ...input,
+        messages: messages.map((message) => ({
+          ...message,
+          ...(typeof message.name === 'string'
+            ? { name: wireNames.get(message.name) ?? message.name }
+            : {}),
+        })),
+      });
       const send = (): void => {
         response.writeHead(200, { 'content-type': 'application/json' });
         response.end(JSON.stringify(scripted.response));

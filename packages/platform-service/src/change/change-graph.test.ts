@@ -19,6 +19,143 @@ import { calculateImpact, ChangeGraph } from './change-graph';
 const now = '2026-09-29T00:00:00.000Z';
 
 describe('ChangeGraph', () => {
+  it('connects nested canon IDs, their authoritative files, confidence and retcons', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'gc-canon-impact-'));
+    const database = Database.open(':memory:');
+    const projectId = uuidv7();
+    try {
+      migrate(database, projectMigrations);
+      mkdirSync(path.join(root, 'docs', 'canon'), { recursive: true });
+      writeFileSync(path.join(root, 'docs', 'canon', 'mara.md'), 'char.ashen.mara');
+      mkdirSync(path.join(root, 'game'), { recursive: true });
+      writeFileSync(path.join(root, 'game', 'quest.cpp'), '// quest.ashen.embers');
+      const records: CanonRecord[] = [
+        {
+          schemaVersion: 1,
+          id: 'char.ashen.mara',
+          type: 'character',
+          title: 'Mara',
+          status: 'draft',
+          tags: [],
+          references: [
+            { rel: 'gives', target: 'quest.ashen.embers', confidence: 0.4, source: 'author' },
+          ],
+          provenance: [],
+          path: 'docs/canon/mara.md',
+          bodyExcerpt: '',
+          revision: 'working',
+          active: true,
+          indexedAt: now,
+        },
+        {
+          schemaVersion: 1,
+          id: 'quest.ashen.embers',
+          type: 'quest',
+          title: 'Embers',
+          status: 'draft',
+          tags: [],
+          references: [],
+          supersedes: 'quest.ashen.old',
+          provenance: [],
+          path: 'docs/canon/embers.md',
+          bodyExcerpt: '',
+          revision: 'working',
+          active: true,
+          indexedAt: now,
+        },
+        {
+          schemaVersion: 1,
+          id: 'quest.ashen.old',
+          type: 'quest',
+          title: 'Old quest',
+          status: 'retconned',
+          tags: [],
+          references: [],
+          provenance: [],
+          path: 'docs/canon/old.md',
+          bodyExcerpt: '',
+          revision: 'working',
+          active: false,
+          indexedAt: now,
+        },
+      ];
+      const store = new ChangeGraphStore(database);
+      const graph = new ChangeGraph({
+        storeForProject: () => store,
+        sources: {
+          projectPath: () => root,
+          canonRecords: () => records,
+          tasks: () => [],
+          toolCalls: () => [],
+        },
+      });
+      graph.rebuildGraph(projectId);
+      const edges = store.edges(projectId);
+      expect(edges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            from: 'canon:char.ashen.mara',
+            to: 'canon:quest.ashen.embers',
+            confidence: 0.4,
+          }),
+          expect.objectContaining({
+            from: 'canon:char.ashen.mara',
+            to: 'file:docs/canon/mara.md',
+            rel: 'defined-in',
+            confidence: 1,
+          }),
+          expect.objectContaining({
+            from: 'canon:quest.ashen.embers',
+            to: 'canon:quest.ashen.old',
+            rel: 'supersedes',
+            confidence: 1,
+          }),
+          expect.objectContaining({
+            from: 'file:game/quest.cpp',
+            to: 'canon:quest.ashen.embers',
+            source: 'inferred',
+            confidence: 0.5,
+          }),
+        ]),
+      );
+      expect(graph.impact(projectId, ['canon:char.ashen.mara']).nodes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            node: expect.objectContaining({ nodeId: 'file:game/quest.cpp' }),
+            needsValidation: true,
+          }),
+        ]),
+      );
+    } finally {
+      database.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not label a fully covered cycle truncated at the depth boundary', () => {
+    const projectId = uuidv7();
+    const edges: ChangeEdge[] = [
+      {
+        edgeId: uuidv7(),
+        projectId,
+        from: 'canon:char.mara',
+        to: 'canon:quest.embers',
+        rel: 'gives',
+        confidence: 1,
+        source: 'author',
+        evidence: null,
+        createdAt: now,
+      },
+    ];
+    const impact = calculateImpact(projectId, ['canon:char.mara'], [], edges, {
+      maxDepth: 1,
+      threshold: 0.7,
+      now: () => new Date(now),
+    });
+    expect(impact.nodes).toHaveLength(2);
+    expect(impact.truncated).toBe(false);
+  });
+
   it('rebuilds canon, task, tool, and inferred source edges idempotently', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'gc-change-graph-'));
     const database = Database.open(':memory:');

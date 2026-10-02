@@ -92,6 +92,35 @@ function connectionConfig(scope: 'platform' | 'project' = 'platform') {
 }
 
 describe('McpSession negotiation and calls', () => {
+  it('does not emit repeated connection changes when an uncached tool list is unchanged', async () => {
+    const transport = new FakeTransport((message, current) => {
+      if (message.method === 'server/discover')
+        current.result(message, {
+          protocolVersions: ['2026-07-28'],
+          serverInfo: { name: 'fixture', version: '1' },
+          capabilities: { tools: {} },
+        });
+      else if (message.method === 'tools/list')
+        current.result(message, {
+          tools: [{ name: 'identity', inputSchema: { type: 'object' } }],
+          ttlMs: 0,
+        });
+    });
+    const changed = vi.fn();
+    const session = new McpSession({
+      config: connectionConfig(),
+      transport,
+      clientInfo: { name: 'test', version: '1' },
+      interactions: { stateChanged: changed },
+    });
+    await session.connect();
+    const before = changed.mock.calls.length;
+    await session.listTools();
+    await session.listTools();
+    expect(changed).toHaveBeenCalledTimes(before);
+    await session.disconnect();
+  });
+
   it('falls back from server/discover method-not-found and caches deterministic tool lists', async () => {
     const transport = new FakeTransport((message, current) => {
       if (message.method === 'server/discover') {

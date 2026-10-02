@@ -22,7 +22,43 @@ afterEach(async () => {
 });
 
 describe('real Blender DCC connector', () => {
-  it('discovers Blender, inspects a saved cube scene, exports GLB, and renders PNG through WSL interop', async (context) => {
+  it('reports a Python exception as a failed run rather than success', async (context) => {
+    const blender =
+      process.env.GAMECRAFTER_BLENDER ??
+      (process.platform === 'win32' ? 'D:/Blender/blender.exe' : '/mnt/d/Blender/blender.exe');
+    if (!existsSync(blender)) context.skip();
+    root = mkdtempSync(path.join(tmpdir(), 'gc-blender-error-'));
+    const paths = resolvePaths({ GAMECRAFTER_PROFILE_DIR: path.join(root, 'profile') });
+    service = await PlatformService.start({ paths, platformVersion: '0.1.3' });
+    client = await connect({
+      socketPath: service.socketPath,
+      token: readFileSync(paths.tokenPath, 'utf8').trim(),
+      clientName: 'blender-error-test',
+      clientVersion: '0.1.3',
+    });
+    const project = await client.call('project/create', {
+      name: 'Blender error',
+      engine: { family: 'godot' },
+      parentDirectory: path.join(root, 'projects'),
+      folderName: 'blender-error',
+    });
+    await client.call('settings/set', {
+      key: 'access.mode',
+      scope: 'project',
+      projectId: project.projectId,
+      value: 'full',
+    });
+    await client.call('dcc/addInstallation', { tool: 'blender', executable: blender, kind: 'gui' });
+    const run = await client.call('dcc/run', {
+      projectId: project.projectId,
+      tool: 'blender',
+      operation: 'run-script',
+      params: { script: 'raise RuntimeError("Intentional regression failure")' },
+    });
+    expect(run.status).toBe('failed');
+    expect(run.exitCode).not.toBe(0);
+  }, 30000);
+  it('discovers Blender, inspects a camera-less mesh scene, exports GLB, and renders PNG through WSL interop', async (context) => {
     const blender =
       process.env.GAMECRAFTER_BLENDER ??
       (process.platform === 'win32' ? 'D:/Blender/blender.exe' : '/mnt/d/Blender/blender.exe');
@@ -85,6 +121,7 @@ describe('real Blender DCC connector', () => {
     const createSceneScript = [
       'import bpy',
       'bpy.ops.wm.read_factory_settings(use_empty=False)',
+      "for obj in list(bpy.data.objects):\n    if obj.type in {'CAMERA', 'LIGHT'}: bpy.data.objects.remove(obj, do_unlink=True)",
       `bpy.ops.wm.save_as_mainfile(filepath=${JSON.stringify(hostBlendPath)})`,
     ].join('\n');
     const created = await client.call('dcc/run', {
@@ -124,6 +161,7 @@ describe('real Blender DCC connector', () => {
     const gltf = inspectGltfDocument(parseGlbDocument(readFileSync(glbPath)));
     expect(gltf.metadata.meshes).toBeGreaterThanOrEqual(1);
 
+    const originalScene = readFileSync(blendPath);
     const rendered = await client.call('dcc/run', {
       projectId: project.projectId,
       tool: 'blender',
@@ -144,6 +182,7 @@ describe('real Blender DCC connector', () => {
     expect(rendered.status, `${JSON.stringify(rendered, null, 2)}\n${renderLogs}`).toBe(
       'succeeded',
     );
+    expect(readFileSync(blendPath)).toEqual(originalScene);
     const pngArtifact = rendered.artifacts.find((artifact) => artifact.path.endsWith('.png'));
     expect(pngArtifact).toBeDefined();
     expect(readFileSync(path.join(project.path, pngArtifact!.path)).subarray(0, 8)).toEqual(

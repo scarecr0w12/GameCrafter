@@ -21,7 +21,50 @@ export function blenderValidateScript(outputPath: string): string {
 }
 
 export function blenderRenderScript(outputPath: string, resolution: number, samples: number): string {
-  return `import bpy, json, os\nscene = bpy.context.scene\nrender_engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items}\nscene.render.engine = 'BLENDER_EEVEE_NEXT' if 'BLENDER_EEVEE_NEXT' in render_engines else 'BLENDER_EEVEE'\nscene.render.resolution_x = ${resolution}\nscene.render.resolution_y = ${resolution}\nscene.render.resolution_percentage = 100\nscene.render.image_settings.file_format = 'PNG'\nscene.render.filepath = ${JSON.stringify(outputPath)}\nif hasattr(scene, 'eevee') and hasattr(scene.eevee, 'taa_render_samples'): scene.eevee.taa_render_samples = ${samples}\nbpy.ops.render.render(write_still=True)\nprint('GCDCC_JSON:' + json.dumps({'output': scene.render.filepath, 'exists': os.path.exists(scene.render.filepath)}))`;
+  return `import bpy, json, os
+from mathutils import Vector
+scene = bpy.context.scene
+if not scene.camera:
+    existing = next((obj for obj in scene.objects if obj.type == 'CAMERA'), None)
+    if existing:
+        scene.camera = existing
+    else:
+        points = [obj.matrix_world @ Vector(corner) for obj in scene.objects if obj.type == 'MESH' and not obj.hide_render for corner in obj.bound_box]
+        if not points: raise RuntimeError('Preview requires a camera or a visible mesh to frame.')
+        low = Vector(tuple(min(point[axis] for point in points) for axis in range(3)))
+        high = Vector(tuple(max(point[axis] for point in points) for axis in range(3)))
+        center = (low + high) * 0.5
+        radius = max((high - low).length * 0.5, 0.1)
+        camera = bpy.data.objects.new('_GameCrafterPreviewCamera', bpy.data.cameras.new('_GameCrafterPreviewCamera'))
+        scene.collection.objects.link(camera)
+        camera.location = center + Vector((1.6, -2.4, 1.5)) * radius
+        camera.rotation_euler = (center - camera.location).to_track_quat('-Z', 'Y').to_euler()
+        camera.data.type = 'ORTHO'
+        camera.data.ortho_scale = radius * 2.8
+        camera.data.clip_start = radius * 0.01
+        camera.data.clip_end = radius * 100
+        scene.camera = camera
+        if not any(obj.type == 'LIGHT' for obj in scene.objects):
+            light = bpy.data.objects.new('_GameCrafterPreviewLight', bpy.data.lights.new('_GameCrafterPreviewLight', 'AREA'))
+            scene.collection.objects.link(light)
+            light.location = center + Vector((1, -1, 2)) * radius * 3
+            light.rotation_euler = (center - light.location).to_track_quat('-Z', 'Y').to_euler()
+            light.data.energy = 250 * radius * radius
+            light.data.shape = 'DISK'
+            light.data.size = radius * 3
+        if not scene.world:
+            scene.world = bpy.data.worlds.new('_GameCrafterPreviewWorld')
+            scene.world.color = (0.15, 0.15, 0.15)
+render_engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items}
+scene.render.engine = 'BLENDER_EEVEE_NEXT' if 'BLENDER_EEVEE_NEXT' in render_engines else 'BLENDER_EEVEE'
+scene.render.resolution_x = ${resolution}
+scene.render.resolution_y = ${resolution}
+scene.render.resolution_percentage = 100
+scene.render.image_settings.file_format = 'PNG'
+scene.render.filepath = ${JSON.stringify(outputPath)}
+if hasattr(scene, 'eevee') and hasattr(scene.eevee, 'taa_render_samples'): scene.eevee.taa_render_samples = ${samples}
+bpy.ops.render.render(write_still=True)
+print('GCDCC_JSON:' + json.dumps({'output': scene.render.filepath, 'exists': os.path.exists(scene.render.filepath)}))`;
 }
 
 export function blenderRunScriptCommand(scriptPath: string): string[] {

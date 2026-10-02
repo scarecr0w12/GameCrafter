@@ -468,7 +468,9 @@ export class McpSession {
   }
 
   private updateState(patch: Partial<McpConnectionState>): void {
-    this.stateValue = { ...this.stateValue, ...patch };
+    const next = { ...this.stateValue, ...patch };
+    if (JSON.stringify(next) === JSON.stringify(this.stateValue)) return;
+    this.stateValue = next;
     this.interactions.stateChanged?.(this.state);
   }
 

@@ -71,7 +71,7 @@ export class MeshyProvider implements AssetProviderAdapter {
         if (typeof sourceProviderTaskId !== 'string' || !sourceProviderTaskId) {
           throw new Error('Refine requires the source provider task ID');
         }
-        body.preview_task_id = sourceProviderTaskId;
+        body.preview_task_id = sourceProviderTaskId.replace(/^text:/, '');
       }
     }
     const { data } = await assetProviderJson<unknown>(
@@ -81,7 +81,12 @@ export class MeshyProvider implements AssetProviderAdapter {
     );
     const record = isRecord(data) ? data : {};
     const result = isRecord(record.result) ? record.result : record;
-    const taskId = typeof result.id === 'string' ? result.id : null;
+    const taskId =
+      typeof record.result === 'string'
+        ? record.result
+        : typeof result.id === 'string'
+          ? result.id
+          : null;
     if (!taskId) throw new Error('Meshy response did not include a task ID');
     return { providerTaskId: `${prefix}:${taskId}` };
   }
@@ -96,6 +101,11 @@ export class MeshyProvider implements AssetProviderAdapter {
     );
     const record = isRecord(data) ? data : {};
     const state = isRecord(record.result) ? record.result : record;
+    const taskError = state.task_error ?? state.error;
+    const errorMessage = safeProviderText(
+      isRecord(taskError) ? taskError.message : taskError,
+      context.apiKey,
+    );
     const status = typeof state.status === 'string' ? state.status.toUpperCase() : '';
     const outputs = meshyOutputs(state);
     const normalized: ProviderTaskState['status'] =
@@ -119,11 +129,10 @@ export class MeshyProvider implements AssetProviderAdapter {
       status: normalized,
       progress: Math.max(0, Math.min(100, Math.round(numberValue(state.progress)))),
       outputs,
-      creditsConsumed: numericOrNull(state.credit_usage ?? state.credits_consumed),
-      error:
-        state.error === undefined || state.error === null
-          ? null
-          : safeProviderText(state.error, context.apiKey),
+      creditsConsumed: numericOrNull(
+        state.consumed_credits ?? state.credit_usage ?? state.credits_consumed,
+      ),
+      error: errorMessage || null,
       ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
     };
   }

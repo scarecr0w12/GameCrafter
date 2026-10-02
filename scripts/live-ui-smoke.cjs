@@ -123,6 +123,7 @@ async function main() {
       ['Discussion Board', 'board'], ['Swarm', 'swarm'], ['Plugins', 'plugins'],
       ['Engine', 'engine'], ['DCC Tools', 'dcc'], ['Knowledge', 'knowledge'],
       ['Assets', 'assets'], ['Backups', 'backups'], ['Audit & History', 'audit'],
+      ['Updates', 'updates'],
     ];
     for (const [label, suffix] of surfaces) {
       await clickText(page, '.lm-TabBar-tabLabel', 'Project Home');
@@ -135,6 +136,22 @@ async function main() {
       }, selector);
       const text = await page.$eval(selector, (node) => node.innerText);
       assert(!text.includes('Platform service did not become available'), `${label} lost its service connection`);
+      if (suffix === 'engine') {
+        const selects = await page.$$('.gamecrafter-engine form select');
+        await selects[0].select('unreal');
+        assert.equal(await selects[0].evaluate(node => node.value), 'unreal', 'Engine family selection must persist');
+        await selects[1].select('commandlet');
+        assert.equal(await selects[1].evaluate(node => node.value), 'commandlet', 'Engine installation kind must persist');
+        const executable = await page.$('.gamecrafter-engine form input');
+        await executable.asLocator().fill('C:\\review\\UnrealEditor-Cmd.exe');
+        assert.equal(await executable.evaluate(node => node.value), 'C:\\review\\UnrealEditor-Cmd.exe', 'Engine executable input must retain typed text');
+        checks.push('Engine setup preserves family, kind, and executable edits');
+      }
+      if (suffix === 'dcc') {
+        await page.select('[aria-label="DCC installation kind"]', 'python');
+        assert.equal(await page.$eval('[aria-label="DCC installation kind"]', node => node.value), 'python', 'DCC installation kind must persist');
+        checks.push('DCC setup preserves installation kind edits');
+      }
       if (suffix === 'settings') {
         assert(await page.$('nav[aria-label="Settings groups"]'), 'Settings must use grouped pages');
         await page.locator('.gamecrafter-settings-search input').fill('access.mode');
@@ -180,6 +197,7 @@ async function main() {
 
       }
       if (suffix === 'skills') {
+        await waitForUi(page, (name) => [...document.querySelector('select[aria-label="Skills Project"]').options].some(option => option.textContent === name), projectName);
         const projectId = await page.$eval('select[aria-label="Skills Project"]', (select, name) => [...select.options].find(option => option.textContent === name)?.value, projectName);
         assert(projectId, 'Skills must list the generated Project');
         await page.select('select[aria-label="Skills Project"]', projectId);
@@ -218,6 +236,7 @@ async function main() {
         }
       }
       if (suffix === 'audit') {
+        await waitForUi(page, (name) => [...document.querySelector('.gamecrafter-audit select').options].some(option => option.textContent === name), projectName);
         const projectId = await page.$eval('.gamecrafter-audit select', (select, name) => [...select.options].find(option => option.textContent === name)?.value, projectName);
         assert(projectId, 'Audit must list the smoke Project');
         await page.select('.gamecrafter-audit select', projectId);

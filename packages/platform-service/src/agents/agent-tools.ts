@@ -4,6 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import {
   ChatRequestSchema,
   ChatResponseSchema,
+  ChangeNodeRefSchema,
   RpcError,
   RpcErrorCode,
   TaskBudgetSchema,
@@ -148,7 +149,7 @@ export function registerAgentTools(registry: ToolRegistry, options: AgentToolOpt
         type: 'object',
         properties: {
           taskIds: { type: 'array', items: { type: 'string', format: 'uuid' }, minItems: 1 },
-          timeoutMs: { type: 'integer', minimum: 1 },
+          timeoutMs: { type: 'integer', minimum: 1, maximum: 300_000 },
         },
         required: ['taskIds'],
         additionalProperties: false,
@@ -193,7 +194,7 @@ export function registerAgentTools(registry: ToolRegistry, options: AgentToolOpt
       {
         type: 'object',
         properties: {
-          resources: { type: 'array', items: { type: 'string', minLength: 1 }, minItems: 1 },
+          resources: { type: 'array', items: ChangeNodeRefSchema, minItems: 1 },
           mode: { type: 'string', enum: ['shared', 'exclusive'] },
         },
         required: ['resources', 'mode'],
@@ -312,7 +313,6 @@ function tool(
     inputSchema,
     ...(outputSchema === undefined ? {} : { outputSchema }),
     executionMode: 'project-file',
-    minAccessMode: 'restricted',
     sideEffects,
     evidence,
     capabilities: ['agent.runtime'],

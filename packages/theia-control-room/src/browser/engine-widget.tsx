@@ -237,9 +237,10 @@ export class EngineWidget extends ControlRoomReactWidget {
             Family
             <select
               value={this.installationFamily}
-              onChange={(event) =>
-                (this.installationFamily = event.currentTarget.value as EngineFamily)
-              }
+              onChange={(event) => {
+                this.installationFamily = event.currentTarget.value as EngineFamily;
+                this.update();
+              }}
             >
               <option value="godot">Godot</option>
               <option value="unity">Unity</option>
@@ -250,9 +251,10 @@ export class EngineWidget extends ControlRoomReactWidget {
             Kind
             <select
               value={this.installationKind}
-              onChange={(event) =>
-                (this.installationKind = event.currentTarget.value as EngineInstallation['kind'])
-              }
+              onChange={(event) => {
+                this.installationKind = event.currentTarget.value as EngineInstallation['kind'];
+                this.update();
+              }}
             >
               <option value="cli">CLI</option>
               <option value="editor">Editor</option>
@@ -265,7 +267,10 @@ export class EngineWidget extends ControlRoomReactWidget {
             <input
               aria-label="Engine executable"
               value={this.executable}
-              onChange={(event) => (this.executable = event.currentTarget.value)}
+              onChange={(event) => {
+                this.executable = event.currentTarget.value;
+                this.update();
+              }}
               placeholder="Absolute executable path"
             />
           </label>
