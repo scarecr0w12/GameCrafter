@@ -6,6 +6,168 @@ import { AnthropicProvider } from './anthropic';
 import { OpenAICompatibleProvider } from './openai-compatible';
 
 describe('OpenAI-compatible provider', () => {
+  it.each([false, true])(
+    'adapts function-tool reasoning rejection with streaming=%s',
+    async (stream) => {
+      const bodies: Record<string, unknown>[] = [];
+      const server = createServer((request, response) => {
+        let body = '';
+        request.on('data', (chunk) => (body += chunk.toString()));
+        request.on('end', () => {
+          const parsed = JSON.parse(body) as Record<string, unknown>;
+          bodies.push(parsed);
+          const error =
+            parsed.reasoning_effort !== 'none'
+              ? {
+                  param: 'reasoning_effort',
+                  code: null,
+                  message:
+                    "Function tools with reasoning_effort are not supported for gpt-6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.",
+                }
+              : 'max_tokens' in parsed
+                ? {
+                    param: 'max_tokens',
+                    code: 'unsupported_parameter',
+                    message: 'Use max_completion_tokens instead.',
+                  }
+                : null;
+          if (error) {
+            response.writeHead(400, { 'content-type': 'application/json' });
+            response.end(JSON.stringify({ error }));
+            return;
+          }
+          response.writeHead(200, {
+            'content-type': stream ? 'text/event-stream' : 'application/json',
+          });
+          response.end(
+            stream
+              ? 'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
+              : JSON.stringify({
+                  choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+                }),
+          );
+        });
+      });
+      const account = openAIAccount(await listen(server, '/v1'));
+      try {
+        const provider = new OpenAICompatibleProvider();
+        for (let i = 0; i < 2; i++) {
+          const result = await provider.complete(
+            account,
+            model(account, 'reasoning-tools'),
+            { ...chatRequest(), stream },
+            { signal: new AbortController().signal },
+          );
+          expect(result.content).toBe('ok');
+        }
+        expect(bodies).toHaveLength(4);
+        expect(bodies[3]).toMatchObject({ reasoning_effort: 'none', max_completion_tokens: 100 });
+        expect(bodies[3]).not.toHaveProperty('max_tokens');
+        expect(bodies[3].tools).toEqual(bodies[0].tools);
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
+  it.each([
+    [
+      401,
+      { param: 'max_tokens', code: 'unsupported_parameter', message: 'Use max_completion_tokens' },
+    ],
+    [
+      400,
+      { param: 'temperature', code: 'unsupported_parameter', message: 'Use max_completion_tokens' },
+    ],
+    [
+      400,
+      { param: 'max_tokens', code: 'invalid_request_error', message: 'Use max_completion_tokens' },
+    ],
+  ])('does not retry unrelated failures (%s)', async (status, error) => {
+    let calls = 0;
+    const server = createServer((request, response) => {
+      calls++;
+      request.resume();
+      response.writeHead(status as number, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error }));
+    });
+    const account = openAIAccount(await listen(server, '/v1'));
+    try {
+      await expect(
+        new OpenAICompatibleProvider().complete(account, model(account, 'fake'), chatRequest(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(RpcError);
+      expect(calls).toBe(1);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it.each([false, true])(
+    'adapts rejected max_tokens and remembers it with streaming=%s',
+    async (stream) => {
+      const bodies: Record<string, unknown>[] = [];
+      const server = createServer((request, response) => {
+        let body = '';
+        request.on('data', (chunk) => (body += chunk.toString()));
+        request.on('end', () => {
+          const parsed = JSON.parse(body) as Record<string, unknown>;
+          bodies.push(parsed);
+          if ('max_tokens' in parsed) {
+            response.writeHead(400, { 'content-type': 'application/json' });
+            response.end(
+              JSON.stringify({
+                error: {
+                  message:
+                    "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+                  param: 'max_tokens',
+                  code: 'unsupported_parameter',
+                },
+              }),
+            );
+            return;
+          }
+          response.writeHead(200, {
+            'content-type': stream ? 'text/event-stream' : 'application/json',
+          });
+          response.end(
+            stream
+              ? 'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
+              : JSON.stringify({
+                  choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+                }),
+          );
+        });
+      });
+      const account = openAIAccount(await listen(server, '/v1'));
+      try {
+        const provider = new OpenAICompatibleProvider();
+        for (let i = 0; i < 2; i++) {
+          const deltas: string[] = [];
+          const result = await provider.complete(
+            account,
+            model(account, 'reasoning-model'),
+            { ...chatRequest(), stream },
+            { signal: new AbortController().signal, onDelta: (delta) => deltas.push(delta) },
+          );
+          expect(result.content).toBe('ok');
+          if (stream) expect(deltas).toEqual(['ok']);
+        }
+        expect(bodies).toHaveLength(3);
+        expect(bodies[0].max_tokens).toBe(100);
+        for (const body of bodies.slice(1)) {
+          expect(body.max_completion_tokens).toBe(100);
+          expect(body).not.toHaveProperty('max_tokens');
+          expect(body.messages).toEqual(bodies[0].messages);
+          expect(body.tools).toEqual(bodies[0].tools);
+        }
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
   it.each([false, true])('round-trips namespaced tool names with streaming=%s', async (stream) => {
     let wireName = '';
     let bodySeen: {

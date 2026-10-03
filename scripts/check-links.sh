@@ -36,6 +36,6 @@ while IFS= read -r -d '' f; do
       fi
     done < <(printf '%s\n' "$line" | grep -oE '\]\([^)]+\)' | sed -E 's/^\]\((.*)\)$/\1/')
   done < "$f"
-done < <(find docs README.md AGENTS.md .agents -type f -name '*.md' -print0 2>/dev/null)
+done < <(find docs README.md AGENTS.md CHANGELOG.md .agents -type f -name '*.md' -print0 2>/dev/null)
 [ $status -eq 0 ] && echo "All links OK"
 exit $status

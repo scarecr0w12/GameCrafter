@@ -22,6 +22,15 @@ afterEach(() => {
 });
 
 describe('PluginInstaller', () => {
+  it('installs the bundled sample against the current workspace version', async () => {
+    const { version } = JSON.parse(
+      readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
+    ) as { version: string };
+    const { installer } = createInstaller(version);
+    const inspection = await installer.inspect(samplePluginPath());
+    const installed = await installer.install(samplePluginPath(), inspection.capabilities);
+    expect(installed.pluginId).toBe('sample-hello');
+  });
   it('inspects and installs a local plugin only after accepting its exact capabilities', async () => {
     const { installer, profileDir } = createInstaller();
     const source = samplePluginPath();
@@ -138,7 +147,10 @@ describe('PluginInstaller', () => {
   });
 });
 
-function createInstaller(): { installer: PluginInstaller; profileDir: string } {
+function createInstaller(platformVersion = '0.1.0'): {
+  installer: PluginInstaller;
+  profileDir: string;
+} {
   const root = mkdtempSync(path.join(tmpdir(), 'gc-plugin-installer-'));
   roots.push(root);
   const profileDir = path.join(root, 'profile');
@@ -153,7 +165,7 @@ function createInstaller(): { installer: PluginInstaller; profileDir: string } {
   settingsRegistry.register('builtin', definitions.groups, definitions.definitions);
   const settings = new SettingsService(settingsRegistry, database, projectDatabases);
   return {
-    installer: new PluginInstaller({ database, profileDir, platformVersion: '0.1.0', settings }),
+    installer: new PluginInstaller({ database, profileDir, platformVersion, settings }),
     profileDir,
   };
 }

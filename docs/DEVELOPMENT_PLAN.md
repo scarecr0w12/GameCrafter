@@ -209,6 +209,8 @@ flowchart TD
 
 ## Cross-cutting rules
 
+- Every repository task must include a permanent [work record](changes/README.md), generated changelog freshness and complete changed-file coverage. Version preparation collects the recorded details and validation into release notes and enforces the highest required version impact. This repository maintenance contract does not change work-package completion or live verification requirements.
+
 - Genre packs and modules (K01, K02, K07) are plugin types (WP12) whose records live in the knowledge layer (WP14).
 - Every work package adds contracts to `@gamecrafter/contracts` under a new or bumped `schemaVersion`; existing versions are never rewritten.
 - When a work package changes status, update this file, the register entries it resolves, and the corresponding design/architecture sections in the same change.

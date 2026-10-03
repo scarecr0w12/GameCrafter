@@ -13,6 +13,17 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check work records for the complete change
+        env:
+          CHANGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
+        run: |
+          if [ -z "$CHANGE_BASE" ] || [[ "$CHANGE_BASE" =~ ^0+$ ]]; then
+            CHANGE_BASE=$(git merge-base HEAD 4e13420)
+          fi
+          node scripts/change-tracking.cjs check --base "$CHANGE_BASE" --committed
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -26,8 +37,11 @@ jobs:
       - if: runner.os == 'Windows'
         run: npm ci --foreground-scripts
       - run: npx turbo run build typecheck lint test --concurrency=1
+      - run: npm run test:changes
       - run: node scripts/check-release-version.cjs
       - run: node scripts/generate-system-reference.cjs --check
+      - run: node scripts/generate-documentation-inventory.cjs --check
+      - run: node scripts/check-documentation-evidence.cjs
       - run: npm run format:check
       - if: runner.os == 'Linux'
         run: bash scripts/check-links.sh

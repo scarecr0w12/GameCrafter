@@ -9,7 +9,7 @@
   },
   "license": "Apache-2.0",
   "compatibility": {
-    "platform": "^0.1.0",
+    "platform": ">=0.1.0 <1.0.0",
     "protocol": 1
   },
   "runtime": {

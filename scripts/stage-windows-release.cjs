@@ -4,6 +4,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const root = path.resolve(__dirname, '..');
+require('./change-tracking.cjs').check(root, { release: true });
 const version = JSON.parse(
   fs.readFileSync(path.join(root, 'apps/control-room/package.json')),
 ).version;

@@ -44,11 +44,20 @@ The public product name is **PlayWeld**, and the user owns `playweld.com`. Prese
 - Dependencies: pin exact versions and prefer releases published at least 7 days ago (`npm view <pkg> time`). Theia packages are pinned to one exact version across all packages.
 - SQLite access goes through `packages/platform-service/src/db/database.ts` only (the `node:sqlite` seam).
 
-## Verification
+## Change records and versioning
+
+- Record **all work** in the same change: additions, modifications, removals, fixes, refactors, tests, documentation, research, dependencies, assets, tooling, configuration, and reverted work. Before finishing, add or update a pending Markdown work record under `docs/changes/`; follow [the tracking contract](docs/changes/README.md). Describe each meaningful outcome, rationale, compatibility/removal effects, exact affected files (including deleted paths), validation actually performed, skips, and limitations. Do not rely on chat summaries or Git commit titles as the changelog.
+- Use a separate record for each independently describable task. Keep records permanent; never delete them or rewrite released records. Record later corrections/reverts in new records. Draft or incomplete work must be labeled as such and cannot claim completed verification.
+- Select `none`, `patch`, `minor`, or `major` impact. Internal/docs/test work can use `none`; visible fixes use `patch`; compatible features use `minor`; breaking changes use `major` (before 1.0, release preparation requires at least a minor version bump). Record compatibility and migration notes explicitly.
+- Run `npm run changelog:update` and `npm run changelog:check -- --base HEAD` for local work. For a branch/PR, use its base commit to cover all commits. Every changed source path must be covered by a changed work record. CI enforces coverage and generated changelog freshness; reviewers must still check that the prose accounts for every meaningful change.
+- Keep the current version while work is pending. When preparing a new installer/release, run `npm run release:version -- <new-version>` to assign all pending records, generate detailed release notes and synchronize workspaces; refresh the lockfile as described in [the release guide](docs/RELEASE_GUIDE.md). Run version/changelog checks and required verification before tagging or packaging. Never reuse an existing version/tag or silently overwrite historical evidence.
+
+## Verification commands
 
 - Code: `npm ci`, then `npx turbo run build typecheck lint test`. Run the narrowest package test while iterating (`npm test -w @gamecrafter/contracts`), the full turbo run once before finishing. `npm run format:check` must be clean.
 - Theia app: `npm run build -w @gamecrafter/control-room` (Electron) and `npm run start -w @gamecrafter/control-room-browser` for a browser smoke test on `http://localhost:3000`.
 - Documentation: run `scripts/check-links.sh` after any documentation change and check that new decisions are reflected consistently across the design, architecture, decision register, and development plan.
+- Change tracking: run `npm run test:changes` when changing the tracking tools, and `npm run changelog:check -- --base HEAD` before every handoff.
 - Research notes older than a few months should be re-verified before a claim from them is promoted into a design document.
 
 ## Agent tooling in this repository

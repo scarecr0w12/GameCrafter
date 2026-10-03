@@ -1,0 +1,1048 @@
+{
+  "schemaVersion": 1,
+  "rpcFamilies": [
+    {
+      "family": "asset",
+      "guide": "WORKFLOW_COOKBOOK.md",
+      "methods": [
+        "asset/providers",
+        "asset/accounts",
+        "asset/addAccount",
+        "asset/updateAccount",
+        "asset/removeAccount",
+        "asset/testAccount",
+        "asset/generate",
+        "asset/jobs",
+        "asset/job",
+        "asset/cancel",
+        "asset/review",
+        "asset/import",
+        "asset/files",
+        "asset/preview",
+        "asset/openInAuthoringTool"
+      ],
+      "implementation": "packages/platform-service/src/assets",
+      "tests": [
+        "packages/platform-service/src/assets/asset-service.integration.test.ts",
+        "packages/platform-service/src/assets/asset-service.test.ts",
+        "packages/platform-service/src/assets/preview/gltf-inspector.test.ts",
+        "packages/platform-service/src/assets/preview/image-inspector.test.ts",
+        "packages/platform-service/src/assets/providers/providers.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "audit",
+      "guide": "OPERATIONS_GUIDE.md",
+      "methods": [
+        "audit/read"
+      ],
+      "implementation": "packages/platform-service/src/tools",
+      "tests": [
+        "packages/platform-service/src/tools/tool-broker.integration.test.ts",
+        "packages/platform-service/src/tools/tool-registry.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "backup",
+      "guide": "OPERATIONS_GUIDE.md",
+      "methods": [
+        "backup/identities",
+        "backup/identity/create",
+        "backup/identity/remove",
+        "backup/destinations",
+        "backup/addDestination",
+        "backup/updateDestination",
+        "backup/removeDestination",
+        "backup/testDestination",
+        "backup/plans",
+        "backup/savePlan",
+        "backup/removePlan",
+        "backup/run",
+        "backup/runs",
+        "backup/run/get",
+        "backup/cancel",
+        "backup/archives",
+        "backup/inspect",
+        "backup/verify",
+        "backup/restore"
+      ],
+      "implementation": "packages/platform-service/src/backup",
+      "tests": [
+        "packages/platform-service/src/backup/archive/archive.test.ts",
+        "packages/platform-service/src/backup/backup-service.integration.test.ts",
+        "packages/platform-service/src/backup/backup-service.test.ts",
+        "packages/platform-service/src/backup/destinations/ftp.test.ts",
+        "packages/platform-service/src/backup/destinations/google-drive.test.ts",
+        "packages/platform-service/src/backup/destinations/local.test.ts",
+        "packages/platform-service/src/backup/destinations/s3.test.ts",
+        "packages/platform-service/src/backup/restore.test.ts",
+        "packages/platform-service/src/backup/scheduler.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "board",
+      "guide": "WORKFLOW_COOKBOOK.md",
+      "methods": [
+        "board/threads",
+        "board/thread",
+        "board/createThread",
+        "board/post",
+        "board/edit",
+        "board/supersede",
+        "board/setThreadStatus",
+        "board/bind",
+        "board/decisions",
+        "board/decision",
+        "board/retrySync",
+        "board/subscribe",
+        "board/unsubscribe",
+        "board/subscriptions",
+        "board/summary",
+        "board/search",
+        "board/maintenance/run",
+        "board/maintenance/status",
+        "board/delete"
+      ],
+      "implementation": "packages/platform-service/src/board",
+      "tests": [
+        "packages/platform-service/src/board/board-maintenance.integration.test.ts",
+        "packages/platform-service/src/board/board-maintenance.models.integration.test.ts",
+        "packages/platform-service/src/board/board-service.test.ts",
+        "packages/platform-service/src/board/maintenance-scheduler.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "broker",
+      "guide": "WORKFLOW_COOKBOOK.md",
+      "methods": [
+        "broker/approvals",
+        "broker/approve"
+      ],
+      "implementation": "packages/platform-service/src/tools",
+      "tests": [
+        "packages/platform-service/src/tools/tool-broker.integration.test.ts",
+        "packages/platform-service/src/tools/tool-registry.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "change",
+      "guide": "WORKFLOW_COOKBOOK.md",
+      "methods": [
+        "change/request",
+        "change/requests",
+        "change/impact",
+        "change/graph",
+        "change/rebuildGraph",
+        "change/locks",
+        "change/releaseLock",
+        "change/integrations",
+        "change/integrate",
+        "change/abortIntegration",
+        "change/feedback"
+      ],
+      "implementation": "packages/platform-service/src/change",
+      "tests": [
+        "packages/platform-service/src/change/change-graph.test.ts",
+        "packages/platform-service/src/change/integration-service.test.ts",
+        "packages/platform-service/src/change/lock-manager.test.ts",
+        "packages/platform-service/src/change/swarm-coordination.integration.test.ts",
+        "packages/platform-service/src/change/worktree-manager.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "chat",
+      "guide": "WORKED_TUTORIAL.md",
+      "methods": [
+        "chat/list",
+        "chat/create",
+        "chat/messages",
+        "chat/append",
+        "chat/delete"
+      ],
+      "implementation": "packages/platform-service/src/chat",
+      "tests": [],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "dcc",
+      "guide": "INTEGRATION_GUIDE.md",
+      "methods": [
+        "dcc/installations",
+        "dcc/addInstallation",
+        "dcc/removeInstallation",
+        "dcc/capabilities",
+        "dcc/run",
+        "dcc/runs",
+        "dcc/run/get",
+        "dcc/setLiveBridge"
+      ],
+      "implementation": "packages/platform-service/src/dcc",
+      "tests": [
+        "packages/platform-service/src/dcc/adapters/adapters.test.ts",
+        "packages/platform-service/src/dcc/blender-real.test.ts",
+        "packages/platform-service/src/dcc/dcc-service.integration.test.ts",
+        "packages/platform-service/src/dcc/dcc-tools.test.ts",
+        "packages/platform-service/src/dcc/wsl-interop.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "engine",
+      "guide": "INTEGRATION_GUIDE.md",
+      "methods": [
+        "engine/installations",
+        "engine/addInstallation",
+        "engine/removeInstallation",
+        "engine/capabilities",
+        "engine/run",
+        "engine/runs",
+        "engine/run/get",
+        "engine/setLiveBridge"
+      ],
+      "implementation": "packages/platform-service/src/engines",
+      "tests": [
+        "packages/platform-service/src/engines/engine-connectors.test.ts",
+        "packages/platform-service/src/engines/engine-service.integration.test.ts",
+        "packages/platform-service/src/engines/process-runner.test.ts",
+        "packages/platform-service/src/engines/test-report.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "knowledge",
+      "guide": "WORKFLOW_COOKBOOK.md",
+      "methods": [
+        "knowledge/records",
+        "knowledge/record",
+        "knowledge/write",
+        "knowledge/setStatus",
+        "knowledge/search",
+        "knowledge/index/status",
+        "knowledge/index/rebuild",
+        "knowledge/index/reconcile",
+        "knowledge/embeddingProfile/set",
+        "knowledge/graph",
+        "knowledge/vectorStore/test"
+      ],
+      "implementation": "packages/platform-service/src/knowledge",
+      "tests": [
+        "packages/platform-service/src/knowledge/canon-parser.test.ts",
+        "packages/platform-service/src/knowledge/chunker.test.ts",
+        "packages/platform-service/src/knowledge/knowledge-store.test.ts",
+        "packages/platform-service/src/knowledge/knowledge.integration.test.ts",
+        "packages/platform-service/src/knowledge/qdrant-vector-store.integration.test.ts",
+        "packages/platform-service/src/knowledge/qdrant-vector-store.test.ts",
+        "packages/platform-service/src/knowledge/retriever.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "mcp",
+      "guide": "EXTENSION_COOKBOOK.md",
+      "methods": [
+        "mcp/list",
+        "mcp/add",
+        "mcp/update",
+        "mcp/remove",
+        "mcp/connect",
+        "mcp/disconnect",
+        "mcp/tools",
+        "mcp/refreshTools",
+        "mcp/answer",
+        "mcp/classifyTool",
+        "mcp/log"
+      ],
+      "implementation": "packages/platform-service/src/mcp",
+      "tests": [
+        "packages/platform-service/src/mcp/compatibility.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.docker.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.integration.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.sampling.integration.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.sampling.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.test.ts",
+        "packages/platform-service/src/mcp/docker-runtime.test.ts",
+        "packages/platform-service/src/mcp/jsonrpc-channel.test.ts",
+        "packages/platform-service/src/mcp/mcp-tool-adapter.test.ts",
+        "packages/platform-service/src/mcp/session.test.ts",
+        "packages/platform-service/src/mcp/transports/legacy-sse.test.ts",
+        "packages/platform-service/src/mcp/transports/stdio.test.ts",
+        "packages/platform-service/src/mcp/transports/streamable-http.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "model",
+      "guide": "USER_GUIDE.md",
+      "methods": [
+        "model/list",
+        "model/discover",
+        "model/update",
+        "model/complete",
+        "model/embed"
+      ],
+      "implementation": "packages/platform-service/src/models",
+      "tests": [
+        "packages/platform-service/src/models/model-registry.test.ts",
+        "packages/platform-service/src/models/models.integration.test.ts",
+        "packages/platform-service/src/models/providers/http-utils.test.ts",
+        "packages/platform-service/src/models/providers/providers.test.ts",
+        "packages/platform-service/src/models/router.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "plugin",
+      "guide": "EXTENSION_COOKBOOK.md",
+      "methods": [
+        "plugin/list",
+        "plugin/inspect",
+        "plugin/install",
+        "plugin/uninstall",
+        "plugin/enable",
+        "plugin/disable",
+        "plugin/start",
+        "plugin/stop",
+        "plugin/status",
+        "plugin/isolationReport",
+        "plugin/log",
+        "plugin/setSecret",
+        "plugin/panel",
+        "plugin/modules"
+      ],
+      "implementation": "packages/platform-service/src/plugins",
+      "tests": [
+        "packages/platform-service/src/plugins/isolation/isolation.test.ts",
+        "packages/platform-service/src/plugins/plugin-installer.test.ts",
+        "packages/platform-service/src/plugins/plugin-registry.test.ts",
+        "packages/platform-service/src/plugins/plugin-service.integration.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "pool",
+      "guide": "USER_GUIDE.md",
+      "methods": [
+        "pool/list",
+        "pool/create",
+        "pool/update",
+        "pool/delete"
+      ],
+      "implementation": "packages/platform-service/src/models",
+      "tests": [
+        "packages/platform-service/src/models/model-registry.test.ts",
+        "packages/platform-service/src/models/models.integration.test.ts",
+        "packages/platform-service/src/models/providers/http-utils.test.ts",
+        "packages/platform-service/src/models/providers/providers.test.ts",
+        "packages/platform-service/src/models/router.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "project",
+      "guide": "WORKED_TUTORIAL.md",
+      "methods": [
+        "project/create",
+        "project/clone",
+        "project/list",
+        "project/open",
+        "project/get",
+        "project/trust"
+      ],
+      "implementation": "packages/platform-service/src/projects",
+      "tests": [
+        "packages/platform-service/src/projects/workspace.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "provider",
+      "guide": "USER_GUIDE.md",
+      "methods": [
+        "provider/accounts",
+        "provider/addAccount",
+        "provider/updateAccount",
+        "provider/removeAccount",
+        "provider/testAccount"
+      ],
+      "implementation": "packages/platform-service/src/models",
+      "tests": [
+        "packages/platform-service/src/models/model-registry.test.ts",
+        "packages/platform-service/src/models/models.integration.test.ts",
+        "packages/platform-service/src/models/providers/http-utils.test.ts",
+        "packages/platform-service/src/models/providers/providers.test.ts",
+        "packages/platform-service/src/models/router.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "roles",
+      "guide": "EXTENSION_COOKBOOK.md",
+      "methods": [
+        "roles/list",
+        "roles/get"
+      ],
+      "implementation": "packages/platform-service/src/roles",
+      "tests": [
+        "packages/platform-service/src/roles/role-loader.test.ts",
+        "packages/platform-service/src/roles/role-registry.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "router",
+      "guide": "USER_GUIDE.md",
+      "methods": [
+        "router/route",
+        "router/reportOutcome",
+        "router/decisions",
+        "router/stats"
+      ],
+      "implementation": "packages/platform-service/src/models",
+      "tests": [
+        "packages/platform-service/src/models/model-registry.test.ts",
+        "packages/platform-service/src/models/models.integration.test.ts",
+        "packages/platform-service/src/models/providers/http-utils.test.ts",
+        "packages/platform-service/src/models/providers/providers.test.ts",
+        "packages/platform-service/src/models/router.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "service",
+      "guide": "OPERATIONS_GUIDE.md",
+      "methods": [
+        "service/info",
+        "service/stop"
+      ],
+      "implementation": "packages/platform-service/src/ipc",
+      "tests": [
+        "packages/platform-service/src/ipc/jsonrpc-channel.test.ts",
+        "packages/platform-service/src/ipc/server-lifecycle.test.ts",
+        "packages/platform-service/src/ipc/stdio-transport.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "session",
+      "guide": "SERVICE_RECIPES.md",
+      "methods": [
+        "session/hello"
+      ],
+      "implementation": "packages/platform-service/src/ipc",
+      "tests": [
+        "packages/platform-service/src/ipc/jsonrpc-channel.test.ts",
+        "packages/platform-service/src/ipc/server-lifecycle.test.ts",
+        "packages/platform-service/src/ipc/stdio-transport.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "settings",
+      "guide": "SETTINGS_REFERENCE.md",
+      "methods": [
+        "settings/describe",
+        "settings/get",
+        "settings/getAll",
+        "settings/export",
+        "settings/import",
+        "settings/set"
+      ],
+      "implementation": "packages/platform-service/src/settings",
+      "tests": [
+        "packages/platform-service/src/settings/registry.test.ts",
+        "packages/platform-service/src/settings/settings-service.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "skills",
+      "guide": "EXTENSION_COOKBOOK.md",
+      "methods": [
+        "skills/install",
+        "skills/uninstall",
+        "skills/list",
+        "skills/enable",
+        "skills/catalog",
+        "skills/activate",
+        "skills/read-resource",
+        "skills/search",
+        "skills/validate",
+        "skills/activations"
+      ],
+      "implementation": "packages/platform-service/src/skills",
+      "tests": [
+        "packages/platform-service/src/skills/bundled-skills.test.ts",
+        "packages/platform-service/src/skills/skill-catalog.test.ts",
+        "packages/platform-service/src/skills/skill-installer.test.ts",
+        "packages/platform-service/src/skills/skill-loader.test.ts",
+        "packages/platform-service/src/skills/skill-registry.test.ts",
+        "packages/platform-service/src/skills/skill-resource.test.ts",
+        "packages/platform-service/src/skills/skill-sources.test.ts",
+        "packages/platform-service/src/skills/skills.integration.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "task",
+      "guide": "WORKFLOW_COOKBOOK.md",
+      "methods": [
+        "task/create",
+        "task/get",
+        "task/list",
+        "task/tree",
+        "task/cancel",
+        "task/events",
+        "task/answer",
+        "task/questions"
+      ],
+      "implementation": "packages/platform-service/src/tasks",
+      "tests": [
+        "packages/platform-service/src/tasks/task-service.integration.test.ts",
+        "packages/platform-service/src/tasks/task-store.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "tool",
+      "guide": "EXTENSION_COOKBOOK.md",
+      "methods": [
+        "tool/list",
+        "tool/call",
+        "tool/calls"
+      ],
+      "implementation": "packages/platform-service/src/tools",
+      "tests": [
+        "packages/platform-service/src/tools/tool-broker.integration.test.ts",
+        "packages/platform-service/src/tools/tool-registry.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    },
+    {
+      "family": "update",
+      "guide": "RELEASE_GUIDE.md",
+      "methods": [
+        "update/state",
+        "update/check",
+        "update/download",
+        "update/install",
+        "update/rollback",
+        "update/dismiss"
+      ],
+      "implementation": "packages/platform-service/src/updates",
+      "tests": [
+        "packages/platform-service/src/updates/release-metadata-cli.test.ts",
+        "packages/platform-service/src/updates/release-tools.test.ts",
+        "packages/platform-service/src/updates/update-service.test.ts"
+      ],
+      "evidence": "Source/schema inventory; test paths are discoverability, not a claim that these tests passed. See DOCUMENTATION_COVERAGE.md for live results and gaps."
+    }
+  ],
+  "notifications": [
+    "asset/jobChanged",
+    "backup/runChanged",
+    "board/decisionChanged",
+    "board/messagePosted",
+    "board/threadChanged",
+    "broker/approvalRequested",
+    "broker/approvalResolved",
+    "change/integrationChanged",
+    "change/lockChanged",
+    "change/requestChanged",
+    "dcc/capabilitiesChanged",
+    "dcc/runChanged",
+    "engine/capabilitiesChanged",
+    "engine/runChanged",
+    "knowledge/indexChanged",
+    "knowledge/recordChanged",
+    "mcp/inputRequired",
+    "mcp/stateChanged",
+    "model/delta",
+    "plugin/changed",
+    "plugin/workerChanged",
+    "project/changed",
+    "settings/changed",
+    "task/changed",
+    "task/event",
+    "task/question",
+    "tool/called",
+    "update/stateChanged"
+  ],
+  "settingGroups": [
+    {
+      "id": "general",
+      "title": "General & background behaviour",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "window.closeBehavior"
+      ]
+    },
+    {
+      "id": "projects",
+      "title": "Projects, genres & modules",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "projects.defaultParentDirectory"
+      ]
+    },
+    {
+      "id": "agents",
+      "title": "Agents, swarms & skills",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "agents.maxConcurrentPerProject",
+        "agents.maxSpawnDepth",
+        "skills.catalog.maxEntries",
+        "skills.compatibilityScan.enabled"
+      ]
+    },
+    {
+      "id": "models",
+      "title": "Model providers & routing",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "models.autoRouting.maxLatencyMs",
+        "models.autoRouting.quality",
+        "models.budget.maxCostPerTaskUsd",
+        "models.exploration.budgetUsdPerDay",
+        "models.exploration.rate"
+      ]
+    },
+    {
+      "id": "connections",
+      "title": "Engine, asset & tool connections",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "mcp.autoConnect",
+        "mcp.reconnectBackoffSeconds"
+      ]
+    },
+    {
+      "id": "access",
+      "title": "Access & security",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "access.askAlways.approvalTimeoutMinutes",
+        "access.mode",
+        "access.restricted.allowedSideEffects",
+        "access.restricted.allowedTools"
+      ]
+    },
+    {
+      "id": "board",
+      "title": "Discussion board",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "board.allowPermanentDeletion",
+        "board.archiveAfterDays",
+        "board.auditIntervalMinutes",
+        "board.auditMinMessages",
+        "board.maintenanceEnabled",
+        "board.maxSyncAttempts"
+      ]
+    },
+    {
+      "id": "plugins",
+      "title": "Plugins & updates",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "plugins.allowUnisolatedInFullAccess",
+        "plugins.autoStart",
+        "plugins.maxRestarts",
+        "plugins.workerIdleStopMinutes",
+        "skills.installLimits.archiveMiB",
+        "skills.installLimits.extractedMiB",
+        "skills.installLimits.maxFiles"
+      ]
+    },
+    {
+      "id": "storage",
+      "title": "Storage, search & backup",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "backup.encryption.enabled",
+        "search.vector.enabled"
+      ]
+    },
+    {
+      "id": "logs",
+      "title": "Logs & audit",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "logs.retentionDays"
+      ]
+    },
+    {
+      "id": "engine",
+      "title": "Engine connectors",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "engine.autoDetectInstallations",
+        "engine.operationTimeoutSeconds",
+        "engine.postVersionMismatchToBoard"
+      ]
+    },
+    {
+      "id": "knowledge",
+      "title": "Knowledge & search",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "knowledge.codeExtensions",
+        "knowledge.embeddingBatchSize",
+        "knowledge.indexBoard",
+        "knowledge.indexCode",
+        "knowledge.reconcileIntervalMinutes",
+        "knowledge.vectorStore.apiKeyRef",
+        "knowledge.vectorStore.collectionPrefix",
+        "knowledge.vectorStore.kind",
+        "knowledge.vectorStore.timeoutMs",
+        "knowledge.vectorStore.url"
+      ]
+    },
+    {
+      "id": "assets",
+      "title": "Assets",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "assets.externalOpenCommand",
+        "assets.importDirectory",
+        "assets.maxDownloadMb",
+        "assets.pollIntervalSeconds",
+        "assets.previewCacheMb",
+        "assets.requestTimeoutMs"
+      ]
+    },
+    {
+      "id": "backup",
+      "title": "Backups",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "backup.compressionLevel",
+        "backup.drillAfterBackup",
+        "backup.excludeGlobs",
+        "backup.includeAssetJobs",
+        "backup.maxArchiveMb",
+        "backup.scryptLogN",
+        "backup.stagingDirectory"
+      ]
+    },
+    {
+      "id": "dcc",
+      "title": "DCC tools",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "dcc.allowUnrestrictedScripts",
+        "dcc.autoDetectInstallations",
+        "dcc.operationTimeoutSeconds",
+        "dcc.renderPreviewResolution",
+        "dcc.searchPaths"
+      ]
+    },
+    {
+      "id": "coordination",
+      "title": "Coordination",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "coordination.autoIntegrate",
+        "coordination.defaultMaxTurns",
+        "coordination.impactConfidenceThreshold",
+        "coordination.lockTimeoutSeconds",
+        "coordination.maxTranscriptTokens",
+        "coordination.worktreeDirectory"
+      ]
+    },
+    {
+      "id": "updates",
+      "title": "Updates",
+      "guide": "SETTINGS_REFERENCE.md",
+      "keys": [
+        "updates.autoDownload",
+        "updates.checkIntervalHours",
+        "updates.checkOnStart",
+        "updates.releasesUrl",
+        "updates.signingPublicKey"
+      ]
+    }
+  ],
+  "serviceSubsystems": [
+    {
+      "name": "agents",
+      "implementation": "packages/platform-service/src/agents",
+      "tests": [
+        "packages/platform-service/src/agents/agent-approval.integration.test.ts",
+        "packages/platform-service/src/agents/agent-runtime.test.ts"
+      ],
+      "guide": "TECHNICAL_ARCHITECTURE.md"
+    },
+    {
+      "name": "assets",
+      "implementation": "packages/platform-service/src/assets",
+      "tests": [
+        "packages/platform-service/src/assets/asset-service.integration.test.ts",
+        "packages/platform-service/src/assets/asset-service.test.ts",
+        "packages/platform-service/src/assets/preview/gltf-inspector.test.ts",
+        "packages/platform-service/src/assets/preview/image-inspector.test.ts",
+        "packages/platform-service/src/assets/providers/providers.test.ts"
+      ],
+      "guide": "WORKFLOW_COOKBOOK.md"
+    },
+    {
+      "name": "backup",
+      "implementation": "packages/platform-service/src/backup",
+      "tests": [
+        "packages/platform-service/src/backup/archive/archive.test.ts",
+        "packages/platform-service/src/backup/backup-service.integration.test.ts",
+        "packages/platform-service/src/backup/backup-service.test.ts",
+        "packages/platform-service/src/backup/destinations/ftp.test.ts",
+        "packages/platform-service/src/backup/destinations/google-drive.test.ts",
+        "packages/platform-service/src/backup/destinations/local.test.ts",
+        "packages/platform-service/src/backup/destinations/s3.test.ts",
+        "packages/platform-service/src/backup/restore.test.ts",
+        "packages/platform-service/src/backup/scheduler.test.ts"
+      ],
+      "guide": "OPERATIONS_GUIDE.md"
+    },
+    {
+      "name": "board",
+      "implementation": "packages/platform-service/src/board",
+      "tests": [
+        "packages/platform-service/src/board/board-maintenance.integration.test.ts",
+        "packages/platform-service/src/board/board-maintenance.models.integration.test.ts",
+        "packages/platform-service/src/board/board-service.test.ts",
+        "packages/platform-service/src/board/maintenance-scheduler.test.ts"
+      ],
+      "guide": "WORKFLOW_COOKBOOK.md"
+    },
+    {
+      "name": "change",
+      "implementation": "packages/platform-service/src/change",
+      "tests": [
+        "packages/platform-service/src/change/change-graph.test.ts",
+        "packages/platform-service/src/change/integration-service.test.ts",
+        "packages/platform-service/src/change/lock-manager.test.ts",
+        "packages/platform-service/src/change/swarm-coordination.integration.test.ts",
+        "packages/platform-service/src/change/worktree-manager.test.ts"
+      ],
+      "guide": "WORKFLOW_COOKBOOK.md"
+    },
+    {
+      "name": "chat",
+      "implementation": "packages/platform-service/src/chat",
+      "tests": [],
+      "guide": "WORKED_TUTORIAL.md"
+    },
+    {
+      "name": "db",
+      "implementation": "packages/platform-service/src/db",
+      "tests": [
+        "packages/platform-service/src/db/database.test.ts",
+        "packages/platform-service/src/db/migration-snapshot.test.ts"
+      ],
+      "guide": "TECHNICAL_ARCHITECTURE.md"
+    },
+    {
+      "name": "dcc",
+      "implementation": "packages/platform-service/src/dcc",
+      "tests": [
+        "packages/platform-service/src/dcc/adapters/adapters.test.ts",
+        "packages/platform-service/src/dcc/blender-real.test.ts",
+        "packages/platform-service/src/dcc/dcc-service.integration.test.ts",
+        "packages/platform-service/src/dcc/dcc-tools.test.ts",
+        "packages/platform-service/src/dcc/wsl-interop.test.ts"
+      ],
+      "guide": "INTEGRATION_GUIDE.md"
+    },
+    {
+      "name": "engines",
+      "implementation": "packages/platform-service/src/engines",
+      "tests": [
+        "packages/platform-service/src/engines/engine-connectors.test.ts",
+        "packages/platform-service/src/engines/engine-service.integration.test.ts",
+        "packages/platform-service/src/engines/process-runner.test.ts",
+        "packages/platform-service/src/engines/test-report.test.ts"
+      ],
+      "guide": "INTEGRATION_GUIDE.md"
+    },
+    {
+      "name": "ipc",
+      "implementation": "packages/platform-service/src/ipc",
+      "tests": [
+        "packages/platform-service/src/ipc/jsonrpc-channel.test.ts",
+        "packages/platform-service/src/ipc/server-lifecycle.test.ts",
+        "packages/platform-service/src/ipc/stdio-transport.test.ts"
+      ],
+      "guide": "SERVICE_RECIPES.md"
+    },
+    {
+      "name": "knowledge",
+      "implementation": "packages/platform-service/src/knowledge",
+      "tests": [
+        "packages/platform-service/src/knowledge/canon-parser.test.ts",
+        "packages/platform-service/src/knowledge/chunker.test.ts",
+        "packages/platform-service/src/knowledge/knowledge-store.test.ts",
+        "packages/platform-service/src/knowledge/knowledge.integration.test.ts",
+        "packages/platform-service/src/knowledge/qdrant-vector-store.integration.test.ts",
+        "packages/platform-service/src/knowledge/qdrant-vector-store.test.ts",
+        "packages/platform-service/src/knowledge/retriever.test.ts"
+      ],
+      "guide": "WORKFLOW_COOKBOOK.md"
+    },
+    {
+      "name": "mcp",
+      "implementation": "packages/platform-service/src/mcp",
+      "tests": [
+        "packages/platform-service/src/mcp/compatibility.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.docker.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.integration.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.sampling.integration.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.sampling.test.ts",
+        "packages/platform-service/src/mcp/connection-manager.test.ts",
+        "packages/platform-service/src/mcp/docker-runtime.test.ts",
+        "packages/platform-service/src/mcp/jsonrpc-channel.test.ts",
+        "packages/platform-service/src/mcp/mcp-tool-adapter.test.ts",
+        "packages/platform-service/src/mcp/session.test.ts",
+        "packages/platform-service/src/mcp/transports/legacy-sse.test.ts",
+        "packages/platform-service/src/mcp/transports/stdio.test.ts",
+        "packages/platform-service/src/mcp/transports/streamable-http.test.ts"
+      ],
+      "guide": "EXTENSION_COOKBOOK.md"
+    },
+    {
+      "name": "models",
+      "implementation": "packages/platform-service/src/models",
+      "tests": [
+        "packages/platform-service/src/models/model-registry.test.ts",
+        "packages/platform-service/src/models/models.integration.test.ts",
+        "packages/platform-service/src/models/providers/http-utils.test.ts",
+        "packages/platform-service/src/models/providers/providers.test.ts",
+        "packages/platform-service/src/models/router.test.ts"
+      ],
+      "guide": "USER_GUIDE.md"
+    },
+    {
+      "name": "plugins",
+      "implementation": "packages/platform-service/src/plugins",
+      "tests": [
+        "packages/platform-service/src/plugins/isolation/isolation.test.ts",
+        "packages/platform-service/src/plugins/plugin-installer.test.ts",
+        "packages/platform-service/src/plugins/plugin-registry.test.ts",
+        "packages/platform-service/src/plugins/plugin-service.integration.test.ts"
+      ],
+      "guide": "EXTENSION_COOKBOOK.md"
+    },
+    {
+      "name": "processes",
+      "implementation": "packages/platform-service/src/processes",
+      "tests": [
+        "packages/platform-service/src/processes/exec-command.test.ts"
+      ],
+      "guide": "TECHNICAL_ARCHITECTURE.md"
+    },
+    {
+      "name": "profile",
+      "implementation": "packages/platform-service/src/profile",
+      "tests": [
+        "packages/platform-service/src/profile/credential-store.test.ts",
+        "packages/platform-service/src/profile/migrations.test.ts"
+      ],
+      "guide": "TECHNICAL_ARCHITECTURE.md"
+    },
+    {
+      "name": "projects",
+      "implementation": "packages/platform-service/src/projects",
+      "tests": [
+        "packages/platform-service/src/projects/workspace.test.ts"
+      ],
+      "guide": "WORKED_TUTORIAL.md"
+    },
+    {
+      "name": "roles",
+      "implementation": "packages/platform-service/src/roles",
+      "tests": [
+        "packages/platform-service/src/roles/role-loader.test.ts",
+        "packages/platform-service/src/roles/role-registry.test.ts"
+      ],
+      "guide": "EXTENSION_COOKBOOK.md"
+    },
+    {
+      "name": "settings",
+      "implementation": "packages/platform-service/src/settings",
+      "tests": [
+        "packages/platform-service/src/settings/registry.test.ts",
+        "packages/platform-service/src/settings/settings-service.test.ts"
+      ],
+      "guide": "SETTINGS_REFERENCE.md"
+    },
+    {
+      "name": "skills",
+      "implementation": "packages/platform-service/src/skills",
+      "tests": [
+        "packages/platform-service/src/skills/bundled-skills.test.ts",
+        "packages/platform-service/src/skills/skill-catalog.test.ts",
+        "packages/platform-service/src/skills/skill-installer.test.ts",
+        "packages/platform-service/src/skills/skill-loader.test.ts",
+        "packages/platform-service/src/skills/skill-registry.test.ts",
+        "packages/platform-service/src/skills/skill-resource.test.ts",
+        "packages/platform-service/src/skills/skill-sources.test.ts",
+        "packages/platform-service/src/skills/skills.integration.test.ts"
+      ],
+      "guide": "EXTENSION_COOKBOOK.md"
+    },
+    {
+      "name": "tasks",
+      "implementation": "packages/platform-service/src/tasks",
+      "tests": [
+        "packages/platform-service/src/tasks/task-service.integration.test.ts",
+        "packages/platform-service/src/tasks/task-store.test.ts"
+      ],
+      "guide": "WORKFLOW_COOKBOOK.md"
+    },
+    {
+      "name": "tools",
+      "implementation": "packages/platform-service/src/tools",
+      "tests": [
+        "packages/platform-service/src/tools/tool-broker.integration.test.ts",
+        "packages/platform-service/src/tools/tool-registry.test.ts"
+      ],
+      "guide": "EXTENSION_COOKBOOK.md"
+    },
+    {
+      "name": "updates",
+      "implementation": "packages/platform-service/src/updates",
+      "tests": [
+        "packages/platform-service/src/updates/release-metadata-cli.test.ts",
+        "packages/platform-service/src/updates/release-tools.test.ts",
+        "packages/platform-service/src/updates/update-service.test.ts"
+      ],
+      "guide": "RELEASE_GUIDE.md"
+    },
+    {
+      "name": "workers",
+      "implementation": "packages/platform-service/src/workers",
+      "tests": [
+        "packages/platform-service/src/workers/supervisor.test.ts"
+      ],
+      "guide": "TECHNICAL_ARCHITECTURE.md"
+    }
+  ],
+  "pluginCapabilities": [
+    "fs.project.read",
+    "fs.project.write",
+    "process.spawn",
+    "network.outbound",
+    "tools.call",
+    "models.complete",
+    "board.read",
+    "board.post",
+    "secrets.read",
+    {
+      "capability": "network.outbound",
+      "constraint": "host allowlist"
+    }
+  ]
+}

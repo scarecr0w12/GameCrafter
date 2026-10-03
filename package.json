@@ -22,7 +22,10 @@
     "test:ui:chat-layout": "node scripts/chat-layout-ui-smoke.cjs",
     "format": "node node_modules/prettier/bin/prettier.cjs --write .",
     "format:check": "node node_modules/prettier/bin/prettier.cjs --check .",
-    "release:version": "node scripts/set-release-version.cjs"
+    "release:version": "node scripts/set-release-version.cjs",
+    "changelog:update": "node scripts/change-tracking.cjs update",
+    "changelog:check": "node scripts/change-tracking.cjs check",
+    "test:changes": "vitest run scripts/change-tracking.test.ts --maxWorkers=1"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

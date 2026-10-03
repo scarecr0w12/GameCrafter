@@ -57,10 +57,12 @@ export async function connect(options: ConnectOptions): Promise<ServiceClient> {
     socket.once('connect', onConnect);
     socket.once('error', onError);
   });
-  const connection = createMessageConnection(
-    new StreamMessageReader(socket),
-    new StreamMessageWriter(socket),
-  );
+  const reader = new StreamMessageReader(socket);
+  // We do not consume partial-frame notifications. vscode-jsonrpc 9.0.2 can
+  // keep their recurring timer alive after disposal when shutdown truncates a frame.
+  // Disable that diagnostic timer; framing and request errors remain unchanged.
+  reader.partialMessageTimeout = 0;
+  const connection = createMessageConnection(reader, new StreamMessageWriter(socket));
   connection.listen();
 
   let hello: RpcResult<'session/hello'>;

@@ -6,6 +6,8 @@
 
 ## Development environment
 
+Before handing off any work, add or update a pending [work record](changes/README.md), including every meaningful outcome, affected path, version impact and checks actually performed. Run `npm run changelog:update` and `npm run changelog:check -- --base HEAD`; use the branch base to include earlier commits. Released records are permanent. The [release guide](RELEASE_GUIDE.md) covers version preparation and packaging gates.
+
 Use Node 24 or later, npm 11 and Git. Dependencies are pinned to exact versions; all Theia packages use the same version. The current repository pins Theia 1.75.0 and Electron 42.10.0. Check package manifests rather than assuming another checkout has these pins.
 
 On Linux, install the Theia native prerequisites `libx11-dev`, `libxkbfile-dev` and `libsecret-1-dev`. Bubblewrap is needed for the supported plugin-isolation tests. Docker is required for optional live Qdrant/MCP-container checks. A missing optional capability must produce an explicit skip or unavailable result, not a false pass. The Qdrant image needs a Linux-container daemon; a Windows-mode Docker daemon is explicitly skipped. Hosted browser smoke uses the test script's explicit `--no-sandbox` option on the disposable CI runner because its Chromium user namespaces are blocked. The desktop product configuration is unchanged.

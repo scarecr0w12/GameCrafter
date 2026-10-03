@@ -6,18 +6,24 @@ This guide defines the current release tooling and the local testing handoff. Th
 
 ## Version and tag contract
 
+Every task must have a permanent [work record](changes/README.md), including documentation, tests, investigations, refactors, removals, dependency/configuration changes, and assets. [The changelog](../CHANGELOG.md) is generated from those records. The user requires complete tracking; the categories, impact rules and checks are selected engineering defaults. Record actual validation and limitations rather than treating a version number as evidence.
+
 All nine first-party application/package workspaces use the same exact release version and exact internal dependency versions. The npm lockfile must record those versions. An annotated Git tag has the form `v<version>` and identifies the immutable source commit used for the build. A release tag must match the desktop application's version.
 
 The release preparation scripts are [set-release-version.cjs](../scripts/set-release-version.cjs) and [check-release-version.cjs](../scripts/check-release-version.cjs). Version checking runs in normal CI and before release packaging. It rejects stale workspace/lockfile versions and mismatched tags.
 
-For example, prepare the next testing version from a clean checkout:
+Keep work records pending while developing. Before preparation, review their details against the whole diff, run `npm run changelog:update`, and run `npm run changelog:check -- --base <branch-base>` (use `HEAD` for uncommitted local work). Preparation validates local coverage and the highest recorded impact, assigns every pending record, creates a separate version/lockfile work record, and generates detailed release notes. The generated preparation record initially labels subsequent quality/packaging checks unverified. Before committing the prepared source, update its validation with checks actually completed and regenerate the output; version-assigned records become immutable once committed. Later corrections or evidence use new pending records. Published or failed builds are repaired with a new version.
+
+For example, prepare the next patch testing version (use a minor bump for new features or breaking changes before 1.0):
 
 ```bash
-npm run release:version -- 0.1.2
+npm run release:version -- 0.1.5
 npm install --package-lock-only --ignore-scripts
-node scripts/check-release-version.cjs v0.1.2
+node scripts/check-release-version.cjs v0.1.5
+npm run changelog:check -- --release --base HEAD
 npm ci
 npx turbo run build typecheck lint test
+npm run test:changes
 node scripts/generate-system-reference.cjs --check
 npm run format:check
 bash scripts/check-links.sh
@@ -30,6 +36,8 @@ Run dependency installation in the native host checkout. Linux and Windows nativ
 [Desktop Release](../.github/workflows/release.yml) runs when a `v*` tag is pushed, or manually for package-only verification. The workflow checks version agreement, runs dependency package quality checks, builds native Windows/Linux packages, verifies the Windows contents, uploads build artifacts and assembles release metadata.
 
 A tagged workflow creates a **draft testing prerelease**. It does not automatically publish a stable update. GitHub's prerelease flag is the testing-channel designation; it can be used with a normal semantic version such as `0.1.1`. The current in-app update channel is stable and excludes testing prereleases, so testing versions are obtained manually.
+
+Normal CI checks complete PR/push file coverage against changed work records, generated output freshness, and tracking regression tests. Release validation and all desktop packaging/staging commands require the current version's generated detailed notes and no pending records. The draft GitHub release body is sourced from `docs/releases/v<version>.md`, preserving the task details and validation instead of summarizing only commit titles. The historical 0.1.4 baseline must advance before building another package.
 
 The draft contains Windows NSIS `.exe`, Linux AppImage/DEB, `gamecrafter-release.json` and `SHA256SUMS.txt`. The manifest records the version, tag, commit, timestamps, platform assets/hashes and profile/Project schema compatibility.
 

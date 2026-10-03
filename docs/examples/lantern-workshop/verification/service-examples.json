@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-03T00:49:23.325Z",
+  "platformVersion": "0.4.0",
+  "target": "Actual isolated service/registries/workers; deterministic handler fixtures, no external provider or UI",
+  "checks": [
+    "Project SKILL.md and ROLE.md examples loaded through real service registries",
+    "Real worker cancellation reaches terminal state with durable events and task notifications",
+    "Synthetic worker crash retried from checkpoint to success; deterministic handler, not model reasoning",
+    "Unknown-setting RPC error preserves the shared contract code",
+    "Stopped profile reopened through current migrations; Project/task identities and terminal result preserved"
+  ]
+}

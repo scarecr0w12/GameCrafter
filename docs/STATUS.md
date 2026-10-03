@@ -14,6 +14,8 @@ The user confirmed **PlayWeld** and reported purchasing `playweld.com` on 2026-1
 
 PlayWeld 0.1.4 verification: all 33 build/typecheck/lint/test tasks, formatting, generated references, release-version checks, asset format checks, documentation links, browser smoke, Windows packaging/native-content checks, and 26 packaged desktop workflow checks passed. Renderer error lists were empty. [Release notes](releases/v0.1.4.md) preserve scope and local artifact locations. The installer is unsigned; NSIS install/upgrade/uninstall/rollback and Linux packaging remain unverified. Website code and domain services belong to the separate website project.
 
+Documentation verification on 2026-10-02 expands the [coverage inventory](DOCUMENTATION_COVERAGE.md), user/contributor cookbooks and synthetic Lantern Workshop workflows. Actual UI/service results cover questions, approvals, integration, decisions, settings, indexing, local restore, MCP fixtures and asset review/import. Native Godot, fresh Unity/Unreal, Blender and isolated Electron results remain specific to their named operations; [standards refresh](research/documentation-standards-verification.md) retains inaccessible sources as unverified. Windows plugin isolation and installer lifecycle remain open; no work-package status or requirement is changed.
+
 ## 1. Snapshot
 
 - WP0–WP18 are **Implemented (unit/integration-tested)**; WP19 is **In progress**.
@@ -144,6 +146,8 @@ Unity 6000.6.0f1 (Test Framework 1.8.0) and Unreal 5.8.3 pass actual Windows fix
 Engine acceptance regression gate: 33 build/typecheck/lint/test tasks pass on Linux (424 tests) and native Windows (412 tests, 12 explicit OS/capability skips), including browser/Electron builds. Fresh `npm ci`, format, syntax, local-link and diff checks pass. Live acceptance is recorded separately in `.turbo/live-engine-acceptance/`; no interactive editor bridge or graphics claim is implied by these headless checks.
 
 ## Versioned testing release tooling
+
+Permanent Markdown [work records](changes/README.md) and a generated [changelog](../CHANGELOG.md) now track all repository work after the 0.1.4 baseline. Eleven local tracking regression tests cover file coverage, renames/deletions, history immutability, freshness, preparation, impact/version guards and changes spanning multiple releases. The native Windows quality run passed 33/33 tasks (29 cached), plus dependency installation, formatting, reference freshness, release-version agreement and local change coverage. CI coverage checks and GitHub draft-body wiring are configured in source; they have not run on a hosted runner for this change. Version preparation collects full details/validation and records workspace/lockfile changes; desktop packaging/staging requires a finalized ledger for a new version. No new installer, tag or public release is produced by this maintenance change. Earlier changelog history remains incomplete; signing and lifecycle gaps below remain open.
 
 The [release guide](RELEASE_GUIDE.md) covers synchronized first-party versions and lockfile checks, tag/version guards, versioned Windows packaging, packaged skill/reference and notice verification, and an isolated local test launcher. The tagged workflow creates a draft testing prerelease; absent signing material, only an explicitly authorized unsigned testing prerelease can produce checksum metadata. Stable signed updates, installer lifecycle and rollback remain incomplete under WP19.
 

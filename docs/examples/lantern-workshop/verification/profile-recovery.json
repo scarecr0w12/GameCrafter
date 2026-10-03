@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-03T01:26:00.111Z",
+  "platformVersion": "0.4.0",
+  "target": "Actual isolated service, profile archive/restore, offline credential seam and lexical indexing; no provider or UI",
+  "checks": [
+    "Full index rebuild task succeeded and revised native document returned its exact phrase/path/citation",
+    "Read-only diagnostic example authenticated and returned registration/index counts without reading credentials",
+    "Verified profile archive includes original credential key, excludes service lifecycle credentials, and restores into a separate empty profile",
+    "Restored service launched at a new profile location with original Project path/ID, platform override and decryptable synthetic account credential",
+    "Replacing key only in an owned offline copy cannot decrypt preserved ciphertext; restored source key remains intact"
+  ]
+}

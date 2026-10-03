@@ -1,0 +1,28 @@
+{
+  "capturedAt": "2026-10-03T00:46:32.953Z",
+  "platformVersion": "0.4.0",
+  "source": {
+    "commit": "4e1342070f56926807a5d1bb04d43b1a54f2ed40",
+    "workingTree": "pending changes",
+    "captureScriptSha256": "89a2c476976eda2144f599e72710fa1104495d27c5d297fed7482aaa32795396"
+  },
+  "selectedScenarios": [
+    "plugin"
+  ],
+  "target": "Built development browser Control Room, real platform service",
+  "provider": "Local deterministic HTTP fixture; no live model, paid provider, or engine execution",
+  "projectName": "Lantern Workshop",
+  "checks": [
+    "Six-step UI wizard created a real Project; reusable documentation and native Godot fixture copied into it",
+    "Plugin: real UI inspection, exact capability acceptance, installation/enablement and fail-closed Windows runtime isolation diagnostic; tool execution remains unavailable on this host",
+    "Plugin: owned sample uninstalled through UI"
+  ],
+  "screenshots": [
+    "01-home.png",
+    "02-create-project.png",
+    "plugin-capability-review.png",
+    "plugin-installed.png",
+    "plugin-isolation-unavailable.png"
+  ],
+  "rendererErrors": []
+}

@@ -25,6 +25,8 @@ Start with the [complete documentation index](docs/README.md): [user workflows](
 
 For versioned installers and a local Windows test executable, see the [release guide](docs/RELEASE_GUIDE.md).
 
+Every contribution must include a permanent [work record](docs/changes/README.md) with details, affected files, version impact and actual validation. See the generated [changelog](CHANGELOG.md) for pending work and recorded versions. CI checks coverage; release preparation carries the full details into versioned release notes.
+
 ## Code
 
 | Path                          | Package                             | Purpose                                                                                                                                                 |

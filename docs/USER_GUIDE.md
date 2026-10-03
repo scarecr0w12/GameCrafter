@@ -4,6 +4,8 @@
 
 **Audience:** People creating and maintaining games with the current PlayWeld workspace. [Documentation index](README.md).
 
+For a hands-on introduction, follow [Lantern Workshop](WORKED_TUTORIAL.md), a reusable testing Project with real Control Room screenshots. The [Control Room handbook](CONTROL_ROOM_HANDBOOK.md) explains every screen, inputs, examples, and success/failure evidence. Contributors can use the [service recipes](SERVICE_RECIPES.md). The [coverage record](DOCUMENTATION_COVERAGE.md) states exactly what this walkthrough verifies.
+
 ## What you are running
 
 The desktop Control Room organizes a local Project, its design records, source assets, engine files, discussions, agent tasks, and integrations. A local platform service stores operational records and executes work. Closing a window can leave that service running, depending on `window.closeBehavior`.
@@ -41,7 +43,7 @@ Packaged Linux and Windows applications have build/startup evidence. Installer i
 
 ## Create or open a Project
 
-Use Project Home to create a Project. Provide its name, parent directory, engine family, and the requested descriptive/genre/module choices. Creation writes a manifest, design folder, engine folder, repository instructions, local platform state and Git repository. Choose the engine family carefully: the Project's family is locked and cannot be changed by editing an engine selection in the UI.
+Use Project Home to create a Project. The six-step wizard asks for name, optional description, engine family, optional comma-separated genres, parent directory, and confirmation. Module metadata exists in the service contract; the current wizard does not offer a module-selection step. Creation writes a manifest, design folder, engine folder, repository instructions, local platform state and Git repository. Choose the engine family carefully: the Project's family is locked and cannot be changed by editing an engine selection in the UI.
 
 An existing registered Project has an Open action. Opening selects its workspace in the same window and makes its Project-scoped views available. Confirm that the displayed Project and workspace folder match the game you intend to work on before submitting engine operations or agent work.
 
@@ -88,7 +90,7 @@ Live model-provider and embedding-provider acceptance is still outstanding. Exis
 
 ## Chat and agent work
 
-Chat stores Project-scoped conversations and streams router responses. Optional editor context helps explain the currently selected file. Review the context sent with the request, especially when using a remote endpoint.
+Chat stores Project-scoped conversations and presents router responses. Models declaring streaming support can stream; other eligible chat models use a complete-response flow. Optional editor context helps explain the currently selected file. Review the context sent with the request, especially when using a remote endpoint.
 
 Use Agent mode when the request should become supervised Swarm work. Describe the goal, affected files or game systems, expected result, acceptance evidence and budget. A useful request includes a reproducible defect or explicit desired behavior, rather than only “finish the game.”
 

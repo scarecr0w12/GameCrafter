@@ -63,6 +63,8 @@ Do not stop unrelated user processes while cleaning up a test. Use the explicit 
 
 ## Routine health checks
 
+Run the [explicit-profile diagnostic command](RECOVERY_RUNBOOK.md#inspect-an-explicitly-selected-profile) for service identity, Project registrations and optional index counts. It is read-only, requires an absolute profile path and omits credential values. Its output still contains local paths and Project names; inspect it before sharing.
+
 Confirm the profile and service status, then call `service/info` through the typed client. Compare the intended Project ID/path, engine family and current capability report before executing engine work. Inspect failing task/run/call records rather than relying only on a transient UI toast.
 
 Useful records include task events/questions/checkpoints, tool calls/approval decisions, model usage/route decisions, MCP connection state, engine/DCC run logs, asset job state, backup runs and update verification state. Audit & History exports a selected page of call history. Settings export is redacted.
@@ -70,6 +72,8 @@ Useful records include task events/questions/checkpoints, tool calls/approval de
 Keep diagnostic bundles narrowly scoped and sanitized. Provider errors have redaction coverage, but arbitrary third-party log text can still contain sensitive inputs. Do not publish profile tokens, credential keys, recovery secrets, raw credentials or private game content with a GitHub issue.
 
 ## Backups and restoration
+
+The [profile recovery worked example](RECOVERY_RUNBOOK.md#restore-and-launch-a-profile) creates a verified archive, restores to a separate profile, launches the restored service and checks registrations/settings/credential decryption. The [retained report](examples/lantern-workshop/verification/profile-recovery.json) establishes the current-profile drill, separately from Project restore screenshots and historical-schema migration acceptance.
 
 Backups supports profile and Project scopes, local/S3/FTP/Google Drive destination configurations, manual/interval/daily plans, retention and recorded verification. Remote adapters have fixture coverage; native Windows local Project/profile restore has actual evidence.
 
@@ -144,7 +148,28 @@ Use [GitHub Dependabot alerts](https://github.com/scarecr0w12/GameCrafter/securi
 | Signature unavailable                        | Configured public key and release assets                                          | Provision trusted verification material; do not label unavailable as verified                 |
 | Isolation tests skip or plugin cannot start  | Bubblewrap/namespace capability or unsupported Windows isolation                  | Report the precise capability; preserve fail-closed behavior                                  |
 
-## Incident evidence
+## Recovery procedures by state owner
+
+For executable index recovery, use the [full rebuild example](RECOVERY_RUNBOOK.md#rebuild-an-index-and-validate-the-result): `knowledge/index/rebuild` returns a task ID, so inspect that task's terminal state before checking an exact quote/citation. `knowledge/index/status` supplies pending/conflict/broken-reference counts. A successful lexical check does not establish remote vectors or embeddings.
+
+These procedures use existing service operations. Rehearse them with [Lantern Workshop](examples/lantern-workshop/README.md), an isolated profile and empty destinations. Record actual results; these instructions do not establish newly accepted installer rollback or remote recovery.
+
+| State/problem | Procedure | Acceptance and limits |
+| --- | --- | --- |
+| Service restart | Set the intended profile; run `status`, `stop`, `status`, `start`, `status` using the built CLI above. Preserve shutdown/start logs. Reopen the Control Room and fetch current Project/task records. | Responsive authenticated IPC and the same registered Project IDs. A new running process does not prove native engine/provider connectivity. |
+| Interrupted task | Inspect task state, events, checkpoint, attempts, questions and outstanding approvals. Let the existing supervisor handle recoverable work; answer the recorded question or cancel the specific task when appropriate. | Verify resumed/terminal state and artifacts. Do not create a duplicate request while the original may still own a lock or external operation. |
+| Profile migration to another location | Stop the owning service. Make a complete backup, restore/copy to a separate destination, select that profile environment and start there. Inspect the actual profile/store migrations and account decryption before retiring the original. | Check registrations, settings layers, representative task/board records and credentials. Project workspace paths may still refer to the original game locations; profile migration is not moving those games. |
+| Missing credential key | Locate the original `credentials.key` from the profile's protected backup. Restore a complete known-good profile to a new destination, or re-enter affected account credentials using the UI. | A replacement randomly generated key cannot decrypt old ciphertext. Redacted export and service token regeneration do not recover provider credentials. |
+| Stale Knowledge | Inspect index status and source files; reconcile first, then search an exact newly edited phrase lexically with source filters. Use the available rebuild operation for a diagnosed index problem. | Check pending/error/chunk counts, new quote/citation and source path. Embedding/vector-store failure is a separate prerequisite; do not delete canon to repair the index. |
+| Restore drill | Create a synthetic identity and local destination, run a Project backup, inspect/verify the archive, restore to an empty new path and inspect registration warnings. | Compare representative docs/native files and restored Project ID. A downloaded archive is not a completed restore; wrong secrets/nonempty destinations must fail without overwriting user data. |
+| Update failure | Retain the installed version, installer identity, checksum/signature result, update diagnostics and a pre-update backup. Use the supported installer/update procedures in the release guide. | Inspect app/service versions and compatibility after installation. Signature unavailable is distinct from signature verified. |
+| Rollback | Preserve the failed version's state and diagnostics, use a previously retained validated installer, and restore a compatible pre-update profile/Project backup to a separate location. | Older binaries may not read newer schemas. An accepted downgrade needs its own installer/data compatibility test; an older executable alone is not a proven rollback. |
+
+For index calls, use the exact `knowledge/index/status`, `knowledge/index/reconcile` and `knowledge/index/rebuild` schemas in the [RPC reference](API_REFERENCE.md). Do not edit SQLite files from the UI or an ad hoc script. The [database seam](../packages/platform-service/src/db/database.ts) owns database access; each store owns its schema/migrations. Keep a stopped consistent snapshot for manual profile copying rather than guessing which WAL/sidecar files can be discarded.
+
+Use a diagnostic bundle containing sanitized identifiers, versions, error codes and relevant excerpts. Include the last successful action and the first failing action. Preserve original artifacts before retrying, and keep cleanup bounded to processes/directories owned by the exercise. The [documentation capture runner](../scripts/capture-documentation.cjs) demonstrates isolated ownership and retained failure diagnostics.
+
+## Incident evidence collection
 
 For a reproducible defect, collect the commit, OS/Node/Electron versions, Project ID/path (sanitize when private), engine/connector version, operation name, run/task/call ID, timestamps, status, relevant log excerpt and expected versus actual behavior. Preserve the original failure artifact before retrying.
 

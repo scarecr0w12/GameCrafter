@@ -1028,7 +1028,7 @@
     {
       "key": "coordination.maxTranscriptTokens",
       "title": "Agent transcript token limit",
-      "description": "Compact the oldest non-pinned agent turns after this estimated token count.",
+      "description": "Estimated agent input limit including messages, tool-call arguments and tool schemas. Compact older turns; reject oversized remaining context before sending it to a provider.",
       "group": "coordination",
       "schema": {
         "type": "integer",

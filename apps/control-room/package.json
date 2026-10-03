@@ -1,6 +1,6 @@
 {
   "name": "@gamecrafter/control-room",
-  "version": "0.1.4",
+  "version": "0.4.0",
   "private": true,
   "license": "Apache-2.0",
   "description": "PlayWeld local game development control room",
@@ -14,9 +14,9 @@
     "build": "theia rebuild:electron --cacheRoot ../.. && theia build --mode development",
     "build:prod": "theia rebuild:electron --cacheRoot ../.. && theia build",
     "start": "theia start --plugins=local-dir:../../plugins",
-    "package:linux": "npm run build:prod && electron-builder --linux",
-    "package:win": "npm run build:prod && electron-builder --win && node scripts/verify-windows-native.cjs",
-    "package:dir": "npm run build:prod && electron-builder --dir",
+    "package:linux": "node ../../scripts/change-tracking.cjs check --release && npm run build:prod && electron-builder --linux",
+    "package:win": "node ../../scripts/change-tracking.cjs check --release && npm run build:prod && electron-builder --win && node scripts/verify-windows-native.cjs",
+    "package:dir": "node ../../scripts/change-tracking.cjs check --release && npm run build:prod && electron-builder --dir",
     "download:plugins": "theia download:plugins --rate-limit=15 --parallel=false",
     "clean": "theia clean",
     "typecheck": "echo skip",
@@ -67,7 +67,7 @@
     "vscode.hlsl": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode.hlsl.vsix"
   },
   "dependencies": {
-    "@gamecrafter/theia-control-room": "0.1.4",
+    "@gamecrafter/theia-control-room": "0.4.0",
     "@theia/core": "1.75.0",
     "@theia/editor": "1.75.0",
     "@theia/electron": "1.75.0",
@@ -87,7 +87,7 @@
     "@theia/workspace": "1.75.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "@gamecrafter/archive-extractor": "0.1.4"
+    "@gamecrafter/archive-extractor": "0.4.0"
   },
   "devDependencies": {
     "@theia/cli": "1.75.0",

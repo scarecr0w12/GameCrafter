@@ -1,0 +1,178 @@
+# Control Room handbook
+
+**Last updated:** 2026-10-02
+
+Use this handbook to understand each surface, its inputs, the records it creates, and how to tell whether work succeeded. The [worked tutorial](WORKED_TUTORIAL.md) supplies a repeatable testing Project. The [API reference](API_REFERENCE.md) describes service requests; the [settings reference](SETTINGS_REFERENCE.md) describes configurable defaults and scopes. The [coverage record](DOCUMENTATION_COVERAGE.md) gives the limits of this documentation run.
+
+Screenshots use a real isolated service and the development browser target. Configuration screens with empty tables are intentional: this test does not provision paid providers, backup accounts, DCC applications, or live engine bridges. The chat provider is explicitly a scripted local fixture.
+
+## Project Home and the workspace
+
+Project Home lists registered Projects, their engine families, paths, creation times, and capability badges. **Create Project** runs the six-step wizard; **Open** opens a registered folder in the current workspace. PlayWeld's Project includes both native game files and platform records. A native engine folder elsewhere on disk is not automatically attached to it.
+
+Use the path, not just the display name, to identify the game. The engine family is locked at creation. Keep native engine files under `game/`; keep authoritative design Markdown under `docs/`. The platform creates its identity manifest and local operational state. Preserve those during recovery.
+
+Project-specific screens can select a Project independently. Check the selector before submitting a request. Closing a tab changes the presentation; it does not delete the underlying records. The service can continue after the desktop window closes, according to `window.closeBehavior`.
+
+## Models and routing
+
+![Model account and discovered model in the tutorial profile](images/lantern-workshop/04-models.png)
+
+An **account** is an endpoint and its credentials/configuration. A **model** is an enabled provider model with recorded capabilities and pricing. A **pool** groups models eligible for a scope/target. A route is a choice for one request. These records solve different problems; merely adding an account does not create an eligible model.
+
+1. Add a provider using its API base URL, display name, kind, local/cloud classification, and credential when required.
+2. Click **Discover** to preview what that account offers.
+3. Select the desired models and **Add selected**, or add all discovered choices deliberately.
+4. Inspect enabled state, capabilities, tags, work types, role restrictions, and pricing.
+5. Configure pools when you need a target-specific selection policy.
+6. Send a small Chat request and inspect the actual result before relying on the endpoint.
+
+Discovery metadata may be incomplete. Tool use, streaming, vision, embeddings, structured output, context window, and maximum output tokens are separate properties. Do not enable a capability solely to make routing pass. An ID-only discovery result cannot prove tool support. Chat supports complete responses as well as declared streaming support; a lack of streaming alone does not make a chat model unusable.
+
+Choose **Auto route** for service selection or a specific eligible model in Chat. Quality, balance, and cost policies influence routing; cost/latency constraints filter known estimates. Unknown estimates do not guarantee future charges. Inspect actual usage and the separate agent token budget. The [routing guide](MODEL_ROUTING_GUIDE.md) explains those limits. Account credentials belong in the credential store, not Project documents or screenshots.
+
+If routing fails, inspect model enabled state, required capabilities, account availability, relevant pools/targets, context limits, and budget. Provider errors and “no eligible model” errors indicate different layers. See [operations troubleshooting](OPERATIONS_GUIDE.md#troubleshooting).
+
+## Chat
+
+![Tutorial Chat exchange](images/lantern-workshop/05-chat.png)
+
+Choose a Project, conversation, model, and mode. **New chat** starts a conversation; existing conversations can be reopened. **Delete conversation** removes that conversation through the service. Enter submits and Shift+Enter inserts a newline. The transcript records user/assistant entries and model usage when returned.
+
+**Chat** requests an answer. **Agent** creates supervised work in Swarm. **Delegate conversation to Swarm** hands off a prior request. Chat itself does not expose a general tool loop. An answer proposing code is different from a task that actually edited, validated, and integrated code.
+
+**Attach active file** adds editor context from the selected file. Inspect the file selection before enabling it, especially with cloud endpoints. Project selection is not an instruction to attach every file. If you change conversations while a response is pending, use the pending-status message to return to it and inspect its result.
+
+Example question: “Explain the reset rule in the attached `main.gd` and compare it with `docs/DESIGN.md`.” Example agent request: “Implement a timer in `game/main.gd`, update the design, run the reset/completion checks, and report exact evidence.” Name constraints, acceptance checks, and intended files in implementation requests.
+
+## Swarm
+
+![Swarm request, task, approval, and integration areas](images/lantern-workshop/10-swarm.png)
+
+Select the Project and enter a **Change request**, coordinator **Role**, and **Token budget**. Include Project-relative paths such as `docs/DESIGN.md` or canon IDs so **Preview impact** can identify seeds and inspect related graph nodes. A request without either reports that no IDs/paths were found. **Submit request** creates work. Preview is not execution; a graph with no related nodes is not proof that a change has no effects.
+
+Inspect the selected request's task tree, questions, approvals, resource locks, integrations, and feedback. Task execution uses leases and checkpoints in the service. Worktrees isolate source changes; locks coordinate declared resources such as shared editors or tool sessions.
+
+A task waiting for input needs a response. An approval needs a decision about the described tool and effect. A blocked task needs its recorded dependency resolved. For failures, keep the task ID and event trail. Cancelling requests should be checked against owned process/run records to see what stopped.
+
+A task reporting success does not by itself prove that its work is integrated or accepted. Review its evidence, files, conflict status, integration record, and applicable tests. Feedback should describe a reproducible problem or observed result. For example: “The reset test leaves the timer running after R; reproduce after collecting one lantern.”
+
+## Discussion Board
+
+![Discussion thread and maintenance controls](images/lantern-workshop/06-discussion.png)
+
+Select the Project and create a thread using title, kind, tags, first message, and message type. Filters select status/kind/tags/search. Opening a thread shows its messages and supported decision actions. Posting a comment, blocker, evidence, or decision message retains discussion context.
+
+Resolve a thread when its question is settled; archive according to the intended workflow. Deletion depends on the access/deletion settings and is different from resolution. A binding decision can produce document proposals; inspect those proposals and their application result. Maintenance **Run audit**, **Run cleanup**, and **Run sync** act on supported board records. Broad reconciliation limitations remain in [implementation status](STATUS.md).
+
+Example evidence message: “Godot version X, fixture revision Y, reset check passed after collecting one lantern; screenshot/log path Z.” A proposal should describe the desired change and rationale. Keep authoritative canon in reviewable Markdown, with links back to the evidence.
+
+## Knowledge
+
+![Index status and lexical search](images/lantern-workshop/07-knowledge.png)
+
+**Reconcile** queues index synchronization. **Rebuild** queues a full rebuild. Inspect records, chunks, vectors, pending work, timestamps, and conflicts. The source files are authoritative; the index is derived data. A plain design document can have indexed chunks while the canon-record count remains zero.
+
+Search accepts query, mode, source, record status/type, and inclusion of inactive records. **Lexical** searches text. **Semantic** requires a configured embedding profile and vector store. **Hybrid** combines retrieval and can report a degraded path. Inspect each hit's citation, path, excerpt, revision, and source before using it as evidence.
+
+The expandable vector/embedding area configures the Project's store and model profile. **Test vector store** checks that connection; it does not prove the embedding provider works. Avoid treating zero vectors as a failed lexical index. If results are stale, inspect pending work and indexing timestamps, reconcile, and retry a source-filtered query.
+
+## Settings
+
+![Grouped settings, scopes, and effective values](images/lantern-workshop/08-settings.png)
+
+Settings are grouped and searchable. Select the appropriate supported scope and Project/session context. The effective value shows which layer supplied it. **Reset** removes an override rather than writing the default as another override. Use the [settings reference](SETTINGS_REFERENCE.md) for exact types, defaults, and allowed scopes.
+
+For a tutorial, search `access.mode` and inspect the source before changing it. **Ask always** permits read-only calls and asks before applicable side effects. **Restricted** uses configured side-effect categories/tool rules. **Full** remains subject to applicable access ceilings, schema/path validation and operation identity checks. Roles and tools can impose additional boundaries.
+
+**Export redacted settings** produces a versioned settings file. **Import** validates a selected file and previews overrides; **Apply overrides** commits the accepted import. Inspect skipped/invalid entries. Exports omit credential-like values and cannot recover missing credentials or encryption keys.
+
+## Skills and roles
+
+![Bundled skill selection and reading](images/lantern-workshop/09-skills.png)
+
+Select the Project and inspect each skill's origin, scope, enabled state, and content. **Read guide** opens its `SKILL.md`; referenced documents load through the document selector. Use a skill's instructions and acceptance criteria for the relevant task, rather than treating its presence as proof of available software or engine connectivity.
+
+Platform and Project skills follow Agent Skills conventions. Project instructions live in `AGENTS.md`. Roles define responsibility and tool/access ceilings; a skill cannot grant authority beyond those ceilings. See [game-development skill coverage](GAME_DEVELOPMENT_SKILLS.md) and the [integration guide](INTEGRATION_GUIDE.md) for authoring/install rules.
+
+Example: enable an asset workflow skill for a model task, read the export/validation references, and ask for the editable source plus scale/material/topology evidence. Installing instructions alone does not create the asset or verify its engine import.
+
+## Connections
+
+![MCP connection configuration](images/lantern-workshop/11-connections.png)
+
+Select platform scope or a Project. Configure the connection name, tags, and execution mode. Supported configuration includes a local command with arguments/environment, an endpoint with its transport/headers, and Docker configuration. Inspect connection state, negotiated capabilities, discovered tools, and logs after connecting.
+
+Use a slug such as `lantern-editor`; names follow `^[a-z0-9][a-z0-9-]{0,63}$`. Supply arguments/environment in the shapes requested by the form, not a pasted shell command with accidental quoting. Use credentials controls for secrets. Docker additionally needs an available runtime and deliberately configured mounts/network.
+
+An MCP server being connected means transport/protocol readiness. It does not prove that an editor has the correct game open. For live engine use, bind the Project and verify a read-only identity probe. Server-initiated input or model requests have their own policy/settings. Keep connection and tool-call identifiers when reporting failures.
+
+## Engine
+
+![Separate engine capability layers for the tutorial](images/lantern-workshop/12-engine.png)
+
+Select the Project, detect/register installations, and refresh capabilities after adding native files. An installation identifies a tool executable/kind/version. A capability report describes the current Project's usable operations. A live binding identifies the connected editor. The three layers are **project-file**, **headless-process**, and **live-editor**.
+
+For Lantern Workshop, `game/project.godot` supplies native Project files. A headless operation still requires the correct executable and version. A live screenshot or edit still requires an implemented, connected, identity-verified bridge. The tutorial does not install an engine or create that bridge.
+
+For Unreal, put the `.uproject` under the PlayWeld Project's `game/` folder and register the appropriate commandlet/automation executables. For Unity, provide valid native Unity Project files and its installed editor. Consult the [integration guide](INTEGRATION_GUIDE.md) and [live engine acceptance](LIVE_ENGINE_ACCEPTANCE.md) for the actual implemented connectors and fixture limits.
+
+Before running an operation, inspect the layer and its reason/status. After running, inspect the run state, logs, exit code, and artifacts. A successful screenshot operation must supply a storable image. A visible editor window or registered executable is not sufficient evidence.
+
+## DCC Tools
+
+![DCC installation and capability setup](images/lantern-workshop/13-dcc.png)
+
+Detect or register the installed DCC tool and executable kind, select the Project, and inspect its supported operations. GUI, batch, and Python executables can have different behavior. Inspect run history and artifacts after scene/export/render operations.
+
+For an asset task, specify the editable source, units, axes, origin, expected dimensions, export format, material paths, and validation target. A render illustrates appearance; a successful export establishes file creation. Engine import and gameplay suitability require additional checks. Blender has separate live fixture evidence; this screen capture does not execute Blender or verify other DCC products.
+
+## Assets
+
+![Asset accounts, requests, and job inspection](images/lantern-workshop/14-assets.png)
+
+Configure a provider account and choose a supported generation operation. Describe the intended asset, format, scale, references, and use. Job submission, provider completion, downloaded artifact, review, and import are distinct stages. Inspect terminal state and files rather than assuming a submitted request finished.
+
+Preview 2D or 3D output, then validate dimensions, topology, UV/materials, rig/animation if applicable, provenance, and licensing needed for the use. Human review through `asset/review` must approve an artifact before `asset/import`; that review is a user-only service action. Imports preserve provenance and existing files, allocating a fresh filename on collision rather than overwriting the original. Outside-Project destinations are rejected. The [asset workflow screenshots](WORKFLOW_SCREENSHOTS.md#synthetic-asset-review-and-import-recovery) show actual review/import with a local synthetic artifact.
+
+Example request: “A stylized lantern prop, upright, centered at its base, intended for a 0.4 m tall collectible; deliver source texture/material files and a mesh suitable for inspection.” The preview is a candidate until validated in its target engine. See the [integration guide](INTEGRATION_GUIDE.md) for provider-specific boundaries. This tutorial submits no paid jobs.
+
+## Plugins
+
+![Plugin catalog and installation controls](images/lantern-workshop/15-plugins.png)
+
+Inspect plugin type, source, version, declared capabilities, granted permissions, settings, and enabled state. Platform plugins have a manifest/runtime distinct from compiled Theia extensions and VS Code-compatible editor plugins. They cannot become owners of task/Project/router state.
+
+Install only after reviewing the proposed privileges and compatibility. Project activation can differ from platform installation. Inspect plugin panels/tools and runtime errors separately. Removing a plugin can remove its contributed tools/settings/panels; consider retained records and dependent tasks before uninstalling. The [plugin SDK/integration guide](INTEGRATION_GUIDE.md) describes implementation contracts.
+
+## Backups
+
+![Backup identities, destinations, plans, and recovery](images/lantern-workshop/16-backups.png)
+
+Configure identity/recovery material, a destination, then a profile or Project plan. Review schedule, retention, and scope before running it. A configured plan is not an archive. Inspect transfer, verification, run failure/cancellation, archive manifest, and recoverability.
+
+For a learning exercise, use a local destination and the disposable Project. Verify an archive, then restore to a new empty directory. Inspect restored Project identity, registration warnings, representative files, settings, and engine behavior. Keep the recovery secret available independently. Profile restoration requires launching the service with the restored profile; it does not overwrite the active profile in place.
+
+The [operations guide](OPERATIONS_GUIDE.md#backups-and-restoration) gives recovery details. The original overview image above captures setup only. The later [UI restoration drill](WORKFLOW_SCREENSHOTS.md#local-backup-restoration) verifies local archive recovery, and the [profile runbook](RECOVERY_RUNBOOK.md) verifies launching a separately restored profile. Remote and installer recovery remain unverified.
+
+## Updates
+
+![Release discovery and verification controls](images/lantern-workshop/17-updates.png)
+
+Check the offered version, channel, platform, compatibility, and verification result. Release discovery, download, checksum verification, signature verification, installer handoff, installed launch, and rollback are separate outcomes. Review the [release guide](RELEASE_GUIDE.md) and [release acceptance](RELEASE_ACCEPTANCE.md) before treating an offered update as accepted.
+
+A checksum proves agreement with the supplied digest. Signature verification additionally requires a provisioned trusted key and valid signature. This tutorial does not install, publish, or roll back a release. Source package version shown in a screenshot is not an installer acceptance claim.
+
+## Audit and history
+
+![Project events and recent tool calls](images/lantern-workshop/18-audit.png)
+
+Select the Project and inspect recent tool calls and Project events. Use identifiers, timestamps, effect classification, approval result, execution status, and errors to connect a visible symptom to the actual operation. Pagination/export shows the selected records; an export of one page is not a complete forensic history.
+
+Useful failure report: “Project ID/path, task/run/call ID, operation, version, exact error, expected outcome, and sanitized reproduction.” Link logs and artifacts. Never include service tokens, encryption/recovery secrets, provider credentials, or private Project contents without reviewing them.
+
+## How the records fit together
+
+The desktop/frontend presents service-owned data. The service owns persistent Project, task, discussion, routing, integration, and audit records. Engine/DCC processes own their native documents and runtime state. Plugins contribute supported capabilities. External providers own their remote job/completion state.
+
+Follow the chain from request to task/tool run to artifact to validation to integration/acceptance. Each stage can fail independently. The [system architecture](SYSTEM_ARCHITECTURE.md) explains component and storage ownership; the [developer guide](DEVELOPER_GUIDE.md) explains contracts and implementation rules. Use those guides for internals instead of guessing from a screen's success message.

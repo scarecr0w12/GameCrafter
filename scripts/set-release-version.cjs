@@ -18,6 +18,11 @@ for (const directory of ['packages', 'packages/plugins', 'apps']) {
   }
 }
 const names = new Set(packages.map((p) => p.data.name));
+// Validate impact and archive pending work before changing workspace versions.
+require('./change-tracking.cjs').prepare(root, version, [
+  ...packages.map(({ file }) => path.relative(root, file).replaceAll('\\', '/')),
+  'package-lock.json',
+]);
 for (const { file, data } of packages) {
   data.version = version;
   for (const field of [

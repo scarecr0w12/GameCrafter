@@ -59,6 +59,10 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
   const transcript =
     checkpoint?.transcript ??
     buildSystemTranscript(context.task.goal, input, role, context.task.contract);
+  // Old checkpoints may already contain unbounded tool responses.
+  for (const message of transcript) {
+    if (message.role === 'tool') message.content = boundedToolResult(message.content);
+  }
   let pinnedCount = checkpoint?.pinnedCount ?? transcript.length;
   let turn = checkpoint?.turn ?? 0;
   let maxCompletionTokens = checkpoint?.maxCompletionTokens ?? 4096;
@@ -241,7 +245,7 @@ export async function runAgentTask(context: TaskHandlerContext): Promise<TaskRes
         role: 'tool',
         toolCallId: toolCall.id,
         name: toolCall.name,
-        content: JSON.stringify(output),
+        content: boundedToolResult(JSON.stringify(output) ?? 'null'),
       });
       await saveCheckpoint(
         context,
@@ -276,6 +280,19 @@ async function requestCompletion(
   requestId: string,
   maxCompletionTokens = 4096,
 ): Promise<ChatResponse> {
+  const estimatedInputTokens = Math.ceil(
+    JSON.stringify({ messages: transcript, tools }).length / 3,
+  );
+  const inputLimit = positiveInteger(
+    asRecord(asRecord(context.input).agentSettings).maxTranscriptTokens,
+    60_000,
+  );
+  if (estimatedInputTokens > inputLimit) {
+    throw new RpcError(
+      `Agent context exceeds its ${inputLimit}-token input limit (estimated ${estimatedInputTokens}, including tool schemas). Narrow the task, project instructions, or requested tool results.`,
+      RpcErrorCode.ProviderRequestFailed,
+    );
+  }
   const response = await context.tool('model/complete', {
     requestId,
     route: { taskType: role.workTypes[0] ?? 'coordination' },
@@ -436,7 +453,24 @@ function usageFrom(response: ChatResponse): { costUsd: number; tokens: number } 
 }
 
 function estimateTokens(messages: ChatMessage[]): number {
-  return messages.reduce((total, message) => total + Math.ceil(message.content.length / 4), 0);
+  return Math.ceil(JSON.stringify(messages).length / 3);
+}
+
+function boundedToolResult(content: string): string {
+  const maxCharacters = 16_000;
+  if (content.length <= maxCharacters) return content;
+  let previewCharacters = 12_000;
+  while (true) {
+    const result = JSON.stringify({
+      truncated: true,
+      originalCharacters: content.length,
+      preview: content.slice(0, previewCharacters),
+      guidance:
+        'Result too large for agent context. Request a narrower path, smaller page, or specific resource. The complete result remains in the platform tool-call record.',
+    });
+    if (result.length <= maxCharacters) return result;
+    previewCharacters = Math.floor(previewCharacters / 2);
+  }
 }
 
 function budgetExceeded(

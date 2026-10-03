@@ -9,7 +9,9 @@ const { resolvePaths } = require('../packages/platform-service/lib/paths');
 const { connect } = require('@gamecrafter/service-client');
 const { RpcErrorCode } = require('@gamecrafter/contracts');
 const root = path.resolve(__dirname, '..');
-const out = path.join(root, '.turbo', 'live-engine-acceptance');
+const out = path.resolve(
+  process.env.GAMECRAFTER_ACCEPTANCE_OUTPUT ?? path.join(root, '.turbo', 'live-engine-acceptance'),
+);
 const unity = process.env.GC_ACCEPTANCE_UNITY || 'D:\\Unity\\Editor\\6000.6.0f1\\Editor\\Unity.exe';
 const unrealRoot = process.env.GC_ACCEPTANCE_UNREAL || 'D:\\Unreal\\UE_5.8';
 const ue = path.join(unrealRoot, 'Engine', 'Binaries', 'Win64', 'UnrealEditor-Cmd.exe');
@@ -169,7 +171,15 @@ async function approval(project, approve) {
       processRun(
         'unreal-editor-build',
         path.join(unrealRoot, 'Engine', 'Build', 'BatchFiles', 'Build.bat'),
-        ['AcceptanceEditor', 'Win64', 'Development', `-Project=${p}`, '-WaitMutex', '-NoHotReload'],
+        [
+          'AcceptanceEditor',
+          'Win64',
+          'Development',
+          `-Project=${p}`,
+          '-WaitMutex',
+          '-NoHotReload',
+          '-NoHotReloadFromIDE',
+        ],
       ),
     );
     return;

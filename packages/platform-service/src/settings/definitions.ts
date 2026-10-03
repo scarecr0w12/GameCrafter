@@ -764,7 +764,7 @@ export function createBuiltinSettings(): BuiltinSettings {
     setting(
       'coordination.maxTranscriptTokens',
       'Agent transcript token limit',
-      'Compact the oldest non-pinned agent turns after this estimated token count.',
+      'Estimated agent input limit including messages, tool-call arguments and tool schemas. Compact older turns; reject oversized remaining context before sending it to a provider.',
       'coordination',
       { type: 'integer', minimum: 1000, maximum: 1_000_000 },
       60_000,

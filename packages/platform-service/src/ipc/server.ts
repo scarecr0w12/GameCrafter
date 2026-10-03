@@ -125,10 +125,11 @@ export class IpcServer {
   }
 
   private accept(socket: Socket): void {
-    const connection = createMessageConnection(
-      new StreamMessageReader(socket),
-      new StreamMessageWriter(socket),
-    );
+    const reader = new StreamMessageReader(socket);
+    // Partial-frame notifications are unused; their timer in vscode-jsonrpc
+    // 9.0.2 survives disposal of an incomplete frame and can prevent shutdown.
+    reader.partialMessageTimeout = 0;
+    const connection = createMessageConnection(reader, new StreamMessageWriter(socket));
     const client: ClientConnection = { socket, connection, authenticated: false };
     this.clients.add(client);
     this.options.onClientEvent?.('connected');

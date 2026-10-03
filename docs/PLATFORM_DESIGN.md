@@ -8,6 +8,8 @@
 
 **Discussion preference:** The user delegated remaining routine technology choices to best-practice judgment. Present a complete recommendation rather than asking serial approval questions; preserve the difference between user-confirmed requirements and selected engineering defaults.
 
+**Repository change tracking (user-confirmed, 2026-10-02):** All work going forward must be recorded with changelog details and version impact, including additions, changes and removals. Permanent work records and release preparation checks are the selected engineering implementation; see [the tracking contract](changes/README.md). This repository maintenance requirement does not change the platform's Project task/storage contracts.
+
 **Technical stack under discussion:** [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md). Its proposals are not confirmed decisions.
 
 **Detailed remaining decisions:** [OPEN_DECISIONS.md](OPEN_DECISIONS.md). It tracks unresolved policy, contract, format, and verification choices without organizing the platform into phases.
@@ -225,6 +227,8 @@ Use the delegated best-practice judgment for these details, record the choice, a
 | Public product name: **PlayWeld**; the user reports purchasing **playweld.com**. Existing technical identifiers remain compatibility contracts; see [branding](BRANDING.md). | Confirmed | User discussion, 2026-10-02 |
 | Platform code, SDK, and documentation are licensed under Apache-2.0; sample/game assets are licensed separately | Confirmed | User discussion |
 | Code and design documents share one monorepo; the development plan orders work packages by technical dependency only | Confirmed | User discussion |
+| Track all repository work going forward in detailed changelog records and versioning, including additions, changes and removals | Confirmed | User discussion, 2026-10-02 |
+| Permanent Markdown work records, generated changelog/release notes, changed-file CI coverage and recorded-impact version guards | Engineering default | [Work tracking contract](changes/README.md) |
 | Adopt the Agent Skills (`SKILL.md`) open format for installable skills, with platform metadata under namespaced keys | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |
 | Agent roles are Markdown-plus-frontmatter packages with an access ceiling that delegation cannot exceed | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |
 | Every Project folder carries a generated AGENTS.md and a `.agents/skills/` directory | Engineering default | SKILLS_AGENTS_AND_TOOLS.md |

@@ -117,10 +117,16 @@ export function registerBuiltinTools(
     definition(
       'fs/list',
       'List Project files',
-      'List file and directory entries under a Project path.',
+      'List a bounded page of Project files. Use nextOffset with the same path/options for subsequent pages. Recursive listings skip generated/cache trees unless includeGenerated is true.',
       {
         type: 'object',
-        properties: { path: { type: 'string' }, recursive: { type: 'boolean' } },
+        properties: {
+          path: { type: 'string' },
+          recursive: { type: 'boolean' },
+          limit: { type: 'integer', minimum: 1, maximum: 200 },
+          offset: { type: 'integer', minimum: 0, maximum: 100000 },
+          includeGenerated: { type: 'boolean' },
+        },
         additionalProperties: false,
       },
       {
@@ -139,8 +145,10 @@ export function registerBuiltinTools(
               additionalProperties: false,
             },
           },
+          truncated: { type: 'boolean' },
+          nextOffset: { anyOf: [{ type: 'integer', minimum: 0 }, { type: 'null' }] },
         },
-        required: ['entries'],
+        required: ['entries', 'truncated', 'nextOffset'],
         additionalProperties: false,
       },
       'project-file',
@@ -156,9 +164,25 @@ export function registerBuiltinTools(
         options.readOnlyRoots?.(context.projectId) ?? [],
       );
       const directory = resolved.path;
+      const limit = typeof args.limit === 'number' ? args.limit : 100;
+      const offset = typeof args.offset === 'number' ? args.offset : 0;
+      const generated = new Set([
+        '.git',
+        '.gamecrafter',
+        'node_modules',
+        'intermediate',
+        'saved',
+        'deriveddatacache',
+        'binaries',
+      ]);
       const entries: { path: string; type: 'file' | 'directory' | 'symlink'; size: number }[] = [];
+      let seen = 0;
+      let characters = 0;
+      let truncated = false;
       const visit = (currentPath: string): void => {
-        for (const entry of readdirSync(currentPath, { withFileTypes: true })) {
+        for (const entry of readdirSync(currentPath, { withFileTypes: true }).sort((left, right) =>
+          left.name.localeCompare(right.name),
+        )) {
           const entryPath = path.join(currentPath, entry.name);
           const stats = lstatSync(entryPath);
           const type = entry.isSymbolicLink()
@@ -166,20 +190,37 @@ export function registerBuiltinTools(
             : entry.isDirectory()
               ? 'directory'
               : 'file';
-          entries.push({
+          const item: (typeof entries)[number] = {
             path: joinReference(resolved.referencePath, path.relative(directory, entryPath)),
             type,
             size: stats.size,
-          });
-          if (args.recursive === true && entry.isDirectory() && !entry.isSymbolicLink()) {
+          };
+          if (seen++ >= offset) {
+            const itemCharacters = JSON.stringify(item).length;
+            if (
+              entries.length >= limit ||
+              (entries.length > 0 && characters + itemCharacters > 12000)
+            ) {
+              truncated = true;
+              return;
+            }
+            entries.push(item);
+            characters += itemCharacters;
+          }
+          if (
+            args.recursive === true &&
+            entry.isDirectory() &&
+            !entry.isSymbolicLink() &&
+            (args.includeGenerated === true || !generated.has(entry.name.toLowerCase()))
+          ) {
             visit(entryPath);
+            if (truncated) return;
           }
         }
       };
       visit(directory);
-      entries.sort((left, right) => left.path.localeCompare(right.path));
       return {
-        output: { entries },
+        output: { entries, truncated, nextOffset: truncated ? offset + entries.length : null },
         evidence: [{ kind: 'directory', ref: resolved.referencePath }],
       };
     },

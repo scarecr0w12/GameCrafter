@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-10-03T01:11:41.836Z",
+  "platformVersion": "0.4.0",
+  "source": {
+    "commit": "4e1342070f56926807a5d1bb04d43b1a54f2ed40",
+    "workingTree": "pending changes",
+    "captureScriptSha256": "298655047d1917b3814950070377394ef7db31aa181ec940ee9fc741203aa0a6",
+    "scenarioModulesSha256": "a26f4961c244ff9c4ffd4c7fa9134173c654bb89ea05b2d3232303debf5f5bbb"
+  },
+  "selectedScenarios": [
+    "agent"
+  ],
+  "target": "Built development browser Control Room, real platform service",
+  "provider": "Local deterministic HTTP fixture; no live model, paid provider, or engine execution",
+  "projectName": "Lantern Workshop",
+  "checks": [
+    "Six-step UI wizard created a real Project; reusable documentation and native Godot fixture copied into it",
+    "Agent: scripted local provider through actual UI request, runtime question/answer, delegated worktree write, completion contract and manual UI integration; no real model reasoning",
+    "Approval: real broker call at ask-always ceiling approved in UI and synthetic file verified"
+  ],
+  "screenshots": [
+    "01-home.png",
+    "02-create-project.png",
+    "agent-question.png",
+    "agent-integration-ready.png",
+    "agent-integrated.png",
+    "agent-approval.png"
+  ],
+  "rendererErrors": []
+}

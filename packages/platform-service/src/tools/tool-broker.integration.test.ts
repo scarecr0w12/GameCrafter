@@ -61,6 +61,40 @@ afterEach(async () => {
 });
 
 describe('Tool broker integration', () => {
+  it('pages recursive listings and skips generated trees unless requested', async () => {
+    const root = path.join(projectPath, 'listing');
+    mkdirSync(path.join(root, 'Saved'), { recursive: true });
+    mkdirSync(path.join(root, 'docs'), { recursive: true });
+    writeFileSync(path.join(root, 'Saved', 'large.log'), 'generated');
+    for (let index = 0; index < 12; index++)
+      writeFileSync(path.join(root, 'docs', `${index}.md`), 'source');
+    const paths: string[] = [];
+    let offset = 0;
+    do {
+      const call = await callTool('fs/list', {
+        path: 'listing',
+        recursive: true,
+        limit: 5,
+        offset,
+      });
+      const output = call.output as { entries: Array<{ path: string }>; nextOffset: number | null };
+      expect(output.entries.length).toBeLessThanOrEqual(5);
+      paths.push(...output.entries.map((entry) => entry.path));
+      if (output.nextOffset === null) break;
+      expect(output.nextOffset).toBeGreaterThan(offset);
+      offset = output.nextOffset;
+    } while (offset < 100);
+    expect(new Set(paths).size).toBe(paths.length);
+    expect(paths.filter((name) => name.endsWith('.md'))).toHaveLength(12);
+    expect(paths.some((name) => name.endsWith('large.log'))).toBe(false);
+    const all = await callTool('fs/list', {
+      path: 'listing',
+      recursive: true,
+      includeGenerated: true,
+    });
+    expect(JSON.stringify(all.output)).toContain('large.log');
+  });
+
   it('keeps malformed model tool names and legacy audit rows readable', async () => {
     const broker = (service as unknown as { toolBroker: ToolBroker }).toolBroker;
     await expect(broker.call({ projectId, toolId: 'canon_read', input: {} })).rejects.toMatchObject(

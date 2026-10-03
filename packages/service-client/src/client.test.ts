@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createMessageConnection, ResponseError } from 'vscode-jsonrpc/node';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { connect } from './index';
@@ -17,6 +18,49 @@ afterEach(() => {
 });
 
 describe('service client', () => {
+  it('does not leave a partial-frame timer alive after closing the client', async () => {
+    const socketPath =
+      process.platform === 'win32'
+        ? `\\\\.\\pipe\\gamecrafter-partial-${randomUUID()}`
+        : path.join(tmpdir(), `gc-partial-${randomUUID()}.sock`);
+    let peer: net.Socket | undefined;
+    let serverConnection: ReturnType<typeof createMessageConnection> | undefined;
+    const server = net.createServer((socket) => {
+      peer = socket;
+      serverConnection = createMessageConnection(
+        new StreamMessageReader(socket),
+        new StreamMessageWriter(socket),
+      );
+      serverConnection.onRequest('session/hello', () => ({
+        ok: true,
+        serviceVersion: '0.1.0',
+        protocolVersion: 1,
+        sessionId: '019535d4-2c00-7000-8000-000000000001',
+      }));
+      serverConnection.listen();
+    });
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    const client = await connect({
+      socketPath,
+      token: 'fixture-token',
+      clientName: 'partial-frame-test',
+      clientVersion: '0.0.0',
+    });
+    try {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      peer!.write('Content-Length: 100\r\n\r\n{');
+      await delay(100);
+      client.close();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      client.close();
+      serverConnection?.dispose();
+      peer?.destroy();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
   it('maps response errors to RpcError with the server code', async () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'gc-client-'));
     temporaryDirectories.push(directory);

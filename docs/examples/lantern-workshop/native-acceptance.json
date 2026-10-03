@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-03T00:18:51.153Z",
+  "engineVersion": "4.7.2.stable.official.ed1daf0bf",
+  "host": "win32",
+  "viaWsl": true,
+  "target": "Copied Lantern Workshop native fixture; headless parse/import and gameplay assertions, no graphical rendering",
+  "checks": [
+    {
+      "name": "version",
+      "exitCode": 0,
+      "passed": true,
+      "error": null
+    },
+    {
+      "name": "import",
+      "exitCode": 0,
+      "passed": true,
+      "error": null
+    },
+    {
+      "name": "gameplay",
+      "exitCode": 0,
+      "passed": true,
+      "error": null
+    }
+  ]
+}

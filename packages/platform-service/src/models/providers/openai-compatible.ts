@@ -29,6 +29,9 @@ interface OpenAIChatResponse {
 }
 
 export class OpenAICompatibleProvider implements ModelProvider {
+  private readonly completionTokenModels = new Set<string>();
+  private readonly toolReasoningNoneModels = new Set<string>();
+
   async listModels(account: ProviderRuntimeAccount): Promise<DiscoveredModel[]> {
     const response = await providerJson<OpenAIModelList>(
       account,
@@ -109,15 +112,13 @@ export class OpenAICompatibleProvider implements ModelProvider {
     hooks: ProviderCompletionHooks,
   ): Promise<ChatResponse> {
     const startedAt = Date.now();
-    const response = await providerJson<OpenAIChatResponse>(
-      account,
-      endpoint(account.baseUrl, 'chat/completions'),
-      {
+    const response = await this.sendChat(account, model, this.requestBody(model, request), (body) =>
+      providerJson<OpenAIChatResponse>(account, endpoint(account.baseUrl, 'chat/completions'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(this.requestBody(model, request)),
+        body: JSON.stringify(body),
         signal: hooks.signal,
-      },
+      }),
     );
     const choice = response.choices?.[0];
     if (!choice || !choice.message) {
@@ -152,12 +153,14 @@ export class OpenAICompatibleProvider implements ModelProvider {
       stream: true,
       stream_options: { include_usage: true },
     };
-    const response = await providerFetch(account, endpoint(account.baseUrl, 'chat/completions'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: hooks.signal,
-    });
+    const response = await this.sendChat(account, model, body, (wireBody) =>
+      providerFetch(account, endpoint(account.baseUrl, 'chat/completions'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(wireBody),
+        signal: hooks.signal,
+      }),
+    );
     if (!response.body) {
       throw new RpcError(
         'Provider streaming response had no body',
@@ -253,6 +256,41 @@ export class OpenAICompatibleProvider implements ModelProvider {
     };
   }
 
+  private async sendChat<T>(
+    account: ProviderRuntimeAccount,
+    model: Model,
+    body: Record<string, unknown>,
+    send: (body: Record<string, unknown>) => Promise<T>,
+  ): Promise<T> {
+    const key = JSON.stringify([account.accountId, account.baseUrl, model.providerModelId]);
+    const hasLimit = typeof body.max_tokens === 'number';
+    const hasTools = Array.isArray(body.tools) && body.tools.length > 0;
+    let modernLimit = hasLimit && this.completionTokenModels.has(key);
+    let reasoningNone = hasTools && this.toolReasoningNoneModels.has(key);
+    // At most one negotiation for each of the two explicitly rejected fields.
+    for (let attempt = 0; ; attempt++) {
+      const wireBody = { ...body };
+      if (modernLimit) {
+        delete wireBody.max_tokens;
+        wireBody.max_completion_tokens = body.max_tokens;
+      }
+      if (reasoningNone) wireBody.reasoning_effort = 'none';
+      try {
+        const result = await send(wireBody);
+        if (modernLimit) this.completionTokenModels.add(key);
+        if (reasoningNone) this.toolReasoningNoneModels.add(key);
+        return result;
+      } catch (error) {
+        // Rejected HTTP requests only; successful streams are consumed by the caller.
+        if (attempt >= 2) throw error;
+        if (hasLimit && !modernLimit && requiresCompletionTokens(error)) modernLimit = true;
+        else if (hasTools && !reasoningNone && requiresToolReasoningNone(error))
+          reasoningNone = true;
+        else throw error;
+      }
+    }
+  }
+
   private requestBody(model: Model, request: ChatRequest): Record<string, unknown> {
     return {
       model: model.providerModelId,
@@ -287,6 +325,42 @@ export class OpenAICompatibleProvider implements ModelProvider {
           : {}),
       ...(request.stream ? { stream: true } : {}),
     };
+  }
+}
+
+function requiresCompletionTokens(error: unknown): boolean {
+  if (!(error instanceof RpcError) || error.code !== RpcErrorCode.ProviderRequestFailed)
+    return false;
+  const data = error.data as { status?: unknown; body?: unknown } | undefined;
+  if (data?.status !== 400 || typeof data.body !== 'string') return false;
+  try {
+    const detail = JSON.parse(data.body).error;
+    return (
+      detail?.param === 'max_tokens' &&
+      detail?.code === 'unsupported_parameter' &&
+      typeof detail.message === 'string' &&
+      detail.message.includes('max_completion_tokens')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function requiresToolReasoningNone(error: unknown): boolean {
+  if (!(error instanceof RpcError) || error.code !== RpcErrorCode.ProviderRequestFailed)
+    return false;
+  const data = error.data as { status?: unknown; body?: unknown } | undefined;
+  if (data?.status !== 400 || typeof data.body !== 'string') return false;
+  try {
+    const detail = JSON.parse(data.body).error;
+    return (
+      detail?.param === 'reasoning_effort' &&
+      typeof detail.message === 'string' &&
+      detail.message.includes('Function tools') &&
+      detail.message.includes("set reasoning_effort to 'none'")
+    );
+  } catch {
+    return false;
   }
 }
 

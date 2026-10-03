@@ -12,6 +12,105 @@ import { runAgentTask } from './agent-runtime';
 const timestamp = '2026-09-29T00:00:00.000Z';
 
 describe('agent runtime', () => {
+  it('bounds a multi-megabyte recent tool result before the next model request', async () => {
+    const requests: string[] = [];
+    const context = createContext(
+      [
+        response([{ id: 'list', name: 'fs/list', arguments: '{"recursive":true}' }]),
+        response([
+          {
+            id: 'done',
+            name: 'tasks/complete',
+            arguments: JSON.stringify({
+              summary: 'Complete',
+              artifacts: [],
+              evidence: [],
+              claims: [],
+            }),
+          },
+        ]),
+      ],
+      {
+        tool: async (id, input) => {
+          if (id === 'fs/list') return { entries: 'generated-file '.repeat(300_000) };
+          if (id === 'model/complete') requests.push(JSON.stringify(input));
+        },
+      },
+    );
+    await runAgentTask(context);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]!.length).toBeLessThan(240_000);
+    expect(requests[1]).toContain('truncated');
+  });
+
+  it('repairs oversized tool results in an existing checkpoint without replaying the tool', async () => {
+    let replayed = false;
+    let size = 0;
+    const context = createContext(
+      [
+        response([
+          {
+            id: 'done',
+            name: 'tasks/complete',
+            arguments: JSON.stringify({
+              summary: 'Recovered',
+              artifacts: [],
+              evidence: [],
+              claims: [],
+            }),
+          },
+        ]),
+      ],
+      {
+        initialCheckpoint: {
+          transcript: [
+            { role: 'system', content: 'Keep project instructions' },
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [{ id: 'old', name: 'fs/list', arguments: '{}' }],
+            },
+            { role: 'tool', toolCallId: 'old', name: 'fs/list', content: 'file '.repeat(900_000) },
+          ],
+          turn: 1,
+          pinnedCount: 1,
+        },
+        tool: async (id, input) => {
+          if (id === 'fs/list') replayed = true;
+          if (id === 'model/complete') size = JSON.stringify(input).length;
+        },
+      },
+    );
+    expect((await runAgentTask(context)).summary).toBe('Recovered');
+    expect(size).toBeLessThan(240_000);
+    expect(replayed).toBe(false);
+  });
+
+  it('rejects oversized pinned input or tool schemas locally before contacting the model', async () => {
+    let sent = false;
+    const context = createContext([], {
+      input: { role: roleSnapshot(), projectInstructions: 'instruction '.repeat(100_000) },
+      tool: async (id) => {
+        if (id === 'model/complete') sent = true;
+      },
+    });
+    await expect(runAgentTask(context)).rejects.toThrow('including tool schemas');
+    expect(sent).toBe(false);
+    const schemaContext = createContext([], {
+      tool: async (id) => {
+        if (id === 'model/complete') sent = true;
+      },
+    });
+    schemaContext.tools = [
+      {
+        toolId: 'test/huge',
+        description: 'schema '.repeat(100_000),
+      } as unknown as TaskHandlerContext['tools'][number],
+    ];
+    await expect(runAgentTask(schemaContext)).rejects.toThrow('including tool schemas');
+    expect(sent).toBe(false);
+  });
+
   it('retries a truncated completion with more output room without executing partial tool calls', async () => {
     const limits: number[] = [];
     let writes = 0;
@@ -98,7 +197,7 @@ describe('agent runtime', () => {
     const system = roleSnapshot();
     const oldMessages = Array.from({ length: 10 }, (_, index) => ({
       role: index % 2 === 0 ? ('assistant' as const) : ('user' as const),
-      content: `Older turn ${index}: ${'detail '.repeat(30)}`,
+      content: `Older turn ${index}: ${'detail '.repeat(300)}`,
     }));
     const initialCheckpoint = {
       transcript: [
@@ -135,7 +234,7 @@ describe('agent runtime', () => {
         input: {
           role: system,
           projectInstructions: 'Project instructions',
-          agentSettings: { maxTranscriptTokens: 100 },
+          agentSettings: { maxTranscriptTokens: 6000 },
         },
         tool: async (toolId, input) => {
           if (toolId === 'model/complete') {

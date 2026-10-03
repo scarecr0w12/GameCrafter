@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-10-03T01:11:04.754Z",
+  "target": "Fresh disposable Unity/Unreal Projects via established real service/connector acceptance tooling",
+  "stages": [
+    {
+      "stage": "compile-unreal",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "stage": "map-unreal",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "stage": "tests",
+      "exitCode": 0,
+      "error": null
+    }
+  ],
+  "finishedAt": "2026-10-03T01:13:30.630Z",
+  "artifactDirectory": "E:\\Development\\GameCrafter\\.turbo\\documentation-engines\\1790989864753",
+  "evidence": [
+    {
+      "stage": "compile-unreal",
+      "startedAt": "2026-10-03T01:11:05.817Z",
+      "checks": [
+        {
+          "name": "unreal-editor-build",
+          "passed": true
+        },
+        {
+          "name": "Unreal Editor C++ compilation",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "stage": "map-unreal",
+      "startedAt": "2026-10-03T01:12:25.184Z",
+      "checks": [
+        {
+          "name": "unreal-create-map",
+          "passed": true
+        },
+        {
+          "name": "Unreal map creation",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "stage": "tests",
+      "startedAt": "2026-10-03T01:12:46.169Z",
+      "checks": [
+        {
+          "name": "unity: capability identity/version",
+          "passed": true
+        },
+        {
+          "name": "unreal: capability identity/version",
+          "passed": true
+        },
+        {
+          "name": "unity: EditMode",
+          "passed": true,
+          "status": "succeeded",
+          "summary": "Unity test exited with code 0. Unity results: 2 passed, 0 failed, 2 total; result Passed."
+        },
+        {
+          "name": "unreal: GameCrafter.Acceptance",
+          "passed": true,
+          "status": "succeeded",
+          "summary": "Unreal test exited with code 0. Unreal results: 2 succeeded, 0 failed, 0 incomplete."
+        },
+        {
+          "name": "unity: PlayMode",
+          "passed": true,
+          "status": "succeeded",
+          "summary": "Unity test exited with code 0. Unity results: 2 passed, 0 failed, 2 total; result Passed."
+        },
+        {
+          "name": "unity: missing filter fails closed",
+          "passed": true,
+          "status": "failed",
+          "summary": "Unity test exited with code 0. Unity results: 0 passed, 0 failed, 0 total; result Passed."
+        },
+        {
+          "name": "unity: mismatched family rejected",
+          "passed": true
+        },
+        {
+          "name": "unreal: missing filter fails closed",
+          "passed": true,
+          "status": "failed",
+          "summary": "Unreal test exited with code 0. Test report unavailable or invalid: ENOENT: no such file or directory, stat 'E:\\Development\\GameCrafter\\.turbo\\documentation-engines\\1790989864753\\projects\\unreal\\.gamecrafter\\engine-runs\\01a0ff52-6237-77b2-838c-7c335fbd1725\\index.json'"
+        },
+        {
+          "name": "unreal: mismatched family rejected",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

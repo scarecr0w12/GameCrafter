@@ -6,7 +6,19 @@ PlayWeld is a local game-development workspace with a Theia desktop Control Room
 
 **Product identity:** [PlayWeld branding and compatibility](BRANDING.md) records the name, selected domain, retained technical identifiers, and remaining identity work.
 
+## Learn through a testing Project
+
+Start with [Lantern Workshop: worked tutorial](WORKED_TUTORIAL.md) for project creation, reusable native/design files, a discussion, model/chat configuration, and cited Knowledge search. The [Control Room handbook](CONTROL_ROOM_HANDBOOK.md) explains every surface with screenshots, practical examples, and evidence to inspect. The [service recipes](SERVICE_RECIPES.md) connect these workflows to the local typed API and component boundaries. The [documentation coverage record](DOCUMENTATION_COVERAGE.md) lists checks, repaired documentation/fixture problems, and unverified operations.
+
+The [reusable fixture](examples/lantern-workshop/README.md) and [capture script](../scripts/capture-documentation.cjs) keep the walkthrough reproducible. Images show the development browser UI with a real isolated service; the chat endpoint is an explicitly labeled local fixture. They do not establish paid-provider, native-gameplay, installer, or live-editor acceptance.
+
 ## Guides by audience
+
+The [model routing and failure guide](MODEL_ROUTING_GUIDE.md) explains eligibility stages, applicable pool intersections, manual selection, streaming fallback, estimates/budgets and the boundary between provider, task, tool and integration failures.
+
+The [profile recovery runbook](RECOVERY_RUNBOOK.md) adds a complete service-level recovery drill, an executable read-only diagnostic command, full index rebuild acceptance and a safe demonstration of the credential-key recovery limit. It distinguishes profile relocation from restoring the game workspace and preserves a [passing recovery report](examples/lantern-workshop/verification/profile-recovery.json).
+
+The [workflow cookbook](WORKFLOW_COOKBOOK.md) adds agent/question/integration, binding-decision, settings transfer, asset review, indexing and native-operation exercises. The [contributor extension cookbook](EXTENSION_COOKBOOK.md) explains skills, roles, platform plugins, Theia/editor extensions, connectors, contracts, notifications and migrations. The [annotated screenshot gallery](WORKFLOW_SCREENSHOTS.md) explains actual configuration, results and recovery states. Use the [glossary](GLOSSARY.md) for shared meanings and the [generated surface inventory](reference/DOCUMENTATION_INVENTORY.md) to find every RPC family, service area and settings group. [Current standards research](research/documentation-standards-verification.md) records sources and inaccessible material explicitly.
 
 | Reader or task                         | Start here                                            | Coverage                                                                                             |
 | -------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -20,6 +32,8 @@ PlayWeld is a local game-development workspace with a Theia desktop Control Room
 | Game-development agent or skill author | [Game-development skills](GAME_DEVELOPMENT_SKILLS.md) | Bundled skills, domain coverage, reference loading, research and evaluation evidence                 |
 
 ## Versioned builds
+
+The [changelog](../CHANGELOG.md) summarizes the permanent [work records](changes/README.md). Every task is tracked, including removals, docs, tests, assets and maintenance. Records retain full details, affected paths, version impact and validation; CI checks coverage and release preparation collects them into detailed notes.
 
 See the [release and local Windows testing guide](RELEASE_GUIDE.md) for version/tag agreement, GitHub draft prereleases, checksums, package commands and isolated local test launchers. [0.1.1 testing notes](releases/v0.1.1.md) describe the contents and limitations. [Release acceptance](RELEASE_ACCEPTANCE.md) records source identity, local packaging, runtime/UI verification, and hosted publication results.
 
@@ -36,6 +50,8 @@ See the [release and local Windows testing guide](RELEASE_GUIDE.md) for version/
 These guides do not confirm new requirements, settle open product decisions, or expand an engine acceptance result into a guarantee for every engine version or production Project.
 
 ## Verification and research
+
+The [documentation review](DOCUMENTATION_REVIEW.md) maps current guides to implementation surfaces and evidence, records corrected findings and preserves verification limits. Run `node scripts/check-documentation-evidence.cjs` after building to check method/setting/view coverage and retained screenshot-report integrity.
 
 | Record                                                      | What it establishes                                                                             |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |

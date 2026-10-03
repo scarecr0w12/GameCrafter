@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-10-03T00:41:06.949Z",
+  "platformVersion": "0.4.0",
+  "source": {
+    "commit": "4e1342070f56926807a5d1bb04d43b1a54f2ed40",
+    "workingTree": "pending changes",
+    "captureScriptSha256": "b680e8933bf34963884b01e6e0e738539f95ddbb7daabe69375d26ac7320cb52"
+  },
+  "selectedScenarios": [
+    "backup"
+  ],
+  "target": "Built development browser Control Room, real platform service",
+  "provider": "Local deterministic HTTP fixture; no live model, paid provider, or engine execution",
+  "projectName": "Lantern Workshop",
+  "checks": [
+    "Six-step UI wizard created a real Project; reusable documentation and native Godot fixture copied into it",
+    "Backup: UI identity/destination/manual run, verified local archive, wrong-secret rejection, successful drill/restore, byte-identical docs/native files, new Project registration and nonempty-target rejection; recovery secrets retained only in memory"
+  ],
+  "screenshots": [
+    "01-home.png",
+    "02-create-project.png",
+    "backup-configuration.png",
+    "backup-verified.png",
+    "backup-wrong-secret.png",
+    "backup-restored.png",
+    "backup-nonempty-target.png"
+  ],
+  "rendererErrors": []
+}
